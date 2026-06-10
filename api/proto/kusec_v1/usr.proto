@@ -1,0 +1,146 @@
+syntax = "proto3";
+
+package kusec_v1;
+
+import "google/api/annotations.proto";
+import "google/protobuf/empty.proto";
+import "common/common.proto";
+
+option go_package = "/kusec_v1";
+
+service Usr {
+  rpc List(UsrListReq) returns (UsrListRep) {
+    option (google.api.http) = {
+      get: "/usrs"
+    };
+  }
+
+  rpc Get(UsrGetReq) returns (UsrMain) {
+    option (google.api.http) = {
+      get: "/usrs/{id}"
+    };
+  }
+
+  rpc Create(UsrCreateReq) returns (UsrCreateRep) {
+    option (google.api.http) = {
+      post: "/usrs"
+      body: "*"
+    };
+  }
+
+  rpc Update(UsrUpdateReq) returns (google.protobuf.Empty) {
+    option (google.api.http) = {
+      patch: "/usrs/{id}"
+      body: "*"
+    };
+  }
+
+  rpc Delete(UsrGetReq) returns (google.protobuf.Empty) {
+    option (google.api.http) = {
+      delete: "/usrs/{id}"
+    };
+  }
+
+  rpc Login(UsrLoginReq) returns (UsrLoginRep) {
+    option (google.api.http) = {
+      post: "/usrs/login"
+      body: "*"
+    };
+  }
+
+  rpc BootstrapStatus(google.protobuf.Empty) returns (UsrBootstrapStatusRep) {
+    option (google.api.http) = {
+      get: "/usrs/bootstrap/status"
+    };
+  }
+
+  rpc GetProfile(google.protobuf.Empty) returns (UsrMain) {
+    option (google.api.http) = {
+      get: "/usrs/profile"
+    };
+  }
+
+  rpc UpdateProfile(UsrUpdateProfileReq) returns (google.protobuf.Empty) {
+    option (google.api.http) = {
+      patch: "/usrs/profile"
+      body: "*"
+    };
+  }
+}
+
+// ── Messages ────────────────────────────────────────────
+
+message UsrMain {
+  int64 id = 1;
+  bool active = 2;
+  bool is_admin = 3;
+  string name = 4;
+  string username = 5;
+}
+
+// List
+
+message UsrListReq {
+  common.ListParamsSt list_params = 1;
+  optional bool active = 2;
+  optional bool is_admin = 3;
+  optional string search = 4;
+}
+
+message UsrListRep {
+  common.PaginationInfoSt pagination_info = 1;
+  repeated UsrMain results = 2;
+}
+
+// Get
+
+message UsrGetReq {
+  int64 id = 1;
+}
+
+// Create
+
+message UsrCreateReq {
+  optional bool active = 1;
+  bool is_admin = 2;
+  string name = 3;
+  string username = 4;
+  string password = 5;
+}
+
+// Create response
+
+message UsrCreateRep {
+  int64 id = 1;
+}
+
+// Update
+
+message UsrUpdateReq {
+  int64 id = 1;
+  optional bool active = 2;
+  optional bool is_admin = 3;
+  optional string name = 4;
+  optional string username = 5;
+  optional string password = 6;
+}
+
+// Auth
+
+message UsrLoginReq {
+  string username = 1;
+  string password = 2;
+}
+
+message UsrLoginRep {
+  string jwt = 1;
+}
+
+message UsrBootstrapStatusRep {
+  bool can_create_first_admin = 1;
+}
+
+message UsrUpdateProfileReq {
+  optional string name = 1;
+  optional string password = 2;
+}

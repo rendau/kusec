@@ -18,6 +18,10 @@ const (
 	InvalidRequest    = Err("invalid_request")
 	IncorrectPageSize = Err("incorrect_page_size")
 	IdRequired        = Err("id_required")
+
+	NameRequired     = Err("name_required")
+	UsernameRequired = Err("username_required")
+	PasswordRequired = Err("password_required")
 )
 
 type ErrFull struct {

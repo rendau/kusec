@@ -12,8 +12,6 @@ import (
 	"syscall"
 	"time"
 
-	_ "github.com/samber/lo"
-
 	"github.com/grpc-ecosystem/grpc-gateway/v2/runtime"
 	"github.com/jackc/pgx/v5/pgxpool"
 	"google.golang.org/grpc"
@@ -21,6 +19,22 @@ import (
 
 	"github.com/mechta-market/kusec/internal/config"
 	"github.com/mechta-market/kusec/internal/constant"
+
+	appDb "github.com/mechta-market/kusec/internal/domain/app/repo/db"
+	appService "github.com/mechta-market/kusec/internal/domain/app/service"
+	itemDb "github.com/mechta-market/kusec/internal/domain/item/repo/db"
+	itemService "github.com/mechta-market/kusec/internal/domain/item/service"
+	sessionService "github.com/mechta-market/kusec/internal/domain/session/service"
+	usrDb "github.com/mechta-market/kusec/internal/domain/usr/repo/db"
+	usrService "github.com/mechta-market/kusec/internal/domain/usr/service"
+
+	grpcHandler "github.com/mechta-market/kusec/internal/handler/grpc"
+
+	appUsc "github.com/mechta-market/kusec/internal/usecase/app"
+	itemUsc "github.com/mechta-market/kusec/internal/usecase/item"
+	usrUsc "github.com/mechta-market/kusec/internal/usecase/usr"
+
+	proto "github.com/mechta-market/kusec/pkg/proto/kusec_v1"
 )
 
 type App struct {
@@ -65,10 +79,20 @@ func (a *App) Init() {
 		slog.Info("PG-migrations have been successfully applied")
 	}
 
+	// session service (stateless HS256 JWT)
+	sessionSvc := sessionService.New(config.Conf.JWTSecret)
+
+	// dependency graph
+	usrHandler := grpcHandler.NewUsr(usrUsc.New(usrService.New(usrDb.New(a.pgpool)), sessionSvc))
+	appHandler := grpcHandler.NewApp(appUsc.New(appService.New(appDb.New(a.pgpool)), sessionSvc))
+	itemHandler := grpcHandler.NewItem(itemUsc.New(itemService.New(itemDb.New(a.pgpool)), sessionSvc))
+
 	// grpc server
 	{
-		a.grpcServer = NewGrpcServer("main", func(server *grpc.Server) {
-			// server registers
+		a.grpcServer = NewGrpcServer("main", sessionSvc, func(server *grpc.Server) {
+			proto.RegisterUsrServer(server, usrHandler)
+			proto.RegisterAppServer(server, appHandler)
+			proto.RegisterItemServer(server, itemHandler)
 		})
 	}
 
@@ -85,7 +109,9 @@ func (a *App) Init() {
 
 			// register grpc handlers
 			handlers := []func(context.Context, *runtime.ServeMux, *grpc.ClientConn) error{
-				// server registers
+				proto.RegisterUsrHandler,
+				proto.RegisterAppHandler,
+				proto.RegisterItemHandler,
 			}
 			for _, h := range handlers {
 				err = h(context.Background(), mux, conn)

@@ -9,16 +9,20 @@ import (
 	"net"
 	"os"
 	"runtime/debug"
+	"strings"
 	"time"
 
 	otgrpc "github.com/opentracing-contrib/go-grpc"
 	"github.com/opentracing/opentracing-go"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
+	"google.golang.org/grpc/metadata"
 	"google.golang.org/grpc/reflection"
 	"google.golang.org/grpc/status"
 
 	"github.com/mechta-market/kusec/internal/config"
+	sessionModel "github.com/mechta-market/kusec/internal/domain/session/model"
+	sessionService "github.com/mechta-market/kusec/internal/domain/session/service"
 	"github.com/mechta-market/kusec/internal/errs"
 	"github.com/mechta-market/kusec/internal/infra/metrics"
 	"github.com/mechta-market/kusec/pkg/proto/common"
@@ -29,11 +33,14 @@ type GrpcServer struct {
 	server *grpc.Server
 }
 
-func NewGrpcServer(name string, register func(*grpc.Server)) *GrpcServer {
-	interceptors := make([]grpc.UnaryServerInterceptor, 0, 5)
+func NewGrpcServer(name string, sessionSvc *sessionService.Service, register func(*grpc.Server)) *GrpcServer {
+	interceptors := make([]grpc.UnaryServerInterceptor, 0, 6)
 
 	// ctx without cancel
 	interceptors = append(interceptors, GrpcInterceptorCtxWithoutCancel())
+
+	// session (extract bearer token -> session in context)
+	interceptors = append(interceptors, GrpcInterceptorSession(sessionSvc))
 
 	// recovery
 	interceptors = append(interceptors, GrpcInterceptorRecovery())
@@ -96,6 +103,49 @@ func GrpcInterceptorCtxWithoutCancel() grpc.UnaryServerInterceptor {
 	return func(ctx context.Context, req any, _ *grpc.UnaryServerInfo, handler grpc.UnaryHandler) (resp any, err error) {
 		return handler(context.WithoutCancel(ctx), req)
 	}
+}
+
+func GrpcInterceptorSession(sessionSvc *sessionService.Service) grpc.UnaryServerInterceptor {
+	return func(ctx context.Context, req any, _ *grpc.UnaryServerInfo, handler grpc.UnaryHandler) (resp any, err error) {
+		var session *sessionModel.Session
+
+		token := grpcExtractBearerToken(ctx)
+		if token != "" {
+			parsedSession, parseErr := sessionSvc.FromToken(token)
+			if parseErr == nil && parsedSession != nil && parsedSession.Id != 0 {
+				session = parsedSession
+			}
+		}
+
+		return handler(sessionSvc.WithContext(ctx, session), req)
+	}
+}
+
+func grpcExtractBearerToken(ctx context.Context) string {
+	md, ok := metadata.FromIncomingContext(ctx)
+	if !ok {
+		return ""
+	}
+
+	values := md.Get("authorization")
+	if len(values) == 0 {
+		return ""
+	}
+
+	value := strings.TrimSpace(values[0])
+	if value == "" {
+		return ""
+	}
+
+	parts := strings.Fields(value)
+	if len(parts) == 1 {
+		return parts[0]
+	}
+	if len(parts) == 2 && strings.EqualFold(parts[0], "bearer") {
+		return parts[1]
+	}
+
+	return ""
 }
 
 func GrpcInterceptorTracing() grpc.UnaryServerInterceptor {

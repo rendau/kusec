@@ -74,6 +74,7 @@ func EncodeSelect(v *Select, _ int) *domainModel.Main {
 ## model/upsert.go — модель записи + DTO
 
 - `PKId string` — публичный, не указатель; устанавливается в `repo.go` перед Update/Delete
+- `NewId <type>` — публичный; сюда `ModelStore.Create` пишет id новой записи через `ReturningColumnMap` (правило для всех сущностей с id; тип как у PK: `int64` для bigserial, `string` для text/uuid)
 - `CreateColumnMap` — **не включает** `id` (только бизнес-поля)
 - `UpdateColumnMap` — делегирует в `CreateColumnMap`
 - `DecodeUpsert` — конвертер domain.Edit → Upsert
@@ -88,7 +89,8 @@ import (
 )
 
 type Upsert struct {
-    PKId string
+    PKId  string
+    NewId string // id новой записи, заполняется в Create через RETURNING (int64 для bigserial)
 
     ModifiedAt *time.Time
     Active     *bool
@@ -111,8 +113,9 @@ func (m *Upsert) PKColumnMap() map[string]any {
     return map[string]any{"id": m.PKId}
 }
 
+// ReturningColumnMap — Create использует RETURNING id, чтобы вернуть id новой записи
 func (m *Upsert) ReturningColumnMap() map[string]any {
-    return map[string]any{}
+    return map[string]any{"id": &m.NewId}
 }
 
 // DTO
@@ -203,12 +206,12 @@ func (r *Repo) Get(ctx context.Context, id string) (*model.Main, bool, error) {
     return repoModel.EncodeSelect(m, 0), true, nil
 }
 
-func (r *Repo) Create(ctx context.Context, obj *model.Edit) error {
+func (r *Repo) Create(ctx context.Context, obj *model.Edit) (string, error) {
     m := repoModel.DecodeUpsert(obj)
     if err := r.ModelStore.Create(ctx, m); err != nil {
-        return fmt.Errorf("ModelStore.Create: %w", err)
+        return "", fmt.Errorf("ModelStore.Create: %w", err)
     }
-    return nil
+    return m.NewId, nil // id новой записи (правило для всех сущностей с id)
 }
 
 func (r *Repo) Update(ctx context.Context, id string, obj *model.Edit) error {

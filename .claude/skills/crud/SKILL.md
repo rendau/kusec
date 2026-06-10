@@ -36,6 +36,18 @@ description: >
 
 ---
 
+## Общие правила (для всех сущностей)
+
+- **`Create` возвращает id новой записи** на всех слоях (repo → domain service → usecase → handler).
+  Действует для любой сущности, имеющей `id`. Тип id соответствует PK: `int64` для `bigserial`,
+  `string` для `text`/`uuid`.
+  - proto: `Create<Entity>` возвращает `<Entity>CreateRep { id }` (не `google.protobuf.Empty`);
+  - repo `Upsert`: поле `NewId <type>` + `ReturningColumnMap() → {"id": &m.NewId}` (использует `RETURNING id`);
+  - repo/domain/usecase: `Create(ctx, obj) (<idType>, error)`;
+  - handler: возвращает `&proto.<Entity>CreateRep{Id: newId}`.
+
+---
+
 ## Структура файлов
 
 ```
@@ -84,6 +96,7 @@ internal/handler/grpc/
 
 ### Proto Contract (`layers/proto.md`)
 - [ ] `api/proto/<svc_name>_v1/<entity>.proto` — сервис + все CRUD сообщения
+- [ ] `Create<Entity>` возвращает `<Entity>CreateRep { id }` (не `Empty`) — для сущностей с id
 - [ ] `optional` поля в `Update<Entity>Request` для partial update
 - [ ] HTTP-аннотации через `google.api.http` для каждого RPC
 - [ ] `make generate-proto` — сгенерировать `pkg/proto/<svc_name>_v1/`
@@ -94,21 +107,22 @@ internal/handler/grpc/
 ### Domain Service (`layers/domain.md`)
 - [ ] `service/interfaces.go` — публичный `RepoDbI` интерфейс
 - [ ] `service/service.go` — `Service`, `New()`, Get/List/Create/Update/Delete
+- [ ] `Create` возвращает id новой записи (`(idType, error)`) — для сущностей с id
 - [ ] `Create` сбрасывает `ModifiedAt = nil` (DB-default), `Update` устанавливает `ModifiedAt = time.Now()`
 
 ### Repository (`layers/repo.md`)
 - [ ] `repo/db/model/select.go` — `Select` с `ListColumnMap`, `PKColumnMap`, `DefaultSortColumns` + `EncodeSelect`
-- [ ] `repo/db/model/upsert.go` — `Upsert` с `PKId string`, `CreateColumnMap`, `UpdateColumnMap`, `PKColumnMap`, `ReturningColumnMap` + `DecodeUpsert`
+- [ ] `repo/db/model/upsert.go` — `Upsert` с `PKId`, `NewId`, `CreateColumnMap`, `UpdateColumnMap`, `PKColumnMap`, `ReturningColumnMap` (возвращает `{"id": &m.NewId}`) + `DecodeUpsert`
 - [ ] `repo/db/repo.go` — `Repo`, конструктор `New`, CRUD-методы
 - [ ] `repo/db/custom.go` — `getConditions`, `allowedSortFields`, кастомные методы
 - [ ] Wrapping ошибок: `fmt.Errorf("ModelStore.<Method>: %w", err)`
 
 ### Usecase (`layers/usecase.md`)
 - [ ] `usecase/<entity>/interfaces.go` — публичный `<Entity>I` интерфейс
-- [ ] `usecase/<entity>/usecase.go` — `Usecase`, `New()`, validate(), auth placeholder в mutable методах
+- [ ] `usecase/<entity>/usecase.go` — `Usecase`, `New()`, validate(), auth placeholder в mutable методах; `Create` возвращает id
 
 ### Handler (`layers/handler.md`)
-- [ ] `handler/grpc/<entity>.go` — embed `<proto_pkg>.Unsafe<Entity>ServiceServer`, все CRUD методы
+- [ ] `handler/grpc/<entity>.go` — embed `<proto_pkg>.Unsafe<Entity>ServiceServer`, все CRUD методы; `Create` возвращает `<Entity>CreateRep{Id: newId}`
 - [ ] `handler/grpc/dto/<entity>.go` — `Decode*` (proto→domain), `Encode*` (domain→proto)
 
 ### Infrastructure

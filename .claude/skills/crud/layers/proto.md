@@ -42,7 +42,8 @@ service <Entity>Service {
     };
   }
 
-  rpc Create<Entity>(Create<Entity>Request) returns (google.protobuf.Empty) {
+  // Create возвращает id созданной записи (правило для всех сущностей с id)
+  rpc Create<Entity>(Create<Entity>Request) returns (Create<Entity>Response) {
     option (google.api.http) = {
       post: "/<entities>"
       body: "*"
@@ -100,6 +101,12 @@ message Get<Entity>Response {
 message Create<Entity>Request {
   string name = 1;
   // другие обязательные поля
+}
+
+// Create возвращает id новой записи. Тип id соответствует PK сущности:
+//   int64  — для bigserial; string — для text/uuid.
+message Create<Entity>Response {
+  string id = 1; // или int64 id = 1; для bigserial
 }
 
 // Update — все изменяемые поля optional для partial update

@@ -17,6 +17,8 @@ var Conf = struct {
 	HttpCors bool   `env:"HTTP_CORS" envDefault:"false"`
 
 	PgDsn string `env:"PG_DSN"`
+
+	JWTSecret string `env:"JWT_SECRET"`
 }{}
 
 func init() {

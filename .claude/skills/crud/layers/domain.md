@@ -13,6 +13,7 @@
 - `RepoDbI` интерфейс — **публичный** (uppercase), объявляется в `service/interfaces.go`
 - `Service` принимает `repoDb RepoDbI` через конструктор `New`
 - `Create` сбрасывает `ModifiedAt = nil` — DB-default (напр. `DEFAULT NOW()`) устанавливает значение
+- **`Create` возвращает id новой записи** (`(idType, error)`) — правило для всех сущностей с id; тип id как у PK (`int64`/`string`)
 - `Update` принимает `id string` и устанавливает `ModifiedAt = lo.ToPtr(time.Now())`
 - `Get` с `errNE=true` возвращает `errs.ObjectNotFound` если не найдено
 - Все ошибки оборачиваются: `fmt.Errorf("repoDb.<Method>: %w", err)`
@@ -30,7 +31,7 @@ import (
 type RepoDbI interface {
     List(ctx context.Context, pars *model.ListReq) ([]*model.Main, int64, error)
     Get(ctx context.Context, id string) (*model.Main, bool, error)
-    Create(ctx context.Context, obj *model.Edit) error
+    Create(ctx context.Context, obj *model.Edit) (string, error)
     Update(ctx context.Context, id string, obj *model.Edit) error
     Delete(ctx context.Context, id string) error
 }
@@ -82,13 +83,14 @@ func (s *Service) Get(ctx context.Context, id string, errNE bool) (*model.Main, 
     return result, found, nil
 }
 
-func (s *Service) Create(ctx context.Context, obj *model.Edit) error {
+func (s *Service) Create(ctx context.Context, obj *model.Edit) (string, error) {
     obj.ModifiedAt = nil // DB-default устанавливает значение
 
-    if err := s.repoDb.Create(ctx, obj); err != nil {
-        return fmt.Errorf("repoDb.Create: %w", err)
+    newId, err := s.repoDb.Create(ctx, obj)
+    if err != nil {
+        return "", fmt.Errorf("repoDb.Create: %w", err)
     }
-    return nil
+    return newId, nil // id новой записи (правило для всех сущностей с id)
 }
 
 func (s *Service) Update(ctx context.Context, id string, obj *model.Edit) error {

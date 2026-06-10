@@ -30,7 +30,7 @@ import (
 type ServiceI interface {
     List(ctx context.Context, pars *model.ListReq) ([]*model.Main, int64, error)
     Get(ctx context.Context, id string, errNE bool) (*model.Main, bool, error)
-    Create(ctx context.Context, obj *model.Edit) error
+    Create(ctx context.Context, obj *model.Edit) (string, error)
     Update(ctx context.Context, id string, obj *model.Edit) error
     Delete(ctx context.Context, id string) error
 }
@@ -82,15 +82,16 @@ func (u *Usecase) Get(ctx context.Context, id string) (*model.Main, error) {
     return result, nil
 }
 
-func (u *Usecase) Create(ctx context.Context, obj *model.Edit) error {
+func (u *Usecase) Create(ctx context.Context, obj *model.Edit) (string, error) {
     // TODO: check auth/permissions
     if err := u.validateEdit(obj, true); err != nil {
-        return err
+        return "", err
     }
-    if err := u.svc.Create(ctx, obj); err != nil {
-        return fmt.Errorf("svc.Create: %w", err)
+    newId, err := u.svc.Create(ctx, obj)
+    if err != nil {
+        return "", fmt.Errorf("svc.Create: %w", err)
     }
-    return nil
+    return newId, nil // id новой записи (правило для всех сущностей с id)
 }
 
 func (u *Usecase) Update(ctx context.Context, id string, obj *model.Edit) error {
