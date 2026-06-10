@@ -126,5 +126,5 @@ internal/handler/grpc/
 - [ ] `handler/grpc/dto/<entity>.go` — `Decode*` (proto→domain), `Encode*` (domain→proto)
 
 ### Infrastructure
-- [ ] SQL миграция в `migrations/`
+- [ ] SQL миграция в `migrations/` (`.up.sql` / `.down.sql`); в `down` все `DROP` с `CASCADE`, в обратном порядке
 - [ ] Wiring в `internal/app/app.go`

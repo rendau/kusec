@@ -82,6 +82,12 @@ domain service → repo
 ### Хранилища
 - Postgres: все доменные entities (см. `migrations/*`).
 
+### Миграции
+- Файлы в `migrations/` в формате `NNNNNN_<name>.up.sql` / `.down.sql` (golang-migrate).
+- В `down`-миграциях во всех командах `DROP` обязательно указывать `CASCADE`
+  (напр. `drop table if exists <table> cascade;`).
+- В `down` объекты удаляются в порядке, обратном `up` (с учётом внешних ключей).
+
 ### API
 - gRPC сервисы: `api/proto/kusec_v1/*`.
 - HTTP-gateway: через grpc-gateway + swagger (`docs/api.swagger.json`).
