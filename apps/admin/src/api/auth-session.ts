@@ -64,6 +64,21 @@ export function setCredentials(username: string, password: string): void {
   writeCredentials({ username: username.trim(), password })
 }
 
+/**
+ * Merge changes into the stored credentials (kept in sync after a profile
+ * edit so silent token renewal keeps working). No-op if nothing is stored.
+ */
+export function patchCredentials(partial: Partial<Credentials>): void {
+  const current = readCredentials()
+  if (!current) {
+    return
+  }
+  writeCredentials({
+    username: (partial.username ?? current.username).trim(),
+    password: partial.password ?? current.password,
+  })
+}
+
 export function clearSession(): void {
   setToken('')
   writeCredentials(null)

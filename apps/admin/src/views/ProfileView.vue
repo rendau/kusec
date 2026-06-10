@@ -26,12 +26,14 @@ const submitting = ref(false)
 
 interface FormModel {
   name: string
+  username: string
   password: string
   passwordConfirm: string
 }
 
 const model = reactive<FormModel>({
   name: '',
+  username: '',
   password: '',
   passwordConfirm: '',
 })
@@ -41,6 +43,7 @@ watch(
   profile,
   (value) => {
     model.name = value?.name ?? ''
+    model.username = value?.username ?? ''
     model.password = ''
     model.passwordConfirm = ''
     formRef.value?.restoreValidation()
@@ -50,6 +53,9 @@ watch(
 
 const rules: FormRules = {
   name: [{ required: true, message: 'Name is required', trigger: ['blur', 'input'] }],
+  username: [
+    { required: true, message: 'Username is required', trigger: ['blur', 'input'] },
+  ],
   passwordConfirm: [
     {
       trigger: ['blur', 'input'],
@@ -68,7 +74,10 @@ async function submit(): Promise<void> {
 
   submitting.value = true
   try {
-    const payload: UsrUpdateProfileReq = { name: model.name }
+    const payload: UsrUpdateProfileReq = {
+      name: model.name,
+      username: model.username,
+    }
     // Only send the password when the user actually typed a new one.
     if (model.password) payload.password = model.password
     await authStore.updateProfile(payload)
@@ -95,14 +104,20 @@ async function submit(): Promise<void> {
         label-placement="top"
         :disabled="submitting"
       >
-        <NFormItem label="Username">
-          <NSpace align="center" :size="8">
-            <span>{{ profile?.username || '—' }}</span>
-            <NTag v-if="profile?.is_admin" type="success" size="small">admin</NTag>
-          </NSpace>
+        <NFormItem label="Role">
+          <NTag :type="profile?.is_admin ? 'success' : 'default'" size="small">
+            {{ profile?.is_admin ? 'Administrator' : 'User' }}
+          </NTag>
         </NFormItem>
         <NFormItem label="Name" path="name">
           <NInput v-model:value="model.name" placeholder="Full name" clearable />
+        </NFormItem>
+        <NFormItem label="Username" path="username">
+          <NInput
+            v-model:value="model.username"
+            placeholder="Login username"
+            clearable
+          />
         </NFormItem>
         <NFormItem label="New password (leave blank to keep)" path="password">
           <NInput

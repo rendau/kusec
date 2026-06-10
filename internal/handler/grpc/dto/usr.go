@@ -67,6 +67,7 @@ func DecodeUsrUpdateProfileReq(v *proto.UsrUpdateProfileReq) *usecase.UpdateProf
 	}
 	return &usecase.UpdateProfileReq{
 		Name:     v.Name,
+		Username: v.Username,
 		Password: v.Password,
 	}
 }

@@ -61,7 +61,7 @@ const activeOptions: SelectOption[] = [
 
 const pagination = reactive({
   page: 1,
-  pageSize: 10,
+  pageSize: 20,
   itemCount: 0,
   showSizePicker: true,
   pageSizes: [10, 20, 50],

@@ -46,6 +46,7 @@ export interface UsrCreateRep {
 /** `UsrUpdateProfileReq`. */
 export interface UsrUpdateProfileReq {
   name?: string
+  username?: string
   password?: string
 }
 

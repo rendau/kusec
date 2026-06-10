@@ -612,6 +612,7 @@ type UsrUpdateProfileReq struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
 	Name          *string                `protobuf:"bytes,1,opt,name=name,proto3,oneof" json:"name,omitempty"`
 	Password      *string                `protobuf:"bytes,2,opt,name=password,proto3,oneof" json:"password,omitempty"`
+	Username      *string                `protobuf:"bytes,3,opt,name=username,proto3,oneof" json:"username,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -656,6 +657,13 @@ func (x *UsrUpdateProfileReq) GetName() string {
 func (x *UsrUpdateProfileReq) GetPassword() string {
 	if x != nil && x.Password != nil {
 		return *x.Password
+	}
+	return ""
+}
+
+func (x *UsrUpdateProfileReq) GetUsername() string {
+	if x != nil && x.Username != nil {
+		return *x.Username
 	}
 	return ""
 }
@@ -714,12 +722,14 @@ const file_kusec_v1_usr_proto_rawDesc = "" +
 	"\vUsrLoginRep\x12\x10\n" +
 	"\x03jwt\x18\x01 \x01(\tR\x03jwt\"L\n" +
 	"\x15UsrBootstrapStatusRep\x123\n" +
-	"\x16can_create_first_admin\x18\x01 \x01(\bR\x13canCreateFirstAdmin\"e\n" +
+	"\x16can_create_first_admin\x18\x01 \x01(\bR\x13canCreateFirstAdmin\"\x93\x01\n" +
 	"\x13UsrUpdateProfileReq\x12\x17\n" +
 	"\x04name\x18\x01 \x01(\tH\x00R\x04name\x88\x01\x01\x12\x1f\n" +
-	"\bpassword\x18\x02 \x01(\tH\x01R\bpassword\x88\x01\x01B\a\n" +
+	"\bpassword\x18\x02 \x01(\tH\x01R\bpassword\x88\x01\x01\x12\x1f\n" +
+	"\busername\x18\x03 \x01(\tH\x02R\busername\x88\x01\x01B\a\n" +
 	"\x05_nameB\v\n" +
-	"\t_password2\xd7\x05\n" +
+	"\t_passwordB\v\n" +
+	"\t_username2\xd7\x05\n" +
 	"\x03Usr\x12@\n" +
 	"\x04List\x12\x14.kusec_v1.UsrListReq\x1a\x14.kusec_v1.UsrListRep\"\f\x82\xd3\xe4\x93\x02\x06\x12\x04/usr\x12@\n" +
 	"\x03Get\x12\x13.kusec_v1.UsrGetReq\x1a\x11.kusec_v1.UsrMain\"\x11\x82\xd3\xe4\x93\x02\v\x12\t/usr/{id}\x12I\n" +

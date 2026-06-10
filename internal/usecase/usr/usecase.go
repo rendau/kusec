@@ -76,7 +76,7 @@ func (u *Usecase) UpdateProfile(ctx context.Context, req *UpdateProfileReq) erro
 		return errs.NotAuthorized
 	}
 	session := u.sessionSvc.FromContext(ctx)
-	if req == nil || (req.Name == nil && req.Password == nil) {
+	if req == nil || (req.Name == nil && req.Username == nil && req.Password == nil) {
 		return errs.InvalidRequest
 	}
 
@@ -90,6 +90,7 @@ func (u *Usecase) UpdateProfile(ctx context.Context, req *UpdateProfileReq) erro
 
 	edit := &model.Edit{
 		Name:     req.Name,
+		Username: req.Username,
 		Password: req.Password,
 	}
 	if err = u.validateEdit(edit, false); err != nil {
