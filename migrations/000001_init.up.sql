@@ -47,6 +47,9 @@ create table item (
     key          text        not null default '',
     value        text        not null default '',
     value_format text        not null default 'text',
+    encoding     text        not null default 'plain',
+    file_name    text        not null default '',
+    content_type text        not null default '',
     description  text        not null default '',
     primary key (id),
     foreign key (secret_id) references secret (id) on delete cascade

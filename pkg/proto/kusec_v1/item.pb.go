@@ -35,6 +35,9 @@ type ItemMain struct {
 	Key           string                 `protobuf:"bytes,6,opt,name=key,proto3" json:"key,omitempty"`
 	Value         string                 `protobuf:"bytes,7,opt,name=value,proto3" json:"value,omitempty"`
 	ValueFormat   string                 `protobuf:"bytes,9,opt,name=value_format,json=valueFormat,proto3" json:"value_format,omitempty"`
+	Encoding      string                 `protobuf:"bytes,10,opt,name=encoding,proto3" json:"encoding,omitempty"`
+	FileName      string                 `protobuf:"bytes,11,opt,name=file_name,json=fileName,proto3" json:"file_name,omitempty"`
+	ContentType   string                 `protobuf:"bytes,12,opt,name=content_type,json=contentType,proto3" json:"content_type,omitempty"`
 	Description   string                 `protobuf:"bytes,8,opt,name=description,proto3" json:"description,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
@@ -122,6 +125,27 @@ func (x *ItemMain) GetValue() string {
 func (x *ItemMain) GetValueFormat() string {
 	if x != nil {
 		return x.ValueFormat
+	}
+	return ""
+}
+
+func (x *ItemMain) GetEncoding() string {
+	if x != nil {
+		return x.Encoding
+	}
+	return ""
+}
+
+func (x *ItemMain) GetFileName() string {
+	if x != nil {
+		return x.FileName
+	}
+	return ""
+}
+
+func (x *ItemMain) GetContentType() string {
+	if x != nil {
+		return x.ContentType
 	}
 	return ""
 }
@@ -304,6 +328,9 @@ type ItemCreateReq struct {
 	Key           string                 `protobuf:"bytes,3,opt,name=key,proto3" json:"key,omitempty"`
 	Value         string                 `protobuf:"bytes,4,opt,name=value,proto3" json:"value,omitempty"`
 	ValueFormat   *string                `protobuf:"bytes,6,opt,name=value_format,json=valueFormat,proto3,oneof" json:"value_format,omitempty"`
+	Encoding      *string                `protobuf:"bytes,7,opt,name=encoding,proto3,oneof" json:"encoding,omitempty"`
+	FileName      *string                `protobuf:"bytes,8,opt,name=file_name,json=fileName,proto3,oneof" json:"file_name,omitempty"`
+	ContentType   *string                `protobuf:"bytes,9,opt,name=content_type,json=contentType,proto3,oneof" json:"content_type,omitempty"`
 	Description   string                 `protobuf:"bytes,5,opt,name=description,proto3" json:"description,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
@@ -374,6 +401,27 @@ func (x *ItemCreateReq) GetValueFormat() string {
 	return ""
 }
 
+func (x *ItemCreateReq) GetEncoding() string {
+	if x != nil && x.Encoding != nil {
+		return *x.Encoding
+	}
+	return ""
+}
+
+func (x *ItemCreateReq) GetFileName() string {
+	if x != nil && x.FileName != nil {
+		return *x.FileName
+	}
+	return ""
+}
+
+func (x *ItemCreateReq) GetContentType() string {
+	if x != nil && x.ContentType != nil {
+		return *x.ContentType
+	}
+	return ""
+}
+
 func (x *ItemCreateReq) GetDescription() string {
 	if x != nil {
 		return x.Description
@@ -433,6 +481,9 @@ type ItemUpdateReq struct {
 	Key           *string                `protobuf:"bytes,4,opt,name=key,proto3,oneof" json:"key,omitempty"`
 	Value         *string                `protobuf:"bytes,5,opt,name=value,proto3,oneof" json:"value,omitempty"`
 	ValueFormat   *string                `protobuf:"bytes,7,opt,name=value_format,json=valueFormat,proto3,oneof" json:"value_format,omitempty"`
+	Encoding      *string                `protobuf:"bytes,8,opt,name=encoding,proto3,oneof" json:"encoding,omitempty"`
+	FileName      *string                `protobuf:"bytes,9,opt,name=file_name,json=fileName,proto3,oneof" json:"file_name,omitempty"`
+	ContentType   *string                `protobuf:"bytes,10,opt,name=content_type,json=contentType,proto3,oneof" json:"content_type,omitempty"`
 	Description   *string                `protobuf:"bytes,6,opt,name=description,proto3,oneof" json:"description,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
@@ -510,6 +561,27 @@ func (x *ItemUpdateReq) GetValueFormat() string {
 	return ""
 }
 
+func (x *ItemUpdateReq) GetEncoding() string {
+	if x != nil && x.Encoding != nil {
+		return *x.Encoding
+	}
+	return ""
+}
+
+func (x *ItemUpdateReq) GetFileName() string {
+	if x != nil && x.FileName != nil {
+		return *x.FileName
+	}
+	return ""
+}
+
+func (x *ItemUpdateReq) GetContentType() string {
+	if x != nil && x.ContentType != nil {
+		return *x.ContentType
+	}
+	return ""
+}
+
 func (x *ItemUpdateReq) GetDescription() string {
 	if x != nil && x.Description != nil {
 		return *x.Description
@@ -521,7 +593,7 @@ var File_kusec_v1_item_proto protoreflect.FileDescriptor
 
 const file_kusec_v1_item_proto_rawDesc = "" +
 	"\n" +
-	"\x13kusec_v1/item.proto\x12\bkusec_v1\x1a\x1cgoogle/api/annotations.proto\x1a\x1bgoogle/protobuf/empty.proto\x1a\x1fgoogle/protobuf/timestamp.proto\x1a\x13common/common.proto\"\xb2\x02\n" +
+	"\x13kusec_v1/item.proto\x12\bkusec_v1\x1a\x1cgoogle/api/annotations.proto\x1a\x1bgoogle/protobuf/empty.proto\x1a\x1fgoogle/protobuf/timestamp.proto\x1a\x13common/common.proto\"\x8e\x03\n" +
 	"\bItemMain\x12\x0e\n" +
 	"\x02id\x18\x01 \x01(\tR\x02id\x129\n" +
 	"\n" +
@@ -532,7 +604,11 @@ const file_kusec_v1_item_proto_rawDesc = "" +
 	"\x06active\x18\x05 \x01(\bR\x06active\x12\x10\n" +
 	"\x03key\x18\x06 \x01(\tR\x03key\x12\x14\n" +
 	"\x05value\x18\a \x01(\tR\x05value\x12!\n" +
-	"\fvalue_format\x18\t \x01(\tR\vvalueFormat\x12 \n" +
+	"\fvalue_format\x18\t \x01(\tR\vvalueFormat\x12\x1a\n" +
+	"\bencoding\x18\n" +
+	" \x01(\tR\bencoding\x12\x1b\n" +
+	"\tfile_name\x18\v \x01(\tR\bfileName\x12!\n" +
+	"\fcontent_type\x18\f \x01(\tR\vcontentType\x12 \n" +
 	"\vdescription\x18\b \x01(\tR\vdescription\"\xc4\x01\n" +
 	"\vItemListReq\x125\n" +
 	"\vlist_params\x18\x01 \x01(\v2\x14.common.ListParamsStR\n" +
@@ -549,32 +625,47 @@ const file_kusec_v1_item_proto_rawDesc = "" +
 	"\aresults\x18\x02 \x03(\v2\x12.kusec_v1.ItemMainR\aresults\"\x1c\n" +
 	"\n" +
 	"ItemGetReq\x12\x0e\n" +
-	"\x02id\x18\x01 \x01(\tR\x02id\"\xd7\x01\n" +
+	"\x02id\x18\x01 \x01(\tR\x02id\"\xee\x02\n" +
 	"\rItemCreateReq\x12\x1b\n" +
 	"\tsecret_id\x18\x01 \x01(\tR\bsecretId\x12\x1b\n" +
 	"\x06active\x18\x02 \x01(\bH\x00R\x06active\x88\x01\x01\x12\x10\n" +
 	"\x03key\x18\x03 \x01(\tR\x03key\x12\x14\n" +
 	"\x05value\x18\x04 \x01(\tR\x05value\x12&\n" +
-	"\fvalue_format\x18\x06 \x01(\tH\x01R\vvalueFormat\x88\x01\x01\x12 \n" +
+	"\fvalue_format\x18\x06 \x01(\tH\x01R\vvalueFormat\x88\x01\x01\x12\x1f\n" +
+	"\bencoding\x18\a \x01(\tH\x02R\bencoding\x88\x01\x01\x12 \n" +
+	"\tfile_name\x18\b \x01(\tH\x03R\bfileName\x88\x01\x01\x12&\n" +
+	"\fcontent_type\x18\t \x01(\tH\x04R\vcontentType\x88\x01\x01\x12 \n" +
 	"\vdescription\x18\x05 \x01(\tR\vdescriptionB\t\n" +
 	"\a_activeB\x0f\n" +
-	"\r_value_format\"\x1f\n" +
+	"\r_value_formatB\v\n" +
+	"\t_encodingB\f\n" +
+	"\n" +
+	"_file_nameB\x0f\n" +
+	"\r_content_type\"\x1f\n" +
 	"\rItemCreateRep\x12\x0e\n" +
-	"\x02id\x18\x01 \x01(\tR\x02id\"\xab\x02\n" +
+	"\x02id\x18\x01 \x01(\tR\x02id\"\xc2\x03\n" +
 	"\rItemUpdateReq\x12\x0e\n" +
 	"\x02id\x18\x01 \x01(\tR\x02id\x12 \n" +
 	"\tsecret_id\x18\x02 \x01(\tH\x00R\bsecretId\x88\x01\x01\x12\x1b\n" +
 	"\x06active\x18\x03 \x01(\bH\x01R\x06active\x88\x01\x01\x12\x15\n" +
 	"\x03key\x18\x04 \x01(\tH\x02R\x03key\x88\x01\x01\x12\x19\n" +
 	"\x05value\x18\x05 \x01(\tH\x03R\x05value\x88\x01\x01\x12&\n" +
-	"\fvalue_format\x18\a \x01(\tH\x04R\vvalueFormat\x88\x01\x01\x12%\n" +
-	"\vdescription\x18\x06 \x01(\tH\x05R\vdescription\x88\x01\x01B\f\n" +
+	"\fvalue_format\x18\a \x01(\tH\x04R\vvalueFormat\x88\x01\x01\x12\x1f\n" +
+	"\bencoding\x18\b \x01(\tH\x05R\bencoding\x88\x01\x01\x12 \n" +
+	"\tfile_name\x18\t \x01(\tH\x06R\bfileName\x88\x01\x01\x12&\n" +
+	"\fcontent_type\x18\n" +
+	" \x01(\tH\aR\vcontentType\x88\x01\x01\x12%\n" +
+	"\vdescription\x18\x06 \x01(\tH\bR\vdescription\x88\x01\x01B\f\n" +
 	"\n" +
 	"_secret_idB\t\n" +
 	"\a_activeB\x06\n" +
 	"\x04_keyB\b\n" +
 	"\x06_valueB\x0f\n" +
-	"\r_value_formatB\x0e\n" +
+	"\r_value_formatB\v\n" +
+	"\t_encodingB\f\n" +
+	"\n" +
+	"_file_nameB\x0f\n" +
+	"\r_content_typeB\x0e\n" +
 	"\f_description2\xfc\x02\n" +
 	"\x04Item\x12C\n" +
 	"\x04List\x12\x15.kusec_v1.ItemListReq\x1a\x15.kusec_v1.ItemListRep\"\r\x82\xd3\xe4\x93\x02\a\x12\x05/item\x12C\n" +

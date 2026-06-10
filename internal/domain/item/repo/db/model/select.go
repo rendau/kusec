@@ -15,6 +15,9 @@ type Select struct {
 	Key         string
 	Value       string
 	ValueFormat string
+	Encoding    string
+	FileName    string
+	ContentType string
 	Description string
 }
 
@@ -28,6 +31,9 @@ func (m *Select) ListColumnMap() map[string]any {
 		"key":          &m.Key,
 		"value":        &m.Value,
 		"value_format": &m.ValueFormat,
+		"encoding":     &m.Encoding,
+		"file_name":    &m.FileName,
+		"content_type": &m.ContentType,
 		"description":  &m.Description,
 	}
 }
@@ -52,6 +58,9 @@ func EncodeSelect(v *Select, _ int) *domainModel.Main {
 		Key:         v.Key,
 		Value:       v.Value,
 		ValueFormat: v.ValueFormat,
+		Encoding:    v.Encoding,
+		FileName:    v.FileName,
+		ContentType: v.ContentType,
 		Description: v.Description,
 	}
 }

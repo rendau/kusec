@@ -1142,6 +1142,15 @@
         "value_format": {
           "type": "string"
         },
+        "encoding": {
+          "type": "string"
+        },
+        "file_name": {
+          "type": "string"
+        },
+        "content_type": {
+          "type": "string"
+        },
         "description": {
           "type": "string"
         }
@@ -1191,6 +1200,15 @@
         "value_format": {
           "type": "string"
         },
+        "encoding": {
+          "type": "string"
+        },
+        "file_name": {
+          "type": "string"
+        },
+        "content_type": {
+          "type": "string"
+        },
         "description": {
           "type": "string"
         }
@@ -1212,6 +1230,15 @@
           "type": "string"
         },
         "value_format": {
+          "type": "string"
+        },
+        "encoding": {
+          "type": "string"
+        },
+        "file_name": {
+          "type": "string"
+        },
+        "content_type": {
           "type": "string"
         },
         "description": {

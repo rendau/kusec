@@ -222,8 +222,14 @@ export interface ItemMain {
   active: boolean
   key: string
   value: string
-  /** Editor format of `value` (e.g. "text" | "yaml"). */
+  /** Editor format of `value` (e.g. "text" | "yaml" | "json"). */
   value_format: string
+  /** How `value` is stored: "plain" | "base64" (binary/file). */
+  encoding: string
+  /** Original file name when the value was uploaded as a file. */
+  file_name: string
+  /** MIME type of the uploaded file. */
+  content_type: string
   description: string
 }
 
@@ -248,6 +254,9 @@ export interface ItemCreateReq {
   key: string
   value: string
   value_format?: string
+  encoding?: string
+  file_name?: string
+  content_type?: string
   description: string
 }
 
@@ -263,5 +272,8 @@ export interface ItemUpdateReq {
   key?: string
   value?: string
   value_format?: string
+  encoding?: string
+  file_name?: string
+  content_type?: string
   description?: string
 }

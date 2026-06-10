@@ -16,6 +16,9 @@ type Main struct {
 	Key         string
 	Value       string
 	ValueFormat string
+	Encoding    string
+	FileName    string
+	ContentType string
 	Description string
 }
 
@@ -27,6 +30,9 @@ type Edit struct {
 	Key         *string
 	Value       *string
 	ValueFormat *string
+	Encoding    *string
+	FileName    *string
+	ContentType *string
 	Description *string
 }
 

@@ -22,6 +22,9 @@ func EncodeItemMain(v *domainModel.Main, _ int) *proto.ItemMain {
 		Key:         v.Key,
 		Value:       v.Value,
 		ValueFormat: v.ValueFormat,
+		Encoding:    v.Encoding,
+		FileName:    v.FileName,
+		ContentType: v.ContentType,
 		Description: v.Description,
 	}
 }
@@ -50,6 +53,9 @@ func DecodeItemCreateReq(v *proto.ItemCreateReq) *domainModel.Edit {
 		Key:         &v.Key,
 		Value:       &v.Value,
 		ValueFormat: v.ValueFormat,
+		Encoding:    v.Encoding,
+		FileName:    v.FileName,
+		ContentType: v.ContentType,
 		Description: &v.Description,
 	}
 }
@@ -64,6 +70,9 @@ func DecodeItemUpdateReq(v *proto.ItemUpdateReq) *domainModel.Edit {
 		Key:         v.Key,
 		Value:       v.Value,
 		ValueFormat: v.ValueFormat,
+		Encoding:    v.Encoding,
+		FileName:    v.FileName,
+		ContentType: v.ContentType,
 		Description: v.Description,
 	}
 }

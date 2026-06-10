@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, h, ref, watch } from 'vue'
+import { computed, h, provide, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import {
   NButton,
@@ -8,7 +8,6 @@ import {
   NEllipsis,
   NEmpty,
   NFlex,
-  NInput,
   NPopconfirm,
   NSpace,
   NTag,
@@ -22,7 +21,7 @@ import { storeToRefs } from 'pinia'
 import { ApiError } from '@/api/http'
 import { deleteApp, getApp } from '@/api/app'
 import { deleteSecret, listSecrets } from '@/api/secret'
-import type { AppMain, SecretListReq, SecretMain } from '@/api/types'
+import type { AppMain, SecretMain } from '@/api/types'
 import { useAppsStore } from '@/stores/apps'
 
 import AppFormModal from '@/components/app/AppFormModal.vue'
@@ -49,10 +48,47 @@ const app = computed<AppMain | null>(
   () => (appId.value ? appsStore.getById(appId.value) : null) ?? fetchedApp.value,
 )
 
+// Auto-expand every secret on load when there are at most this many.
+const AUTO_EXPAND_MAX = 5
+
 const rows = ref<SecretMain[]>([])
 const loading = ref(false)
-const search = ref('')
 const expandedKeys = ref<string[]>([])
+
+// Broadcast a one-shot reveal/hide command; each items panel applies it to its
+// own per-row flags, so individual rows stay togglable afterwards.
+const showAll = ref(false)
+const revealCommand = ref<{ action: 'show' | 'hide'; seq: number }>({
+  action: 'hide',
+  seq: 0,
+})
+provide('itemsRevealCommand', revealCommand)
+
+const allExpanded = computed(
+  () => rows.value.length > 0 && expandedKeys.value.length === rows.value.length,
+)
+
+function broadcastReveal(show: boolean): void {
+  showAll.value = show
+  revealCommand.value = {
+    action: show ? 'show' : 'hide',
+    seq: revealCommand.value.seq + 1,
+  }
+}
+
+function toggleExpandAll(): void {
+  if (allExpanded.value) {
+    // Collapsing all secrets also hides all revealed values.
+    expandedKeys.value = []
+    broadcastReveal(false)
+  } else {
+    expandedKeys.value = rows.value.map((r) => r.id)
+  }
+}
+
+function toggleRevealAll(): void {
+  broadcastReveal(!showAll.value)
+}
 
 const editing = ref<SecretMain | null>(null)
 const showForm = ref(false)
@@ -127,21 +163,13 @@ async function fetchSecrets(): Promise<void> {
   loading.value = true
   try {
     // Scoped by app_id → backend returns all secrets, no pagination needed.
-    const req: SecretListReq = { app_id: appId.value }
-    const q = search.value.trim()
-    if (q) req.search = q
-
-    const rep = await listSecrets(req)
+    const rep = await listSecrets({ app_id: appId.value })
     rows.value = rep.results ?? []
   } catch (error) {
     message.error(error instanceof ApiError ? error.message : 'Failed to load secrets')
   } finally {
     loading.value = false
   }
-}
-
-function applySearch(): void {
-  void fetchSecrets()
 }
 
 function openCreate(): void {
@@ -180,7 +208,7 @@ const columns = computed<DataTableColumns<SecretMain>>(() => [
           type: 'primary',
           block: true,
           // Click the name to expand/collapse the row (View has its own button).
-          style: 'justify-content: flex-start; padding: 10px 4px;',
+          style: 'justify-content: flex-start; padding: 10px 0;',
           onClick: () => toggleExpand(row),
         },
         { default: () => row.slug_name },
@@ -247,9 +275,12 @@ watch(
   appId,
   async () => {
     expandedKeys.value = []
-    search.value = ''
     await ensureApp()
     await fetchSecrets()
+    // Few secrets → expand them all by default for quicker overview.
+    if (rows.value.length && rows.value.length <= AUTO_EXPAND_MAX) {
+      expandedKeys.value = rows.value.map((r) => r.id)
+    }
   },
   { immediate: true },
 )
@@ -302,19 +333,27 @@ watch(apps, () => {
 
     <NCard title="Secrets">
       <template #header-extra>
-        <NButton type="primary" @click="openCreate">New secret</NButton>
+        <NSpace :size="8" align="center">
+          <NButton
+            v-if="rows.length"
+            size="small"
+            tertiary
+            @click="toggleExpandAll"
+          >
+            {{ allExpanded ? 'Collapse all' : 'Expand all' }}
+          </NButton>
+          <NButton
+            v-if="rows.length"
+            size="small"
+            tertiary
+            :type="showAll ? 'warning' : 'default'"
+            @click="toggleRevealAll"
+          >
+            {{ showAll ? 'Hide all' : 'Show all' }}
+          </NButton>
+          <NButton type="primary" @click="openCreate">New secret</NButton>
+        </NSpace>
       </template>
-
-      <NFlex style="margin-bottom: 16px">
-        <NInput
-          v-model:value="search"
-          placeholder="Search by slug"
-          clearable
-          style="max-width: 280px"
-          @keyup.enter="applySearch"
-          @clear="applySearch"
-        />
-      </NFlex>
 
       <NDataTable
         :columns="columns"
@@ -322,6 +361,7 @@ watch(apps, () => {
         :loading="loading"
         :row-key="(row: SecretMain) => row.id"
         :pagination="false"
+        :theme-overrides="{ tdColorHover: 'transparent' }"
         :expanded-row-keys="expandedKeys"
         @update:expanded-row-keys="(keys: (string | number)[]) => (expandedKeys = keys.map(String))"
       />

@@ -3,6 +3,7 @@ import { onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import { EditorView, minimalSetup } from 'codemirror'
 import { Compartment, EditorState } from '@codemirror/state'
 import { yaml } from '@codemirror/lang-yaml'
+import { json, jsonParseLinter } from '@codemirror/lang-json'
 import { lintGutter, linter } from '@codemirror/lint'
 import type { Diagnostic } from '@codemirror/lint'
 import { oneDark } from '@codemirror/theme-one-dark'
@@ -12,12 +13,13 @@ import { useOsTheme } from 'naive-ui'
 const props = withDefaults(
   defineProps<{
     value: string
-    /** Editing mode: plain text or YAML (with highlighting + lint). */
-    format?: 'text' | 'yaml'
+    /** Editing mode: plain text, YAML or JSON (with highlighting + lint). */
+    format?: 'text' | 'yaml' | 'json'
     minHeight?: string
     maxHeight?: string
+    readonly?: boolean
   }>(),
-  { format: 'text', minHeight: '180px', maxHeight: '420px' },
+  { format: 'text', minHeight: '180px', maxHeight: '420px', readonly: false },
 )
 
 const emit = defineEmits<{ 'update:value': [value: string] }>()
@@ -46,8 +48,10 @@ function yamlLinter() {
   })
 }
 
-function languageExtensions(format: 'text' | 'yaml') {
-  return format === 'yaml' ? [yaml(), lintGutter(), yamlLinter()] : []
+function languageExtensions(format: 'text' | 'yaml' | 'json') {
+  if (format === 'yaml') return [yaml(), lintGutter(), yamlLinter()]
+  if (format === 'json') return [json(), lintGutter(), linter(jsonParseLinter())]
+  return []
 }
 
 function themeExtensions() {
@@ -61,6 +65,8 @@ onMounted(() => {
     extensions: [
       minimalSetup,
       EditorView.lineWrapping,
+      EditorState.readOnly.of(props.readonly),
+      EditorView.editable.of(!props.readonly),
       languageComp.of(languageExtensions(props.format)),
       themeComp.of(themeExtensions()),
       EditorView.theme({
