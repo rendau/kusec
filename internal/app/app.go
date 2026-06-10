@@ -153,6 +153,7 @@ func (a *App) Init() {
 		handler := http.NewServeMux()
 		handler.Handle("/api", http.RedirectHandler("/api/", http.StatusMovedPermanently))
 		handler.Handle("/api/", http.StripPrefix("/api", grpcGwHandler))
+		handler.Handle("/", NewAdminSPAHandler())
 
 		// server
 		a.httpServer = &http.Server{
