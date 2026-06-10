@@ -1,0 +1,13 @@
+### App
+
+# @name List Apps
+GET {{base-url}}/app?list_params.page_size=10
+Accept: application/json
+Authorization: Bearer {{auth_token}}
+
+###
+
+# @name Get App
+GET {{base-url}}/app/{{app_id}}
+Accept: application/json
+Authorization: Bearer {{auth_token}}

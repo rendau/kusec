@@ -1,0 +1,42 @@
+### Usr
+
+# @name Login
+POST {{base-url}}/usr/login
+Accept: application/json
+Content-Type: application/json
+
+{
+  "username": "{{username}}",
+  "password": "{{password}}"
+}
+
+> {%
+    client.global.set("auth_token", response.body.jwt);
+%}
+
+###
+
+# @name List Users
+GET {{base-url}}/usr
+Accept: application/json
+Authorization: Bearer {{auth_token}}
+
+###
+
+# @name Get User
+GET {{base-url}}/usr/{{user_id}}
+Accept: application/json
+Authorization: Bearer {{auth_token}}
+
+###
+
+# @name Create First Admin
+POST {{base-url}}/usr
+Accept: application/json
+Content-Type: application/json
+
+{
+  "name": "Admin",
+  "username": "admin",
+  "password": "password"
+}

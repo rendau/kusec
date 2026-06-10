@@ -1,0 +1,13 @@
+### Item
+
+# @name List Items
+GET {{base-url}}/item?list_params.page_size=10
+Accept: application/json
+Authorization: Bearer {{auth_token}}
+
+###
+
+# @name Get Item
+GET {{base-url}}/item/1
+Accept: application/json
+Authorization: Bearer {{auth_token}}
