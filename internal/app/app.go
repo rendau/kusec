@@ -103,9 +103,9 @@ func (a *App) Init() {
 
 	// http-gw server
 	{
-		var handler http.Handler
+		var grpcGwHandler http.Handler
 
-		handler, err = GrpcGatewayCreateHandler(func(mux *runtime.ServeMux) error {
+		grpcGwHandler, err = GrpcGatewayCreateHandler(func(mux *runtime.ServeMux) error {
 			opts := []grpc.DialOption{grpc.WithTransportCredentials(insecure.NewCredentials())}
 
 			var conn *grpc.ClientConn
@@ -149,6 +149,10 @@ func (a *App) Init() {
 			return nil
 		})
 		errCheck(err, "grpcGatewayCreateHandler")
+
+		handler := http.NewServeMux()
+		handler.Handle("/api", http.RedirectHandler("/api/", http.StatusMovedPermanently))
+		handler.Handle("/api/", http.StripPrefix("/api", grpcGwHandler))
 
 		// server
 		a.httpServer = &http.Server{
