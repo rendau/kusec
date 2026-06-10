@@ -35,6 +35,7 @@ const submitting = ref(false)
 interface FormModel {
   namespace: string
   name: string
+  slug_name: string
   description: string
   active: boolean
 }
@@ -42,6 +43,7 @@ interface FormModel {
 const model = reactive<FormModel>({
   namespace: '',
   name: '',
+  slug_name: '',
   description: '',
   active: true,
 })
@@ -51,6 +53,9 @@ const rules: FormRules = {
     { required: true, message: 'Namespace is required', trigger: ['blur', 'input'] },
   ],
   name: [{ required: true, message: 'Name is required', trigger: ['blur', 'input'] }],
+  slug_name: [
+    { required: true, message: 'Slug is required', trigger: ['blur', 'input'] },
+  ],
 }
 
 const isEdit = () => props.app !== null
@@ -61,8 +66,9 @@ watch(
   (show) => {
     if (!show) return
     const app = props.app
-    model.namespace = app?.namespace ?? ''
+    model.namespace = app?.namespace ?? 'default'
     model.name = app?.name ?? ''
+    model.slug_name = app?.slug_name ?? ''
     model.description = app?.description ?? ''
     model.active = app?.active ?? true
     formRef.value?.restoreValidation()
@@ -90,6 +96,7 @@ async function submit(): Promise<void> {
       await updateApp(props.app.id, {
         namespace: model.namespace,
         name: model.name,
+        slug_name: model.slug_name,
         description: model.description,
         active: model.active,
       })
@@ -98,6 +105,7 @@ async function submit(): Promise<void> {
       await createApp({
         namespace: model.namespace,
         name: model.name,
+        slug_name: model.slug_name,
         description: model.description,
         active: model.active,
       })
@@ -144,6 +152,13 @@ async function submit(): Promise<void> {
         <NInput
           v-model:value="model.name"
           placeholder="Application name"
+          clearable
+        />
+      </NFormItem>
+      <NFormItem label="Slug" path="slug_name">
+        <NInput
+          v-model:value="model.slug_name"
+          placeholder="e.g. payments-api"
           clearable
         />
       </NFormItem>

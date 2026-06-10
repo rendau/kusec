@@ -1,22 +1,9 @@
 <script setup lang="ts">
 import { computed, onMounted, ref } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
-import {
-  NButton,
-  NDropdown,
-  NEmpty,
-  NInput,
-  NScrollbar,
-  NSpin,
-  NTag,
-  useDialog,
-  useMessage,
-} from 'naive-ui'
-import type { DropdownOption } from 'naive-ui'
+import { NButton, NEmpty, NInput, NScrollbar, NSpin, NTag } from 'naive-ui'
 import { storeToRefs } from 'pinia'
 
-import { ApiError } from '@/api/http'
-import { deleteApp } from '@/api/app'
 import type { AppMain } from '@/api/types'
 import { useAppsStore } from '@/stores/apps'
 
@@ -24,8 +11,6 @@ import AppFormModal from '@/components/app/AppFormModal.vue'
 
 const route = useRoute()
 const router = useRouter()
-const dialog = useDialog()
-const message = useMessage()
 
 const appsStore = useAppsStore()
 const { apps, loading } = storeToRefs(appsStore)
@@ -45,53 +30,14 @@ const filtered = computed<AppMain[]>(() => {
   )
 })
 
-const itemMenu: DropdownOption[] = [
-  { label: 'Edit', key: 'edit' },
-  { label: 'Delete', key: 'delete' },
-]
-
 const showForm = ref(false)
-const editing = ref<AppMain | null>(null)
 
 function openCreate(): void {
-  editing.value = null
   showForm.value = true
 }
 
 function select(app: AppMain): void {
   void router.push({ name: 'app-workspace', params: { id: app.id } })
-}
-
-function onItemAction(app: AppMain, key: string | number): void {
-  if (key === 'edit') {
-    editing.value = app
-    showForm.value = true
-  } else if (key === 'delete') {
-    confirmDelete(app)
-  }
-}
-
-function confirmDelete(app: AppMain): void {
-  dialog.warning({
-    title: 'Delete application',
-    content: `Delete "${app.name}"? This also deletes all of its secrets and items.`,
-    positiveText: 'Delete',
-    negativeText: 'Cancel',
-    onPositiveClick: async () => {
-      try {
-        await deleteApp(app.id)
-        message.success('Application deleted')
-        await appsStore.refresh()
-        if (currentId.value === app.id) {
-          void router.push({ name: 'app-home' })
-        }
-      } catch (error) {
-        message.error(
-          error instanceof ApiError ? error.message : 'Failed to delete application',
-        )
-      }
-    },
-  })
 }
 
 async function onSaved(): Promise<void> {
@@ -132,36 +78,20 @@ onMounted(() => {
           :class="{ 'app-nav__item--active': app.id === currentId }"
           @click="select(app)"
         >
-          <span class="app-nav__item-main">
-            <span class="app-nav__name">{{ app.name }}</span>
-            <NTag
-              v-if="!app.active"
-              size="tiny"
-              :bordered="false"
-              type="warning"
-            >
-              off
-            </NTag>
-          </span>
-          <NDropdown
-            trigger="click"
-            :options="itemMenu"
-            @select="(key: string | number) => onItemAction(app, key)"
+          <span class="app-nav__name">{{ app.name }}</span>
+          <NTag
+            v-if="!app.active"
+            size="tiny"
+            :bordered="false"
+            type="warning"
           >
-            <NButton
-              text
-              size="tiny"
-              class="app-nav__more"
-              @click.stop
-            >
-              ⋯
-            </NButton>
-          </NDropdown>
+            off
+          </NTag>
         </button>
       </NSpin>
     </NScrollbar>
 
-    <AppFormModal v-model:show="showForm" :app="editing" @saved="onSaved" />
+    <AppFormModal v-model:show="showForm" :app="null" @saved="onSaved" />
   </div>
 </template>
 
@@ -203,8 +133,7 @@ onMounted(() => {
 .app-nav__item {
   display: flex;
   align-items: center;
-  justify-content: space-between;
-  gap: 8px;
+  gap: 6px;
   width: calc(100% - 16px);
   margin: 2px 8px;
   padding: 8px 10px;
@@ -226,24 +155,9 @@ onMounted(() => {
   font-weight: 600;
 }
 
-.app-nav__item-main {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  min-width: 0;
-}
-
 .app-nav__name {
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
-}
-
-.app-nav__more {
-  opacity: 0.5;
-}
-
-.app-nav__item:hover .app-nav__more {
-  opacity: 1;
 }
 </style>

@@ -25,8 +25,14 @@ func (u *Usecase) validateEdit(obj *model.Edit, forCreate bool) error {
 		if obj.Name == nil || *obj.Name == "" {
 			return errs.InvalidRequest
 		}
+		if obj.SlugName == nil || *obj.SlugName == "" {
+			return errs.InvalidRequest
+		}
 	}
 	if obj.Name != nil && *obj.Name == "" {
+		return errs.InvalidRequest
+	}
+	if obj.SlugName != nil && *obj.SlugName == "" {
 		return errs.InvalidRequest
 	}
 	return nil

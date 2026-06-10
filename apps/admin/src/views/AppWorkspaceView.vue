@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { computed, h, ref, watch } from 'vue'
-import { useRoute } from 'vue-router'
+import { useRoute, useRouter } from 'vue-router'
 import {
   NButton,
   NCard,
@@ -13,23 +13,27 @@ import {
   NSpace,
   NTag,
   NText,
+  useDialog,
   useMessage,
 } from 'naive-ui'
 import type { DataTableColumns } from 'naive-ui'
 import { storeToRefs } from 'pinia'
 
 import { ApiError } from '@/api/http'
-import { getApp } from '@/api/app'
+import { deleteApp, getApp } from '@/api/app'
 import { deleteSecret, listSecrets } from '@/api/secret'
 import type { AppMain, SecretListReq, SecretMain } from '@/api/types'
 import { useAppsStore } from '@/stores/apps'
 
+import AppFormModal from '@/components/app/AppFormModal.vue'
 import SecretDetailDrawer from '@/components/secret/SecretDetailDrawer.vue'
 import SecretFormModal from '@/components/secret/SecretFormModal.vue'
 import SecretItemsPanel from '@/components/secret/SecretItemsPanel.vue'
 
 const route = useRoute()
+const router = useRouter()
 const message = useMessage()
+const dialog = useDialog()
 
 const appsStore = useAppsStore()
 const { apps } = storeToRefs(appsStore)
@@ -55,6 +59,40 @@ const showForm = ref(false)
 
 const detailId = ref<string | null>(null)
 const showDetail = ref(false)
+
+const showAppForm = ref(false)
+
+function openAppEdit(): void {
+  if (app.value) showAppForm.value = true
+}
+
+async function onAppSaved(): Promise<void> {
+  await appsStore.refresh()
+  await ensureApp()
+}
+
+function confirmAppDelete(): void {
+  const current = app.value
+  if (!current) return
+  dialog.warning({
+    title: 'Delete application',
+    content: `Delete "${current.name}"? This also deletes all of its secrets and items.`,
+    positiveText: 'Delete',
+    negativeText: 'Cancel',
+    onPositiveClick: async () => {
+      try {
+        await deleteApp(current.id)
+        message.success('Application deleted')
+        await appsStore.refresh()
+        void router.push({ name: 'app-home' })
+      } catch (error) {
+        message.error(
+          error instanceof ApiError ? error.message : 'Failed to delete application',
+        )
+      }
+    },
+  })
+}
 
 function openDetail(row: SecretMain): void {
   detailId.value = row.id
@@ -236,6 +274,9 @@ watch(apps, () => {
       <NFlex align="center" justify="space-between" wrap>
         <NSpace align="center" :size="10">
           <NText strong style="font-size: 18px">{{ app?.name ?? '…' }}</NText>
+          <NTag v-if="app?.slug_name" size="small">
+            {{ app.slug_name }}
+          </NTag>
           <NTag v-if="app?.namespace" size="small" type="info">
             {{ app.namespace }}
           </NTag>
@@ -246,6 +287,12 @@ watch(apps, () => {
           >
             {{ app.active ? 'Active' : 'Inactive' }}
           </NTag>
+        </NSpace>
+        <NSpace v-if="app" :size="8">
+          <NButton size="small" @click="openAppEdit">Edit</NButton>
+          <NButton size="small" type="error" secondary @click="confirmAppDelete">
+            Delete
+          </NButton>
         </NSpace>
       </NFlex>
       <NText v-if="app?.description" depth="3" style="display: block; margin-top: 6px">
@@ -280,6 +327,7 @@ watch(apps, () => {
       />
     </NCard>
 
+    <AppFormModal v-model:show="showAppForm" :app="app" @saved="onAppSaved" />
     <SecretDetailDrawer v-model:show="showDetail" :secret-id="detailId" />
     <SecretFormModal
       v-model:show="showForm"

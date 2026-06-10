@@ -52,6 +52,7 @@ message AppMain {
   bool active = 4;
   string namespace = 5;
   string name = 6;
+  string slug_name = 8;
   string description = 7;
 }
 
@@ -81,6 +82,7 @@ message AppCreateReq {
   optional bool active = 1;
   string namespace = 2;
   string name = 3;
+  string slug_name = 5;
   string description = 4;
 }
 
@@ -95,5 +97,6 @@ message AppUpdateReq {
   optional bool active = 2;
   optional string namespace = 3;
   optional string name = 4;
+  optional string slug_name = 6;
   optional string description = 5;
 }

@@ -14,6 +14,7 @@ type Main struct {
 	Active      bool
 	Namespace   string
 	Name        string
+	SlugName    string
 	Description string
 }
 
@@ -23,6 +24,7 @@ type Edit struct {
 	Active      *bool
 	Namespace   *string
 	Name        *string
+	SlugName    *string
 	Description *string
 }
 

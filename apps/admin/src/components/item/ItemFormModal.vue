@@ -174,9 +174,9 @@ async function submit(): Promise<void> {
       <NFormItem label="Value" path="value">
         <NInput
           v-model:value="model.value"
-          type="password"
-          show-password-on="click"
+          type="textarea"
           placeholder="Secret value"
+          :autosize="{ minRows: 1, maxRows: 6 }"
         />
       </NFormItem>
       <NFormItem label="Description" path="description">

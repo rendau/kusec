@@ -26,7 +26,7 @@ func (r *Repo) getConditions(pars *model.ListReq) (map[string]any, map[string][]
 		conditions["namespace"] = *pars.Namespace
 	}
 	if pars.Search != nil {
-		conditionExps["(name ILIKE ? OR description ILIKE ?)"] = []any{"%" + *pars.Search + "%", "%" + *pars.Search + "%"}
+		conditionExps["(name ILIKE ? OR slug_name ILIKE ? OR description ILIKE ?)"] = []any{"%" + *pars.Search + "%", "%" + *pars.Search + "%", "%" + *pars.Search + "%"}
 	}
 
 	return conditions, conditionExps

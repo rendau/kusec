@@ -20,6 +20,7 @@ func EncodeAppMain(v *domainModel.Main, _ int) *proto.AppMain {
 		Active:      v.Active,
 		Namespace:   v.Namespace,
 		Name:        v.Name,
+		SlugName:    v.SlugName,
 		Description: v.Description,
 	}
 }
@@ -46,6 +47,7 @@ func DecodeAppCreateReq(v *proto.AppCreateReq) *domainModel.Edit {
 		Active:      v.Active,
 		Namespace:   &v.Namespace,
 		Name:        &v.Name,
+		SlugName:    &v.SlugName,
 		Description: &v.Description,
 	}
 }
@@ -58,6 +60,7 @@ func DecodeAppUpdateReq(v *proto.AppUpdateReq) *domainModel.Edit {
 		Active:      v.Active,
 		Namespace:   v.Namespace,
 		Name:        v.Name,
+		SlugName:    v.SlugName,
 		Description: v.Description,
 	}
 }

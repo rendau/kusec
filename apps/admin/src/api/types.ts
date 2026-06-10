@@ -110,6 +110,7 @@ export interface AppMain {
   active: boolean
   namespace: string
   name: string
+  slug_name: string
   description: string
 }
 
@@ -132,6 +133,7 @@ export interface AppCreateReq {
   active?: boolean
   namespace: string
   name: string
+  slug_name: string
   description: string
 }
 
@@ -145,6 +147,7 @@ export interface AppUpdateReq {
   active?: boolean
   namespace?: string
   name?: string
+  slug_name?: string
   description?: string
 }
 

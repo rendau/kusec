@@ -21,7 +21,30 @@ import { useAuthStore } from '@/stores/auth'
 import AppNavSidebar from '@/components/app/AppNavSidebar.vue'
 
 const appStore = useAppStore()
-const { sidebarCollapsed } = storeToRefs(appStore)
+const { sidebarCollapsed, sidebarWidth } = storeToRefs(appStore)
+
+// Drag the right edge of the sidebar to resize it.
+function startResize(event: MouseEvent): void {
+  event.preventDefault()
+  const startX = event.clientX
+  const startWidth = sidebarWidth.value
+
+  function onMove(e: MouseEvent): void {
+    appStore.setSidebarWidth(startWidth + (e.clientX - startX))
+  }
+
+  function onUp(): void {
+    window.removeEventListener('mousemove', onMove)
+    window.removeEventListener('mouseup', onUp)
+    document.body.style.userSelect = ''
+    document.body.style.cursor = ''
+  }
+
+  window.addEventListener('mousemove', onMove)
+  window.addEventListener('mouseup', onUp)
+  document.body.style.userSelect = 'none'
+  document.body.style.cursor = 'col-resize'
+}
 
 const authStore = useAuthStore()
 const router = useRouter()
@@ -85,7 +108,10 @@ function confirmLogout(): void {
   <NLayout position="absolute">
     <NLayoutHeader bordered class="app-header">
       <div class="app-header__left">
-        <span class="app-header__title">Secret Management System</span>
+        <RouterLink to="/" class="app-header__brand">
+          <img src="/favicon.svg" alt="" class="app-header__logo" />
+          <span class="app-header__title">Kusec</span>
+        </RouterLink>
         <NMenu
           mode="horizontal"
           :value="navActiveKey"
@@ -111,15 +137,26 @@ function confirmLogout(): void {
         bordered
         collapse-mode="width"
         :collapsed-width="0"
-        :width="260"
+        :width="sidebarWidth"
         :collapsed="sidebarCollapsed"
         show-trigger="arrow-circle"
         @update:collapsed="appStore.toggleSidebar"
       >
-        <AppNavSidebar />
+        <div class="sider-wrap">
+          <AppNavSidebar />
+          <div
+            v-if="!sidebarCollapsed"
+            class="sider-resizer"
+            @mousedown="startResize"
+          />
+        </div>
       </NLayoutSider>
       <NLayoutContent class="app-content">
-        <RouterView />
+        <RouterView v-slot="{ Component, route: current }">
+          <Transition name="page" mode="out-in">
+            <component :is="Component" :key="current.path" />
+          </Transition>
+        </RouterView>
       </NLayoutContent>
     </NLayout>
   </NLayout>
@@ -139,6 +176,20 @@ function confirmLogout(): void {
   align-items: center;
   gap: 24px;
   min-width: 0;
+}
+
+.app-header__brand {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  text-decoration: none;
+  color: inherit;
+}
+
+.app-header__logo {
+  width: 24px;
+  height: 24px;
+  display: block;
 }
 
 .app-header__title {
@@ -170,5 +221,26 @@ function confirmLogout(): void {
 
 .app-content {
   padding: 24px;
+}
+
+.sider-wrap {
+  position: relative;
+  height: 100%;
+}
+
+/* Drag handle on the sidebar's right edge. */
+.sider-resizer {
+  position: absolute;
+  top: 0;
+  right: 0;
+  width: 6px;
+  height: 100%;
+  cursor: col-resize;
+  z-index: 1;
+}
+
+.sider-resizer:hover,
+.sider-resizer:active {
+  background: rgba(99, 226, 183, 0.3);
 }
 </style>

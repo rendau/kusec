@@ -46,7 +46,11 @@ onUnmounted(() => {
         <NNotificationProvider>
           <NDialogProvider>
             <NGlobalStyle />
-            <RouterView />
+            <RouterView v-slot="{ Component }">
+              <Transition name="root-fade" mode="out-in">
+                <component :is="Component" />
+              </Transition>
+            </RouterView>
           </NDialogProvider>
         </NNotificationProvider>
       </NMessageProvider>

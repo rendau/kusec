@@ -17,6 +17,7 @@ create table app (
     active      boolean     not null default true,
     namespace   text        not null default '',
     name        text        not null default '',
+    slug_name   text        not null default '',
     description text        not null default '',
     primary key (id)
 );
