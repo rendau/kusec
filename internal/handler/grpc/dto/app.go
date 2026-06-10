@@ -18,6 +18,7 @@ func EncodeAppMain(v *domainModel.Main, _ int) *proto.AppMain {
 		CreatedAt:   timestamppb.New(v.CreatedAt),
 		UpdatedAt:   timestamppb.New(v.UpdatedAt),
 		Active:      v.Active,
+		Namespace:   v.Namespace,
 		Name:        v.Name,
 		Description: v.Description,
 	}
@@ -32,6 +33,7 @@ func DecodeAppListReq(v *proto.AppListReq) *domainModel.ListReq {
 	return &domainModel.ListReq{
 		ListParams: DecodeListParams(v.ListParams),
 		Active:     v.Active,
+		Namespace:  v.Namespace,
 		Search:     v.Search,
 	}
 }
@@ -42,6 +44,7 @@ func DecodeAppCreateReq(v *proto.AppCreateReq) *domainModel.Edit {
 	}
 	return &domainModel.Edit{
 		Active:      v.Active,
+		Namespace:   &v.Namespace,
 		Name:        &v.Name,
 		Description: &v.Description,
 	}
@@ -53,6 +56,7 @@ func DecodeAppUpdateReq(v *proto.AppUpdateReq) *domainModel.Edit {
 	}
 	return &domainModel.Edit{
 		Active:      v.Active,
+		Namespace:   v.Namespace,
 		Name:        v.Name,
 		Description: v.Description,
 	}

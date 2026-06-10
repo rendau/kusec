@@ -12,6 +12,7 @@ type Main struct {
 	CreatedAt   time.Time
 	UpdatedAt   time.Time
 	Active      bool
+	Namespace   string
 	Name        string
 	Description string
 }
@@ -20,6 +21,7 @@ type Main struct {
 type Edit struct {
 	UpdatedAt   *time.Time
 	Active      *bool
+	Namespace   *string
 	Name        *string
 	Description *string
 }
@@ -28,6 +30,7 @@ type Edit struct {
 type ListReq struct {
 	commonModel.ListParams
 
-	Active *bool
-	Search *string
+	Active    *bool
+	Namespace *string
+	Search    *string
 }

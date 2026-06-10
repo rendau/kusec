@@ -1,10 +1,10 @@
-package item
+package secret
 
 import (
 	"context"
 	"fmt"
 
-	"github.com/mechta-market/kusec/internal/domain/item/model"
+	"github.com/mechta-market/kusec/internal/domain/secret/model"
 	"github.com/mechta-market/kusec/internal/errs"
 	"github.com/mechta-market/kusec/internal/util"
 )
@@ -23,17 +23,17 @@ func New(svc ServiceI, sessionSvc SessionServiceI) *Usecase {
 
 func (u *Usecase) validateEdit(obj *model.Edit, forCreate bool) error {
 	if forCreate {
-		if obj.SecretId == nil || *obj.SecretId == "" {
+		if obj.AppId == nil || *obj.AppId == "" {
 			return errs.InvalidRequest
 		}
-		if obj.Key == nil || *obj.Key == "" {
+		if obj.SlugName == nil || *obj.SlugName == "" {
 			return errs.InvalidRequest
 		}
 	}
-	if obj.SecretId != nil && *obj.SecretId == "" {
+	if obj.AppId != nil && *obj.AppId == "" {
 		return errs.InvalidRequest
 	}
-	if obj.Key != nil && *obj.Key == "" {
+	if obj.SlugName != nil && *obj.SlugName == "" {
 		return errs.InvalidRequest
 	}
 	return nil

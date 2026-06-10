@@ -11,58 +11,58 @@ option go_package = "/kusec_v1";
 service Usr {
   rpc List(UsrListReq) returns (UsrListRep) {
     option (google.api.http) = {
-      get: "/usrs"
+      get: "/usr"
     };
   }
 
   rpc Get(UsrGetReq) returns (UsrMain) {
     option (google.api.http) = {
-      get: "/usrs/{id}"
+      get: "/usr/{id}"
     };
   }
 
   rpc Create(UsrCreateReq) returns (UsrCreateRep) {
     option (google.api.http) = {
-      post: "/usrs"
+      post: "/usr"
       body: "*"
     };
   }
 
   rpc Update(UsrUpdateReq) returns (google.protobuf.Empty) {
     option (google.api.http) = {
-      patch: "/usrs/{id}"
+      patch: "/usr/{id}"
       body: "*"
     };
   }
 
   rpc Delete(UsrGetReq) returns (google.protobuf.Empty) {
     option (google.api.http) = {
-      delete: "/usrs/{id}"
+      delete: "/usr/{id}"
     };
   }
 
   rpc Login(UsrLoginReq) returns (UsrLoginRep) {
     option (google.api.http) = {
-      post: "/usrs/login"
+      post: "/usr/login"
       body: "*"
     };
   }
 
   rpc BootstrapStatus(google.protobuf.Empty) returns (UsrBootstrapStatusRep) {
     option (google.api.http) = {
-      get: "/usrs/bootstrap/status"
+      get: "/usr/bootstrap/status"
     };
   }
 
   rpc GetProfile(google.protobuf.Empty) returns (UsrMain) {
     option (google.api.http) = {
-      get: "/usrs/profile"
+      get: "/usr/profile"
     };
   }
 
   rpc UpdateProfile(UsrUpdateProfileReq) returns (google.protobuf.Empty) {
     option (google.api.http) = {
-      patch: "/usrs/profile"
+      patch: "/usr/profile"
       body: "*"
     };
   }

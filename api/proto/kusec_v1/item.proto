@@ -12,33 +12,33 @@ option go_package = "/kusec_v1";
 service Item {
   rpc List(ItemListReq) returns (ItemListRep) {
     option (google.api.http) = {
-      get: "/items"
+      get: "/item"
     };
   }
 
   rpc Get(ItemGetReq) returns (ItemMain) {
     option (google.api.http) = {
-      get: "/items/{id}"
+      get: "/item/{id}"
     };
   }
 
   rpc Create(ItemCreateReq) returns (ItemCreateRep) {
     option (google.api.http) = {
-      post: "/items"
+      post: "/item"
       body: "*"
     };
   }
 
   rpc Update(ItemUpdateReq) returns (google.protobuf.Empty) {
     option (google.api.http) = {
-      patch: "/items/{id}"
+      patch: "/item/{id}"
       body: "*"
     };
   }
 
   rpc Delete(ItemGetReq) returns (google.protobuf.Empty) {
     option (google.api.http) = {
-      delete: "/items/{id}"
+      delete: "/item/{id}"
     };
   }
 }
@@ -49,7 +49,7 @@ message ItemMain {
   string id = 1;
   google.protobuf.Timestamp created_at = 2;
   google.protobuf.Timestamp updated_at = 3;
-  string app_id = 4;
+  string secret_id = 4;
   bool active = 5;
   string key = 6;
   string value = 7;
@@ -60,7 +60,7 @@ message ItemMain {
 
 message ItemListReq {
   common.ListParamsSt list_params = 1;
-  optional string app_id = 2;
+  optional string secret_id = 2;
   optional bool active = 3;
   optional string search = 4;
 }
@@ -79,7 +79,7 @@ message ItemGetReq {
 // Create
 
 message ItemCreateReq {
-  string app_id = 1;
+  string secret_id = 1;
   optional bool active = 2;
   string key = 3;
   string value = 4;
@@ -94,7 +94,7 @@ message ItemCreateRep {
 
 message ItemUpdateReq {
   string id = 1;
-  optional string app_id = 2;
+  optional string secret_id = 2;
   optional bool active = 3;
   optional string key = 4;
   optional string value = 5;

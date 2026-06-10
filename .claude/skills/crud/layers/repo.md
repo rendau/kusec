@@ -163,7 +163,7 @@ func New(con *pgxpool.Pool) *Repo {
         ModelStore: &mobone.ModelStore{
             Con:       base.Con,
             QB:        base.QB,
-            TableName: "<table_name>",
+            TableName: "<entity>", // имя таблицы всегда в единственном числе, без plural
         },
     }
 }

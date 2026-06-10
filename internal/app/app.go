@@ -24,6 +24,8 @@ import (
 	appService "github.com/mechta-market/kusec/internal/domain/app/service"
 	itemDb "github.com/mechta-market/kusec/internal/domain/item/repo/db"
 	itemService "github.com/mechta-market/kusec/internal/domain/item/service"
+	secretDb "github.com/mechta-market/kusec/internal/domain/secret/repo/db"
+	secretService "github.com/mechta-market/kusec/internal/domain/secret/service"
 	sessionService "github.com/mechta-market/kusec/internal/domain/session/service"
 	usrDb "github.com/mechta-market/kusec/internal/domain/usr/repo/db"
 	usrService "github.com/mechta-market/kusec/internal/domain/usr/service"
@@ -32,6 +34,7 @@ import (
 
 	appUsc "github.com/mechta-market/kusec/internal/usecase/app"
 	itemUsc "github.com/mechta-market/kusec/internal/usecase/item"
+	secretUsc "github.com/mechta-market/kusec/internal/usecase/secret"
 	usrUsc "github.com/mechta-market/kusec/internal/usecase/usr"
 
 	proto "github.com/mechta-market/kusec/pkg/proto/kusec_v1"
@@ -85,6 +88,7 @@ func (a *App) Init() {
 	// dependency graph
 	usrHandler := grpcHandler.NewUsr(usrUsc.New(usrService.New(usrDb.New(a.pgpool)), sessionSvc))
 	appHandler := grpcHandler.NewApp(appUsc.New(appService.New(appDb.New(a.pgpool)), sessionSvc))
+	secretHandler := grpcHandler.NewSecret(secretUsc.New(secretService.New(secretDb.New(a.pgpool)), sessionSvc))
 	itemHandler := grpcHandler.NewItem(itemUsc.New(itemService.New(itemDb.New(a.pgpool)), sessionSvc))
 
 	// grpc server
@@ -92,6 +96,7 @@ func (a *App) Init() {
 		a.grpcServer = NewGrpcServer("main", sessionSvc, func(server *grpc.Server) {
 			proto.RegisterUsrServer(server, usrHandler)
 			proto.RegisterAppServer(server, appHandler)
+			proto.RegisterSecretServer(server, secretHandler)
 			proto.RegisterItemServer(server, itemHandler)
 		})
 	}
@@ -111,6 +116,7 @@ func (a *App) Init() {
 			handlers := []func(context.Context, *runtime.ServeMux, *grpc.ClientConn) error{
 				proto.RegisterUsrHandler,
 				proto.RegisterAppHandler,
+				proto.RegisterSecretHandler,
 				proto.RegisterItemHandler,
 			}
 			for _, h := range handlers {

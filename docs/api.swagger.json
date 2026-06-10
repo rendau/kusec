@@ -12,6 +12,9 @@
       "name": "Item"
     },
     {
+      "name": "Secret"
+    },
+    {
       "name": "Usr"
     }
   ],
@@ -22,7 +25,7 @@
     "application/json"
   ],
   "paths": {
-    "/apps": {
+    "/app": {
       "get": {
         "operationId": "App_List",
         "responses": {
@@ -89,6 +92,12 @@
             "type": "boolean"
           },
           {
+            "name": "namespace",
+            "in": "query",
+            "required": false,
+            "type": "string"
+          },
+          {
             "name": "search",
             "in": "query",
             "required": false,
@@ -130,7 +139,7 @@
         ]
       }
     },
-    "/apps/{id}": {
+    "/app/{id}": {
       "get": {
         "operationId": "App_Get",
         "responses": {
@@ -226,7 +235,7 @@
         ]
       }
     },
-    "/items": {
+    "/item": {
       "get": {
         "operationId": "Item_List",
         "responses": {
@@ -287,7 +296,7 @@
             "collectionFormat": "multi"
           },
           {
-            "name": "app_id",
+            "name": "secret_id",
             "in": "query",
             "required": false,
             "type": "string"
@@ -340,7 +349,7 @@
         ]
       }
     },
-    "/items/{id}": {
+    "/item/{id}": {
       "get": {
         "operationId": "Item_Get",
         "responses": {
@@ -436,7 +445,217 @@
         ]
       }
     },
-    "/usrs": {
+    "/secret": {
+      "get": {
+        "operationId": "Secret_List",
+        "responses": {
+          "200": {
+            "description": "A successful response.",
+            "schema": {
+              "$ref": "#/definitions/kusec_v1SecretListRep"
+            }
+          },
+          "default": {
+            "description": "An unexpected error response.",
+            "schema": {
+              "$ref": "#/definitions/rpcStatus"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "list_params.page",
+            "in": "query",
+            "required": false,
+            "type": "string",
+            "format": "int64"
+          },
+          {
+            "name": "list_params.page_size",
+            "in": "query",
+            "required": false,
+            "type": "string",
+            "format": "int64"
+          },
+          {
+            "name": "list_params.with_total_count",
+            "in": "query",
+            "required": false,
+            "type": "boolean"
+          },
+          {
+            "name": "list_params.only_count",
+            "in": "query",
+            "required": false,
+            "type": "boolean"
+          },
+          {
+            "name": "list_params.sort_name",
+            "in": "query",
+            "required": false,
+            "type": "string"
+          },
+          {
+            "name": "list_params.sort",
+            "in": "query",
+            "required": false,
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "collectionFormat": "multi"
+          },
+          {
+            "name": "app_id",
+            "in": "query",
+            "required": false,
+            "type": "string"
+          },
+          {
+            "name": "active",
+            "in": "query",
+            "required": false,
+            "type": "boolean"
+          },
+          {
+            "name": "search",
+            "in": "query",
+            "required": false,
+            "type": "string"
+          }
+        ],
+        "tags": [
+          "Secret"
+        ]
+      },
+      "post": {
+        "operationId": "Secret_Create",
+        "responses": {
+          "200": {
+            "description": "A successful response.",
+            "schema": {
+              "$ref": "#/definitions/kusec_v1SecretCreateRep"
+            }
+          },
+          "default": {
+            "description": "An unexpected error response.",
+            "schema": {
+              "$ref": "#/definitions/rpcStatus"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "body",
+            "in": "body",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/kusec_v1SecretCreateReq"
+            }
+          }
+        ],
+        "tags": [
+          "Secret"
+        ]
+      }
+    },
+    "/secret/{id}": {
+      "get": {
+        "operationId": "Secret_Get",
+        "responses": {
+          "200": {
+            "description": "A successful response.",
+            "schema": {
+              "$ref": "#/definitions/kusec_v1SecretMain"
+            }
+          },
+          "default": {
+            "description": "An unexpected error response.",
+            "schema": {
+              "$ref": "#/definitions/rpcStatus"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "type": "string"
+          }
+        ],
+        "tags": [
+          "Secret"
+        ]
+      },
+      "delete": {
+        "operationId": "Secret_Delete",
+        "responses": {
+          "200": {
+            "description": "A successful response.",
+            "schema": {
+              "type": "object",
+              "properties": {}
+            }
+          },
+          "default": {
+            "description": "An unexpected error response.",
+            "schema": {
+              "$ref": "#/definitions/rpcStatus"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "type": "string"
+          }
+        ],
+        "tags": [
+          "Secret"
+        ]
+      },
+      "patch": {
+        "operationId": "Secret_Update",
+        "responses": {
+          "200": {
+            "description": "A successful response.",
+            "schema": {
+              "type": "object",
+              "properties": {}
+            }
+          },
+          "default": {
+            "description": "An unexpected error response.",
+            "schema": {
+              "$ref": "#/definitions/rpcStatus"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "type": "string"
+          },
+          {
+            "name": "body",
+            "in": "body",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/kusec_v1SecretUpdateBody"
+            }
+          }
+        ],
+        "tags": [
+          "Secret"
+        ]
+      }
+    },
+    "/usr": {
       "get": {
         "operationId": "Usr_List",
         "responses": {
@@ -550,7 +769,7 @@
         ]
       }
     },
-    "/usrs/bootstrap/status": {
+    "/usr/bootstrap/status": {
       "get": {
         "operationId": "Usr_BootstrapStatus",
         "responses": {
@@ -572,7 +791,7 @@
         ]
       }
     },
-    "/usrs/login": {
+    "/usr/login": {
       "post": {
         "operationId": "Usr_Login",
         "responses": {
@@ -604,7 +823,7 @@
         ]
       }
     },
-    "/usrs/profile": {
+    "/usr/profile": {
       "get": {
         "operationId": "Usr_GetProfile",
         "responses": {
@@ -657,7 +876,7 @@
         ]
       }
     },
-    "/usrs/{id}": {
+    "/usr/{id}": {
       "get": {
         "operationId": "Usr_Get",
         "responses": {
@@ -817,6 +1036,9 @@
         "active": {
           "type": "boolean"
         },
+        "namespace": {
+          "type": "string"
+        },
         "name": {
           "type": "string"
         },
@@ -857,6 +1079,9 @@
         "active": {
           "type": "boolean"
         },
+        "namespace": {
+          "type": "string"
+        },
         "name": {
           "type": "string"
         },
@@ -870,6 +1095,9 @@
       "properties": {
         "active": {
           "type": "boolean"
+        },
+        "namespace": {
+          "type": "string"
         },
         "name": {
           "type": "string"
@@ -890,7 +1118,7 @@
     "kusec_v1ItemCreateReq": {
       "type": "object",
       "properties": {
-        "app_id": {
+        "secret_id": {
           "type": "string"
         },
         "active": {
@@ -936,7 +1164,7 @@
           "type": "string",
           "format": "date-time"
         },
-        "app_id": {
+        "secret_id": {
           "type": "string"
         },
         "active": {
@@ -956,7 +1184,7 @@
     "kusec_v1ItemUpdateBody": {
       "type": "object",
       "properties": {
-        "app_id": {
+        "secret_id": {
           "type": "string"
         },
         "active": {
@@ -966,6 +1194,91 @@
           "type": "string"
         },
         "value": {
+          "type": "string"
+        },
+        "description": {
+          "type": "string"
+        }
+      }
+    },
+    "kusec_v1SecretCreateRep": {
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string"
+        }
+      }
+    },
+    "kusec_v1SecretCreateReq": {
+      "type": "object",
+      "properties": {
+        "app_id": {
+          "type": "string"
+        },
+        "active": {
+          "type": "boolean"
+        },
+        "slug_name": {
+          "type": "string"
+        },
+        "description": {
+          "type": "string"
+        }
+      }
+    },
+    "kusec_v1SecretListRep": {
+      "type": "object",
+      "properties": {
+        "pagination_info": {
+          "$ref": "#/definitions/commonPaginationInfoSt"
+        },
+        "results": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "$ref": "#/definitions/kusec_v1SecretMain"
+          }
+        }
+      }
+    },
+    "kusec_v1SecretMain": {
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string"
+        },
+        "created_at": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "updated_at": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "app_id": {
+          "type": "string"
+        },
+        "active": {
+          "type": "boolean"
+        },
+        "slug_name": {
+          "type": "string"
+        },
+        "description": {
+          "type": "string"
+        }
+      }
+    },
+    "kusec_v1SecretUpdateBody": {
+      "type": "object",
+      "properties": {
+        "app_id": {
+          "type": "string"
+        },
+        "active": {
+          "type": "boolean"
+        },
+        "slug_name": {
           "type": "string"
         },
         "description": {

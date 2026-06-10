@@ -29,37 +29,38 @@ import "common/common.proto";
 
 option go_package = "/<svc_name>_v1";
 
+// REST-пути всегда в единственном числе, без plural: `/<entity>`, `/<entity>/{id}`.
 service <Entity>Service {
   rpc List<Entity>s(List<Entity>sRequest) returns (List<Entity>sResponse) {
     option (google.api.http) = {
-      get: "/<entities>"
+      get: "/<entity>"
     };
   }
 
   rpc Get<Entity>(Get<Entity>Request) returns (Get<Entity>Response) {
     option (google.api.http) = {
-      get: "/<entities>/{id}"
+      get: "/<entity>/{id}"
     };
   }
 
   // Create возвращает id созданной записи (правило для всех сущностей с id)
   rpc Create<Entity>(Create<Entity>Request) returns (Create<Entity>Response) {
     option (google.api.http) = {
-      post: "/<entities>"
+      post: "/<entity>"
       body: "*"
     };
   }
 
   rpc Update<Entity>(Update<Entity>Request) returns (google.protobuf.Empty) {
     option (google.api.http) = {
-      patch: "/<entities>/{id}"
+      patch: "/<entity>/{id}"
       body: "*"
     };
   }
 
   rpc Delete<Entity>(Delete<Entity>Request) returns (google.protobuf.Empty) {
     option (google.api.http) = {
-      delete: "/<entities>/{id}"
+      delete: "/<entity>/{id}"
     };
   }
 }

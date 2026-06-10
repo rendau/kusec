@@ -10,8 +10,8 @@ import (
 	"github.com/samber/lo"
 
 	commonRepoPg "github.com/mechta-market/kusec/internal/domain/common/repo/pg"
-	"github.com/mechta-market/kusec/internal/domain/usr/model"
-	repoModel "github.com/mechta-market/kusec/internal/domain/usr/repo/db/model"
+	"github.com/mechta-market/kusec/internal/domain/secret/model"
+	repoModel "github.com/mechta-market/kusec/internal/domain/secret/repo/db/model"
 )
 
 type Repo struct {
@@ -26,7 +26,7 @@ func New(con *pgxpool.Pool) *Repo {
 		ModelStore: &mobone.ModelStore{
 			Con:       base.Con,
 			QB:        base.QB,
-			TableName: "usr",
+			TableName: "secret",
 		},
 	}
 }
@@ -57,7 +57,7 @@ func (r *Repo) List(ctx context.Context, pars *model.ListReq) ([]*model.Main, in
 	return lo.Map(items, repoModel.EncodeSelect), totalCount, nil
 }
 
-func (r *Repo) Get(ctx context.Context, id int64) (*model.Main, bool, error) {
+func (r *Repo) Get(ctx context.Context, id string) (*model.Main, bool, error) {
 	m := &repoModel.Select{Id: id}
 	found, err := r.ModelStore.Get(ctx, m)
 	if err != nil {
@@ -69,15 +69,15 @@ func (r *Repo) Get(ctx context.Context, id int64) (*model.Main, bool, error) {
 	return repoModel.EncodeSelect(m, 0), true, nil
 }
 
-func (r *Repo) Create(ctx context.Context, obj *model.Edit) (int64, error) {
+func (r *Repo) Create(ctx context.Context, obj *model.Edit) (string, error) {
 	m := repoModel.DecodeUpsert(obj)
 	if err := r.ModelStore.Create(ctx, m); err != nil {
-		return 0, fmt.Errorf("ModelStore.Create: %w", err)
+		return "", fmt.Errorf("ModelStore.Create: %w", err)
 	}
 	return m.NewId, nil
 }
 
-func (r *Repo) Update(ctx context.Context, id int64, obj *model.Edit) error {
+func (r *Repo) Update(ctx context.Context, id string, obj *model.Edit) error {
 	m := repoModel.DecodeUpsert(obj)
 	m.PKId = id
 	if err := r.ModelStore.Update(ctx, m); err != nil {
@@ -86,7 +86,7 @@ func (r *Repo) Update(ctx context.Context, id int64, obj *model.Edit) error {
 	return nil
 }
 
-func (r *Repo) Delete(ctx context.Context, id int64) error {
+func (r *Repo) Delete(ctx context.Context, id string) error {
 	m := &repoModel.Upsert{PKId: id}
 	if err := r.ModelStore.Delete(ctx, m); err != nil {
 		return fmt.Errorf("ModelStore.Delete: %w", err)

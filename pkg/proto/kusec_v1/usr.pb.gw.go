@@ -329,7 +329,7 @@ func RegisterUsrHandlerServer(ctx context.Context, mux *runtime.ServeMux, server
 		var stream runtime.ServerTransportStream
 		ctx = grpc.NewContextWithServerTransportStream(ctx, &stream)
 		inboundMarshaler, outboundMarshaler := runtime.MarshalerForRequest(mux, req)
-		annotatedContext, err := runtime.AnnotateIncomingContext(ctx, mux, req, "/kusec_v1.Usr/List", runtime.WithHTTPPathPattern("/usrs"))
+		annotatedContext, err := runtime.AnnotateIncomingContext(ctx, mux, req, "/kusec_v1.Usr/List", runtime.WithHTTPPathPattern("/usr"))
 		if err != nil {
 			runtime.HTTPError(ctx, mux, outboundMarshaler, w, req, err)
 			return
@@ -349,7 +349,7 @@ func RegisterUsrHandlerServer(ctx context.Context, mux *runtime.ServeMux, server
 		var stream runtime.ServerTransportStream
 		ctx = grpc.NewContextWithServerTransportStream(ctx, &stream)
 		inboundMarshaler, outboundMarshaler := runtime.MarshalerForRequest(mux, req)
-		annotatedContext, err := runtime.AnnotateIncomingContext(ctx, mux, req, "/kusec_v1.Usr/Get", runtime.WithHTTPPathPattern("/usrs/{id}"))
+		annotatedContext, err := runtime.AnnotateIncomingContext(ctx, mux, req, "/kusec_v1.Usr/Get", runtime.WithHTTPPathPattern("/usr/{id}"))
 		if err != nil {
 			runtime.HTTPError(ctx, mux, outboundMarshaler, w, req, err)
 			return
@@ -369,7 +369,7 @@ func RegisterUsrHandlerServer(ctx context.Context, mux *runtime.ServeMux, server
 		var stream runtime.ServerTransportStream
 		ctx = grpc.NewContextWithServerTransportStream(ctx, &stream)
 		inboundMarshaler, outboundMarshaler := runtime.MarshalerForRequest(mux, req)
-		annotatedContext, err := runtime.AnnotateIncomingContext(ctx, mux, req, "/kusec_v1.Usr/Create", runtime.WithHTTPPathPattern("/usrs"))
+		annotatedContext, err := runtime.AnnotateIncomingContext(ctx, mux, req, "/kusec_v1.Usr/Create", runtime.WithHTTPPathPattern("/usr"))
 		if err != nil {
 			runtime.HTTPError(ctx, mux, outboundMarshaler, w, req, err)
 			return
@@ -389,7 +389,7 @@ func RegisterUsrHandlerServer(ctx context.Context, mux *runtime.ServeMux, server
 		var stream runtime.ServerTransportStream
 		ctx = grpc.NewContextWithServerTransportStream(ctx, &stream)
 		inboundMarshaler, outboundMarshaler := runtime.MarshalerForRequest(mux, req)
-		annotatedContext, err := runtime.AnnotateIncomingContext(ctx, mux, req, "/kusec_v1.Usr/Update", runtime.WithHTTPPathPattern("/usrs/{id}"))
+		annotatedContext, err := runtime.AnnotateIncomingContext(ctx, mux, req, "/kusec_v1.Usr/Update", runtime.WithHTTPPathPattern("/usr/{id}"))
 		if err != nil {
 			runtime.HTTPError(ctx, mux, outboundMarshaler, w, req, err)
 			return
@@ -409,7 +409,7 @@ func RegisterUsrHandlerServer(ctx context.Context, mux *runtime.ServeMux, server
 		var stream runtime.ServerTransportStream
 		ctx = grpc.NewContextWithServerTransportStream(ctx, &stream)
 		inboundMarshaler, outboundMarshaler := runtime.MarshalerForRequest(mux, req)
-		annotatedContext, err := runtime.AnnotateIncomingContext(ctx, mux, req, "/kusec_v1.Usr/Delete", runtime.WithHTTPPathPattern("/usrs/{id}"))
+		annotatedContext, err := runtime.AnnotateIncomingContext(ctx, mux, req, "/kusec_v1.Usr/Delete", runtime.WithHTTPPathPattern("/usr/{id}"))
 		if err != nil {
 			runtime.HTTPError(ctx, mux, outboundMarshaler, w, req, err)
 			return
@@ -429,7 +429,7 @@ func RegisterUsrHandlerServer(ctx context.Context, mux *runtime.ServeMux, server
 		var stream runtime.ServerTransportStream
 		ctx = grpc.NewContextWithServerTransportStream(ctx, &stream)
 		inboundMarshaler, outboundMarshaler := runtime.MarshalerForRequest(mux, req)
-		annotatedContext, err := runtime.AnnotateIncomingContext(ctx, mux, req, "/kusec_v1.Usr/Login", runtime.WithHTTPPathPattern("/usrs/login"))
+		annotatedContext, err := runtime.AnnotateIncomingContext(ctx, mux, req, "/kusec_v1.Usr/Login", runtime.WithHTTPPathPattern("/usr/login"))
 		if err != nil {
 			runtime.HTTPError(ctx, mux, outboundMarshaler, w, req, err)
 			return
@@ -449,7 +449,7 @@ func RegisterUsrHandlerServer(ctx context.Context, mux *runtime.ServeMux, server
 		var stream runtime.ServerTransportStream
 		ctx = grpc.NewContextWithServerTransportStream(ctx, &stream)
 		inboundMarshaler, outboundMarshaler := runtime.MarshalerForRequest(mux, req)
-		annotatedContext, err := runtime.AnnotateIncomingContext(ctx, mux, req, "/kusec_v1.Usr/BootstrapStatus", runtime.WithHTTPPathPattern("/usrs/bootstrap/status"))
+		annotatedContext, err := runtime.AnnotateIncomingContext(ctx, mux, req, "/kusec_v1.Usr/BootstrapStatus", runtime.WithHTTPPathPattern("/usr/bootstrap/status"))
 		if err != nil {
 			runtime.HTTPError(ctx, mux, outboundMarshaler, w, req, err)
 			return
@@ -469,7 +469,7 @@ func RegisterUsrHandlerServer(ctx context.Context, mux *runtime.ServeMux, server
 		var stream runtime.ServerTransportStream
 		ctx = grpc.NewContextWithServerTransportStream(ctx, &stream)
 		inboundMarshaler, outboundMarshaler := runtime.MarshalerForRequest(mux, req)
-		annotatedContext, err := runtime.AnnotateIncomingContext(ctx, mux, req, "/kusec_v1.Usr/GetProfile", runtime.WithHTTPPathPattern("/usrs/profile"))
+		annotatedContext, err := runtime.AnnotateIncomingContext(ctx, mux, req, "/kusec_v1.Usr/GetProfile", runtime.WithHTTPPathPattern("/usr/profile"))
 		if err != nil {
 			runtime.HTTPError(ctx, mux, outboundMarshaler, w, req, err)
 			return
@@ -489,7 +489,7 @@ func RegisterUsrHandlerServer(ctx context.Context, mux *runtime.ServeMux, server
 		var stream runtime.ServerTransportStream
 		ctx = grpc.NewContextWithServerTransportStream(ctx, &stream)
 		inboundMarshaler, outboundMarshaler := runtime.MarshalerForRequest(mux, req)
-		annotatedContext, err := runtime.AnnotateIncomingContext(ctx, mux, req, "/kusec_v1.Usr/UpdateProfile", runtime.WithHTTPPathPattern("/usrs/profile"))
+		annotatedContext, err := runtime.AnnotateIncomingContext(ctx, mux, req, "/kusec_v1.Usr/UpdateProfile", runtime.WithHTTPPathPattern("/usr/profile"))
 		if err != nil {
 			runtime.HTTPError(ctx, mux, outboundMarshaler, w, req, err)
 			return
@@ -547,7 +547,7 @@ func RegisterUsrHandlerClient(ctx context.Context, mux *runtime.ServeMux, client
 		ctx, cancel := context.WithCancel(req.Context())
 		defer cancel()
 		inboundMarshaler, outboundMarshaler := runtime.MarshalerForRequest(mux, req)
-		annotatedContext, err := runtime.AnnotateContext(ctx, mux, req, "/kusec_v1.Usr/List", runtime.WithHTTPPathPattern("/usrs"))
+		annotatedContext, err := runtime.AnnotateContext(ctx, mux, req, "/kusec_v1.Usr/List", runtime.WithHTTPPathPattern("/usr"))
 		if err != nil {
 			runtime.HTTPError(ctx, mux, outboundMarshaler, w, req, err)
 			return
@@ -564,7 +564,7 @@ func RegisterUsrHandlerClient(ctx context.Context, mux *runtime.ServeMux, client
 		ctx, cancel := context.WithCancel(req.Context())
 		defer cancel()
 		inboundMarshaler, outboundMarshaler := runtime.MarshalerForRequest(mux, req)
-		annotatedContext, err := runtime.AnnotateContext(ctx, mux, req, "/kusec_v1.Usr/Get", runtime.WithHTTPPathPattern("/usrs/{id}"))
+		annotatedContext, err := runtime.AnnotateContext(ctx, mux, req, "/kusec_v1.Usr/Get", runtime.WithHTTPPathPattern("/usr/{id}"))
 		if err != nil {
 			runtime.HTTPError(ctx, mux, outboundMarshaler, w, req, err)
 			return
@@ -581,7 +581,7 @@ func RegisterUsrHandlerClient(ctx context.Context, mux *runtime.ServeMux, client
 		ctx, cancel := context.WithCancel(req.Context())
 		defer cancel()
 		inboundMarshaler, outboundMarshaler := runtime.MarshalerForRequest(mux, req)
-		annotatedContext, err := runtime.AnnotateContext(ctx, mux, req, "/kusec_v1.Usr/Create", runtime.WithHTTPPathPattern("/usrs"))
+		annotatedContext, err := runtime.AnnotateContext(ctx, mux, req, "/kusec_v1.Usr/Create", runtime.WithHTTPPathPattern("/usr"))
 		if err != nil {
 			runtime.HTTPError(ctx, mux, outboundMarshaler, w, req, err)
 			return
@@ -598,7 +598,7 @@ func RegisterUsrHandlerClient(ctx context.Context, mux *runtime.ServeMux, client
 		ctx, cancel := context.WithCancel(req.Context())
 		defer cancel()
 		inboundMarshaler, outboundMarshaler := runtime.MarshalerForRequest(mux, req)
-		annotatedContext, err := runtime.AnnotateContext(ctx, mux, req, "/kusec_v1.Usr/Update", runtime.WithHTTPPathPattern("/usrs/{id}"))
+		annotatedContext, err := runtime.AnnotateContext(ctx, mux, req, "/kusec_v1.Usr/Update", runtime.WithHTTPPathPattern("/usr/{id}"))
 		if err != nil {
 			runtime.HTTPError(ctx, mux, outboundMarshaler, w, req, err)
 			return
@@ -615,7 +615,7 @@ func RegisterUsrHandlerClient(ctx context.Context, mux *runtime.ServeMux, client
 		ctx, cancel := context.WithCancel(req.Context())
 		defer cancel()
 		inboundMarshaler, outboundMarshaler := runtime.MarshalerForRequest(mux, req)
-		annotatedContext, err := runtime.AnnotateContext(ctx, mux, req, "/kusec_v1.Usr/Delete", runtime.WithHTTPPathPattern("/usrs/{id}"))
+		annotatedContext, err := runtime.AnnotateContext(ctx, mux, req, "/kusec_v1.Usr/Delete", runtime.WithHTTPPathPattern("/usr/{id}"))
 		if err != nil {
 			runtime.HTTPError(ctx, mux, outboundMarshaler, w, req, err)
 			return
@@ -632,7 +632,7 @@ func RegisterUsrHandlerClient(ctx context.Context, mux *runtime.ServeMux, client
 		ctx, cancel := context.WithCancel(req.Context())
 		defer cancel()
 		inboundMarshaler, outboundMarshaler := runtime.MarshalerForRequest(mux, req)
-		annotatedContext, err := runtime.AnnotateContext(ctx, mux, req, "/kusec_v1.Usr/Login", runtime.WithHTTPPathPattern("/usrs/login"))
+		annotatedContext, err := runtime.AnnotateContext(ctx, mux, req, "/kusec_v1.Usr/Login", runtime.WithHTTPPathPattern("/usr/login"))
 		if err != nil {
 			runtime.HTTPError(ctx, mux, outboundMarshaler, w, req, err)
 			return
@@ -649,7 +649,7 @@ func RegisterUsrHandlerClient(ctx context.Context, mux *runtime.ServeMux, client
 		ctx, cancel := context.WithCancel(req.Context())
 		defer cancel()
 		inboundMarshaler, outboundMarshaler := runtime.MarshalerForRequest(mux, req)
-		annotatedContext, err := runtime.AnnotateContext(ctx, mux, req, "/kusec_v1.Usr/BootstrapStatus", runtime.WithHTTPPathPattern("/usrs/bootstrap/status"))
+		annotatedContext, err := runtime.AnnotateContext(ctx, mux, req, "/kusec_v1.Usr/BootstrapStatus", runtime.WithHTTPPathPattern("/usr/bootstrap/status"))
 		if err != nil {
 			runtime.HTTPError(ctx, mux, outboundMarshaler, w, req, err)
 			return
@@ -666,7 +666,7 @@ func RegisterUsrHandlerClient(ctx context.Context, mux *runtime.ServeMux, client
 		ctx, cancel := context.WithCancel(req.Context())
 		defer cancel()
 		inboundMarshaler, outboundMarshaler := runtime.MarshalerForRequest(mux, req)
-		annotatedContext, err := runtime.AnnotateContext(ctx, mux, req, "/kusec_v1.Usr/GetProfile", runtime.WithHTTPPathPattern("/usrs/profile"))
+		annotatedContext, err := runtime.AnnotateContext(ctx, mux, req, "/kusec_v1.Usr/GetProfile", runtime.WithHTTPPathPattern("/usr/profile"))
 		if err != nil {
 			runtime.HTTPError(ctx, mux, outboundMarshaler, w, req, err)
 			return
@@ -683,7 +683,7 @@ func RegisterUsrHandlerClient(ctx context.Context, mux *runtime.ServeMux, client
 		ctx, cancel := context.WithCancel(req.Context())
 		defer cancel()
 		inboundMarshaler, outboundMarshaler := runtime.MarshalerForRequest(mux, req)
-		annotatedContext, err := runtime.AnnotateContext(ctx, mux, req, "/kusec_v1.Usr/UpdateProfile", runtime.WithHTTPPathPattern("/usrs/profile"))
+		annotatedContext, err := runtime.AnnotateContext(ctx, mux, req, "/kusec_v1.Usr/UpdateProfile", runtime.WithHTTPPathPattern("/usr/profile"))
 		if err != nil {
 			runtime.HTTPError(ctx, mux, outboundMarshaler, w, req, err)
 			return
@@ -700,15 +700,15 @@ func RegisterUsrHandlerClient(ctx context.Context, mux *runtime.ServeMux, client
 }
 
 var (
-	pattern_Usr_List_0            = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0}, []string{"usrs"}, ""))
-	pattern_Usr_Get_0             = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 1, 0, 4, 1, 5, 1}, []string{"usrs", "id"}, ""))
-	pattern_Usr_Create_0          = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0}, []string{"usrs"}, ""))
-	pattern_Usr_Update_0          = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 1, 0, 4, 1, 5, 1}, []string{"usrs", "id"}, ""))
-	pattern_Usr_Delete_0          = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 1, 0, 4, 1, 5, 1}, []string{"usrs", "id"}, ""))
-	pattern_Usr_Login_0           = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 2, 1}, []string{"usrs", "login"}, ""))
-	pattern_Usr_BootstrapStatus_0 = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 2, 1, 2, 2}, []string{"usrs", "bootstrap", "status"}, ""))
-	pattern_Usr_GetProfile_0      = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 2, 1}, []string{"usrs", "profile"}, ""))
-	pattern_Usr_UpdateProfile_0   = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 2, 1}, []string{"usrs", "profile"}, ""))
+	pattern_Usr_List_0            = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0}, []string{"usr"}, ""))
+	pattern_Usr_Get_0             = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 1, 0, 4, 1, 5, 1}, []string{"usr", "id"}, ""))
+	pattern_Usr_Create_0          = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0}, []string{"usr"}, ""))
+	pattern_Usr_Update_0          = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 1, 0, 4, 1, 5, 1}, []string{"usr", "id"}, ""))
+	pattern_Usr_Delete_0          = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 1, 0, 4, 1, 5, 1}, []string{"usr", "id"}, ""))
+	pattern_Usr_Login_0           = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 2, 1}, []string{"usr", "login"}, ""))
+	pattern_Usr_BootstrapStatus_0 = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 2, 1, 2, 2}, []string{"usr", "bootstrap", "status"}, ""))
+	pattern_Usr_GetProfile_0      = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 2, 1}, []string{"usr", "profile"}, ""))
+	pattern_Usr_UpdateProfile_0   = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 2, 1}, []string{"usr", "profile"}, ""))
 )
 
 var (

@@ -232,7 +232,7 @@ func RegisterItemHandlerServer(ctx context.Context, mux *runtime.ServeMux, serve
 		var stream runtime.ServerTransportStream
 		ctx = grpc.NewContextWithServerTransportStream(ctx, &stream)
 		inboundMarshaler, outboundMarshaler := runtime.MarshalerForRequest(mux, req)
-		annotatedContext, err := runtime.AnnotateIncomingContext(ctx, mux, req, "/kusec_v1.Item/List", runtime.WithHTTPPathPattern("/items"))
+		annotatedContext, err := runtime.AnnotateIncomingContext(ctx, mux, req, "/kusec_v1.Item/List", runtime.WithHTTPPathPattern("/item"))
 		if err != nil {
 			runtime.HTTPError(ctx, mux, outboundMarshaler, w, req, err)
 			return
@@ -252,7 +252,7 @@ func RegisterItemHandlerServer(ctx context.Context, mux *runtime.ServeMux, serve
 		var stream runtime.ServerTransportStream
 		ctx = grpc.NewContextWithServerTransportStream(ctx, &stream)
 		inboundMarshaler, outboundMarshaler := runtime.MarshalerForRequest(mux, req)
-		annotatedContext, err := runtime.AnnotateIncomingContext(ctx, mux, req, "/kusec_v1.Item/Get", runtime.WithHTTPPathPattern("/items/{id}"))
+		annotatedContext, err := runtime.AnnotateIncomingContext(ctx, mux, req, "/kusec_v1.Item/Get", runtime.WithHTTPPathPattern("/item/{id}"))
 		if err != nil {
 			runtime.HTTPError(ctx, mux, outboundMarshaler, w, req, err)
 			return
@@ -272,7 +272,7 @@ func RegisterItemHandlerServer(ctx context.Context, mux *runtime.ServeMux, serve
 		var stream runtime.ServerTransportStream
 		ctx = grpc.NewContextWithServerTransportStream(ctx, &stream)
 		inboundMarshaler, outboundMarshaler := runtime.MarshalerForRequest(mux, req)
-		annotatedContext, err := runtime.AnnotateIncomingContext(ctx, mux, req, "/kusec_v1.Item/Create", runtime.WithHTTPPathPattern("/items"))
+		annotatedContext, err := runtime.AnnotateIncomingContext(ctx, mux, req, "/kusec_v1.Item/Create", runtime.WithHTTPPathPattern("/item"))
 		if err != nil {
 			runtime.HTTPError(ctx, mux, outboundMarshaler, w, req, err)
 			return
@@ -292,7 +292,7 @@ func RegisterItemHandlerServer(ctx context.Context, mux *runtime.ServeMux, serve
 		var stream runtime.ServerTransportStream
 		ctx = grpc.NewContextWithServerTransportStream(ctx, &stream)
 		inboundMarshaler, outboundMarshaler := runtime.MarshalerForRequest(mux, req)
-		annotatedContext, err := runtime.AnnotateIncomingContext(ctx, mux, req, "/kusec_v1.Item/Update", runtime.WithHTTPPathPattern("/items/{id}"))
+		annotatedContext, err := runtime.AnnotateIncomingContext(ctx, mux, req, "/kusec_v1.Item/Update", runtime.WithHTTPPathPattern("/item/{id}"))
 		if err != nil {
 			runtime.HTTPError(ctx, mux, outboundMarshaler, w, req, err)
 			return
@@ -312,7 +312,7 @@ func RegisterItemHandlerServer(ctx context.Context, mux *runtime.ServeMux, serve
 		var stream runtime.ServerTransportStream
 		ctx = grpc.NewContextWithServerTransportStream(ctx, &stream)
 		inboundMarshaler, outboundMarshaler := runtime.MarshalerForRequest(mux, req)
-		annotatedContext, err := runtime.AnnotateIncomingContext(ctx, mux, req, "/kusec_v1.Item/Delete", runtime.WithHTTPPathPattern("/items/{id}"))
+		annotatedContext, err := runtime.AnnotateIncomingContext(ctx, mux, req, "/kusec_v1.Item/Delete", runtime.WithHTTPPathPattern("/item/{id}"))
 		if err != nil {
 			runtime.HTTPError(ctx, mux, outboundMarshaler, w, req, err)
 			return
@@ -370,7 +370,7 @@ func RegisterItemHandlerClient(ctx context.Context, mux *runtime.ServeMux, clien
 		ctx, cancel := context.WithCancel(req.Context())
 		defer cancel()
 		inboundMarshaler, outboundMarshaler := runtime.MarshalerForRequest(mux, req)
-		annotatedContext, err := runtime.AnnotateContext(ctx, mux, req, "/kusec_v1.Item/List", runtime.WithHTTPPathPattern("/items"))
+		annotatedContext, err := runtime.AnnotateContext(ctx, mux, req, "/kusec_v1.Item/List", runtime.WithHTTPPathPattern("/item"))
 		if err != nil {
 			runtime.HTTPError(ctx, mux, outboundMarshaler, w, req, err)
 			return
@@ -387,7 +387,7 @@ func RegisterItemHandlerClient(ctx context.Context, mux *runtime.ServeMux, clien
 		ctx, cancel := context.WithCancel(req.Context())
 		defer cancel()
 		inboundMarshaler, outboundMarshaler := runtime.MarshalerForRequest(mux, req)
-		annotatedContext, err := runtime.AnnotateContext(ctx, mux, req, "/kusec_v1.Item/Get", runtime.WithHTTPPathPattern("/items/{id}"))
+		annotatedContext, err := runtime.AnnotateContext(ctx, mux, req, "/kusec_v1.Item/Get", runtime.WithHTTPPathPattern("/item/{id}"))
 		if err != nil {
 			runtime.HTTPError(ctx, mux, outboundMarshaler, w, req, err)
 			return
@@ -404,7 +404,7 @@ func RegisterItemHandlerClient(ctx context.Context, mux *runtime.ServeMux, clien
 		ctx, cancel := context.WithCancel(req.Context())
 		defer cancel()
 		inboundMarshaler, outboundMarshaler := runtime.MarshalerForRequest(mux, req)
-		annotatedContext, err := runtime.AnnotateContext(ctx, mux, req, "/kusec_v1.Item/Create", runtime.WithHTTPPathPattern("/items"))
+		annotatedContext, err := runtime.AnnotateContext(ctx, mux, req, "/kusec_v1.Item/Create", runtime.WithHTTPPathPattern("/item"))
 		if err != nil {
 			runtime.HTTPError(ctx, mux, outboundMarshaler, w, req, err)
 			return
@@ -421,7 +421,7 @@ func RegisterItemHandlerClient(ctx context.Context, mux *runtime.ServeMux, clien
 		ctx, cancel := context.WithCancel(req.Context())
 		defer cancel()
 		inboundMarshaler, outboundMarshaler := runtime.MarshalerForRequest(mux, req)
-		annotatedContext, err := runtime.AnnotateContext(ctx, mux, req, "/kusec_v1.Item/Update", runtime.WithHTTPPathPattern("/items/{id}"))
+		annotatedContext, err := runtime.AnnotateContext(ctx, mux, req, "/kusec_v1.Item/Update", runtime.WithHTTPPathPattern("/item/{id}"))
 		if err != nil {
 			runtime.HTTPError(ctx, mux, outboundMarshaler, w, req, err)
 			return
@@ -438,7 +438,7 @@ func RegisterItemHandlerClient(ctx context.Context, mux *runtime.ServeMux, clien
 		ctx, cancel := context.WithCancel(req.Context())
 		defer cancel()
 		inboundMarshaler, outboundMarshaler := runtime.MarshalerForRequest(mux, req)
-		annotatedContext, err := runtime.AnnotateContext(ctx, mux, req, "/kusec_v1.Item/Delete", runtime.WithHTTPPathPattern("/items/{id}"))
+		annotatedContext, err := runtime.AnnotateContext(ctx, mux, req, "/kusec_v1.Item/Delete", runtime.WithHTTPPathPattern("/item/{id}"))
 		if err != nil {
 			runtime.HTTPError(ctx, mux, outboundMarshaler, w, req, err)
 			return
@@ -455,11 +455,11 @@ func RegisterItemHandlerClient(ctx context.Context, mux *runtime.ServeMux, clien
 }
 
 var (
-	pattern_Item_List_0   = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0}, []string{"items"}, ""))
-	pattern_Item_Get_0    = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 1, 0, 4, 1, 5, 1}, []string{"items", "id"}, ""))
-	pattern_Item_Create_0 = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0}, []string{"items"}, ""))
-	pattern_Item_Update_0 = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 1, 0, 4, 1, 5, 1}, []string{"items", "id"}, ""))
-	pattern_Item_Delete_0 = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 1, 0, 4, 1, 5, 1}, []string{"items", "id"}, ""))
+	pattern_Item_List_0   = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0}, []string{"item"}, ""))
+	pattern_Item_Get_0    = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 1, 0, 4, 1, 5, 1}, []string{"item", "id"}, ""))
+	pattern_Item_Create_0 = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0}, []string{"item"}, ""))
+	pattern_Item_Update_0 = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 1, 0, 4, 1, 5, 1}, []string{"item", "id"}, ""))
+	pattern_Item_Delete_0 = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 1, 0, 4, 1, 5, 1}, []string{"item", "id"}, ""))
 )
 
 var (

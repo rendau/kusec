@@ -3,7 +3,7 @@ package model
 import (
 	"time"
 
-	domainModel "github.com/mechta-market/kusec/internal/domain/item/model"
+	domainModel "github.com/mechta-market/kusec/internal/domain/secret/model"
 )
 
 type Upsert struct {
@@ -11,10 +11,9 @@ type Upsert struct {
 	NewId string
 
 	UpdatedAt   *time.Time
-	SecretId    *string
+	AppId       *string
 	Active      *bool
-	Key         *string
-	Value       *string
+	SlugName    *string
 	Description *string
 }
 
@@ -23,17 +22,14 @@ func (m *Upsert) CreateColumnMap() map[string]any {
 	if m.UpdatedAt != nil {
 		result["updated_at"] = *m.UpdatedAt
 	}
-	if m.SecretId != nil {
-		result["secret_id"] = *m.SecretId
+	if m.AppId != nil {
+		result["app_id"] = *m.AppId
 	}
 	if m.Active != nil {
 		result["active"] = *m.Active
 	}
-	if m.Key != nil {
-		result["key"] = *m.Key
-	}
-	if m.Value != nil {
-		result["value"] = *m.Value
+	if m.SlugName != nil {
+		result["slug_name"] = *m.SlugName
 	}
 	if m.Description != nil {
 		result["description"] = *m.Description
@@ -58,10 +54,9 @@ func (m *Upsert) ReturningColumnMap() map[string]any {
 func DecodeUpsert(v *domainModel.Edit) *Upsert {
 	return &Upsert{
 		UpdatedAt:   v.UpdatedAt,
-		SecretId:    v.SecretId,
+		AppId:       v.AppId,
 		Active:      v.Active,
-		Key:         v.Key,
-		Value:       v.Value,
+		SlugName:    v.SlugName,
 		Description: v.Description,
 	}
 }

@@ -30,7 +30,7 @@ type ItemMain struct {
 	Id            string                 `protobuf:"bytes,1,opt,name=id,proto3" json:"id,omitempty"`
 	CreatedAt     *timestamppb.Timestamp `protobuf:"bytes,2,opt,name=created_at,json=createdAt,proto3" json:"created_at,omitempty"`
 	UpdatedAt     *timestamppb.Timestamp `protobuf:"bytes,3,opt,name=updated_at,json=updatedAt,proto3" json:"updated_at,omitempty"`
-	AppId         string                 `protobuf:"bytes,4,opt,name=app_id,json=appId,proto3" json:"app_id,omitempty"`
+	SecretId      string                 `protobuf:"bytes,4,opt,name=secret_id,json=secretId,proto3" json:"secret_id,omitempty"`
 	Active        bool                   `protobuf:"varint,5,opt,name=active,proto3" json:"active,omitempty"`
 	Key           string                 `protobuf:"bytes,6,opt,name=key,proto3" json:"key,omitempty"`
 	Value         string                 `protobuf:"bytes,7,opt,name=value,proto3" json:"value,omitempty"`
@@ -90,9 +90,9 @@ func (x *ItemMain) GetUpdatedAt() *timestamppb.Timestamp {
 	return nil
 }
 
-func (x *ItemMain) GetAppId() string {
+func (x *ItemMain) GetSecretId() string {
 	if x != nil {
-		return x.AppId
+		return x.SecretId
 	}
 	return ""
 }
@@ -128,7 +128,7 @@ func (x *ItemMain) GetDescription() string {
 type ItemListReq struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
 	ListParams    *common.ListParamsSt   `protobuf:"bytes,1,opt,name=list_params,json=listParams,proto3" json:"list_params,omitempty"`
-	AppId         *string                `protobuf:"bytes,2,opt,name=app_id,json=appId,proto3,oneof" json:"app_id,omitempty"`
+	SecretId      *string                `protobuf:"bytes,2,opt,name=secret_id,json=secretId,proto3,oneof" json:"secret_id,omitempty"`
 	Active        *bool                  `protobuf:"varint,3,opt,name=active,proto3,oneof" json:"active,omitempty"`
 	Search        *string                `protobuf:"bytes,4,opt,name=search,proto3,oneof" json:"search,omitempty"`
 	unknownFields protoimpl.UnknownFields
@@ -172,9 +172,9 @@ func (x *ItemListReq) GetListParams() *common.ListParamsSt {
 	return nil
 }
 
-func (x *ItemListReq) GetAppId() string {
-	if x != nil && x.AppId != nil {
-		return *x.AppId
+func (x *ItemListReq) GetSecretId() string {
+	if x != nil && x.SecretId != nil {
+		return *x.SecretId
 	}
 	return ""
 }
@@ -291,7 +291,7 @@ func (x *ItemGetReq) GetId() string {
 
 type ItemCreateReq struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
-	AppId         string                 `protobuf:"bytes,1,opt,name=app_id,json=appId,proto3" json:"app_id,omitempty"`
+	SecretId      string                 `protobuf:"bytes,1,opt,name=secret_id,json=secretId,proto3" json:"secret_id,omitempty"`
 	Active        *bool                  `protobuf:"varint,2,opt,name=active,proto3,oneof" json:"active,omitempty"`
 	Key           string                 `protobuf:"bytes,3,opt,name=key,proto3" json:"key,omitempty"`
 	Value         string                 `protobuf:"bytes,4,opt,name=value,proto3" json:"value,omitempty"`
@@ -330,9 +330,9 @@ func (*ItemCreateReq) Descriptor() ([]byte, []int) {
 	return file_kusec_v1_item_proto_rawDescGZIP(), []int{4}
 }
 
-func (x *ItemCreateReq) GetAppId() string {
+func (x *ItemCreateReq) GetSecretId() string {
 	if x != nil {
-		return x.AppId
+		return x.SecretId
 	}
 	return ""
 }
@@ -412,7 +412,7 @@ func (x *ItemCreateRep) GetId() string {
 type ItemUpdateReq struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
 	Id            string                 `protobuf:"bytes,1,opt,name=id,proto3" json:"id,omitempty"`
-	AppId         *string                `protobuf:"bytes,2,opt,name=app_id,json=appId,proto3,oneof" json:"app_id,omitempty"`
+	SecretId      *string                `protobuf:"bytes,2,opt,name=secret_id,json=secretId,proto3,oneof" json:"secret_id,omitempty"`
 	Active        *bool                  `protobuf:"varint,3,opt,name=active,proto3,oneof" json:"active,omitempty"`
 	Key           *string                `protobuf:"bytes,4,opt,name=key,proto3,oneof" json:"key,omitempty"`
 	Value         *string                `protobuf:"bytes,5,opt,name=value,proto3,oneof" json:"value,omitempty"`
@@ -458,9 +458,9 @@ func (x *ItemUpdateReq) GetId() string {
 	return ""
 }
 
-func (x *ItemUpdateReq) GetAppId() string {
-	if x != nil && x.AppId != nil {
-		return *x.AppId
+func (x *ItemUpdateReq) GetSecretId() string {
+	if x != nil && x.SecretId != nil {
+		return *x.SecretId
 	}
 	return ""
 }
@@ -497,25 +497,26 @@ var File_kusec_v1_item_proto protoreflect.FileDescriptor
 
 const file_kusec_v1_item_proto_rawDesc = "" +
 	"\n" +
-	"\x13kusec_v1/item.proto\x12\bkusec_v1\x1a\x1cgoogle/api/annotations.proto\x1a\x1bgoogle/protobuf/empty.proto\x1a\x1fgoogle/protobuf/timestamp.proto\x1a\x13common/common.proto\"\x89\x02\n" +
+	"\x13kusec_v1/item.proto\x12\bkusec_v1\x1a\x1cgoogle/api/annotations.proto\x1a\x1bgoogle/protobuf/empty.proto\x1a\x1fgoogle/protobuf/timestamp.proto\x1a\x13common/common.proto\"\x8f\x02\n" +
 	"\bItemMain\x12\x0e\n" +
 	"\x02id\x18\x01 \x01(\tR\x02id\x129\n" +
 	"\n" +
 	"created_at\x18\x02 \x01(\v2\x1a.google.protobuf.TimestampR\tcreatedAt\x129\n" +
 	"\n" +
-	"updated_at\x18\x03 \x01(\v2\x1a.google.protobuf.TimestampR\tupdatedAt\x12\x15\n" +
-	"\x06app_id\x18\x04 \x01(\tR\x05appId\x12\x16\n" +
+	"updated_at\x18\x03 \x01(\v2\x1a.google.protobuf.TimestampR\tupdatedAt\x12\x1b\n" +
+	"\tsecret_id\x18\x04 \x01(\tR\bsecretId\x12\x16\n" +
 	"\x06active\x18\x05 \x01(\bR\x06active\x12\x10\n" +
 	"\x03key\x18\x06 \x01(\tR\x03key\x12\x14\n" +
 	"\x05value\x18\a \x01(\tR\x05value\x12 \n" +
-	"\vdescription\x18\b \x01(\tR\vdescription\"\xbb\x01\n" +
+	"\vdescription\x18\b \x01(\tR\vdescription\"\xc4\x01\n" +
 	"\vItemListReq\x125\n" +
 	"\vlist_params\x18\x01 \x01(\v2\x14.common.ListParamsStR\n" +
-	"listParams\x12\x1a\n" +
-	"\x06app_id\x18\x02 \x01(\tH\x00R\x05appId\x88\x01\x01\x12\x1b\n" +
+	"listParams\x12 \n" +
+	"\tsecret_id\x18\x02 \x01(\tH\x00R\bsecretId\x88\x01\x01\x12\x1b\n" +
 	"\x06active\x18\x03 \x01(\bH\x01R\x06active\x88\x01\x01\x12\x1b\n" +
-	"\x06search\x18\x04 \x01(\tH\x02R\x06search\x88\x01\x01B\t\n" +
-	"\a_app_idB\t\n" +
+	"\x06search\x18\x04 \x01(\tH\x02R\x06search\x88\x01\x01B\f\n" +
+	"\n" +
+	"_secret_idB\t\n" +
 	"\a_activeB\t\n" +
 	"\a_search\"~\n" +
 	"\vItemListRep\x12A\n" +
@@ -523,34 +524,39 @@ const file_kusec_v1_item_proto_rawDesc = "" +
 	"\aresults\x18\x02 \x03(\v2\x12.kusec_v1.ItemMainR\aresults\"\x1c\n" +
 	"\n" +
 	"ItemGetReq\x12\x0e\n" +
-	"\x02id\x18\x01 \x01(\tR\x02id\"\x98\x01\n" +
-	"\rItemCreateReq\x12\x15\n" +
-	"\x06app_id\x18\x01 \x01(\tR\x05appId\x12\x1b\n" +
+	"\x02id\x18\x01 \x01(\tR\x02id\"\x9e\x01\n" +
+	"\rItemCreateReq\x12\x1b\n" +
+	"\tsecret_id\x18\x01 \x01(\tR\bsecretId\x12\x1b\n" +
 	"\x06active\x18\x02 \x01(\bH\x00R\x06active\x88\x01\x01\x12\x10\n" +
 	"\x03key\x18\x03 \x01(\tR\x03key\x12\x14\n" +
 	"\x05value\x18\x04 \x01(\tR\x05value\x12 \n" +
 	"\vdescription\x18\x05 \x01(\tR\vdescriptionB\t\n" +
 	"\a_active\"\x1f\n" +
 	"\rItemCreateRep\x12\x0e\n" +
-	"\x02id\x18\x01 \x01(\tR\x02id\"\xe9\x01\n" +
+	"\x02id\x18\x01 \x01(\tR\x02id\"\xf2\x01\n" +
 	"\rItemUpdateReq\x12\x0e\n" +
-	"\x02id\x18\x01 \x01(\tR\x02id\x12\x1a\n" +
-	"\x06app_id\x18\x02 \x01(\tH\x00R\x05appId\x88\x01\x01\x12\x1b\n" +
+	"\x02id\x18\x01 \x01(\tR\x02id\x12 \n" +
+	"\tsecret_id\x18\x02 \x01(\tH\x00R\bsecretId\x88\x01\x01\x12\x1b\n" +
 	"\x06active\x18\x03 \x01(\bH\x01R\x06active\x88\x01\x01\x12\x15\n" +
 	"\x03key\x18\x04 \x01(\tH\x02R\x03key\x88\x01\x01\x12\x19\n" +
 	"\x05value\x18\x05 \x01(\tH\x03R\x05value\x88\x01\x01\x12%\n" +
-	"\vdescription\x18\x06 \x01(\tH\x04R\vdescription\x88\x01\x01B\t\n" +
-	"\a_app_idB\t\n" +
+	"\vdescription\x18\x06 \x01(\tH\x04R\vdescription\x88\x01\x01B\f\n" +
+	"\n" +
+	"_secret_idB\t\n" +
 	"\a_activeB\x06\n" +
 	"\x04_keyB\b\n" +
 	"\x06_valueB\x0e\n" +
-	"\f_description2\x81\x03\n" +
-	"\x04Item\x12D\n" +
-	"\x04List\x12\x15.kusec_v1.ItemListReq\x1a\x15.kusec_v1.ItemListRep\"\x0e\x82\xd3\xe4\x93\x02\b\x12\x06/items\x12D\n" +
-	"\x03Get\x12\x14.kusec_v1.ItemGetReq\x1a\x12.kusec_v1.ItemMain\"\x13\x82\xd3\xe4\x93\x02\r\x12\v/items/{id}\x12M\n" +
-	"\x06Create\x12\x17.kusec_v1.ItemCreateReq\x1a\x17.kusec_v1.ItemCreateRep\"\x11\x82\xd3\xe4\x93\x02\v:\x01*\"\x06/items\x12Q\n" +
-	"\x06Update\x12\x17.kusec_v1.ItemUpdateReq\x1a\x16.google.protobuf.Empty\"\x16\x82\xd3\xe4\x93\x02\x10:\x01*2\v/items/{id}\x12K\n" +
-	"\x06Delete\x12\x14.kusec_v1.ItemGetReq\x1a\x16.google.protobuf.Empty\"\x13\x82\xd3\xe4\x93\x02\r*\v/items/{id}B\vZ\t/kusec_v1b\x06proto3"
+	"\f_description2\xfc\x02\n" +
+	"\x04Item\x12C\n" +
+	"\x04List\x12\x15.kusec_v1.ItemListReq\x1a\x15.kusec_v1.ItemListRep\"\r\x82\xd3\xe4\x93\x02\a\x12\x05/item\x12C\n" +
+	"\x03Get\x12\x14.kusec_v1.ItemGetReq\x1a\x12.kusec_v1.ItemMain\"\x12\x82\xd3\xe4\x93\x02\f\x12\n" +
+	"/item/{id}\x12L\n" +
+	"\x06Create\x12\x17.kusec_v1.ItemCreateReq\x1a\x17.kusec_v1.ItemCreateRep\"\x10\x82\xd3\xe4\x93\x02\n" +
+	":\x01*\"\x05/item\x12P\n" +
+	"\x06Update\x12\x17.kusec_v1.ItemUpdateReq\x1a\x16.google.protobuf.Empty\"\x15\x82\xd3\xe4\x93\x02\x0f:\x01*2\n" +
+	"/item/{id}\x12J\n" +
+	"\x06Delete\x12\x14.kusec_v1.ItemGetReq\x1a\x16.google.protobuf.Empty\"\x12\x82\xd3\xe4\x93\x02\f*\n" +
+	"/item/{id}B\vZ\t/kusec_v1b\x06proto3"
 
 var (
 	file_kusec_v1_item_proto_rawDescOnce sync.Once

@@ -81,6 +81,8 @@ domain service → repo
 
 ### Хранилища
 - Postgres: все доменные entities (см. `migrations/*`).
+- **Имена таблиц всегда в единственном числе**, без plural: `usr`, `app`, `secret`, `item`
+  (не `usrs`, `apps`, `secrets`, `items`). То же значение указывается в `TableName` репозитория.
 
 ### Миграции
 - Файлы в `migrations/` в формате `NNNNNN_<name>.up.sql` / `.down.sql` (golang-migrate).
@@ -92,6 +94,8 @@ domain service → repo
 - gRPC сервисы: `api/proto/kusec_v1/*`.
 - HTTP-gateway: через grpc-gateway + swagger (`docs/api.swagger.json`).
 - DTO маппинг: `internal/handler/grpc/dto`.
+- **REST-пути (route paths) всегда в единственном числе**, без plural:
+  `/secret`, `/secret/{id}`, `/app`, `/item` (не `/secrets`, `/apps`, `/items`).
 
 ### Ошибки и валидация
 - Семантические ошибки — через `internal/errs` (см. gRPC interceptor в `internal/app/grpc.go`).

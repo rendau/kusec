@@ -31,8 +31,9 @@ type AppMain struct {
 	CreatedAt     *timestamppb.Timestamp `protobuf:"bytes,2,opt,name=created_at,json=createdAt,proto3" json:"created_at,omitempty"`
 	UpdatedAt     *timestamppb.Timestamp `protobuf:"bytes,3,opt,name=updated_at,json=updatedAt,proto3" json:"updated_at,omitempty"`
 	Active        bool                   `protobuf:"varint,4,opt,name=active,proto3" json:"active,omitempty"`
-	Name          string                 `protobuf:"bytes,5,opt,name=name,proto3" json:"name,omitempty"`
-	Description   string                 `protobuf:"bytes,6,opt,name=description,proto3" json:"description,omitempty"`
+	Namespace     string                 `protobuf:"bytes,5,opt,name=namespace,proto3" json:"namespace,omitempty"`
+	Name          string                 `protobuf:"bytes,6,opt,name=name,proto3" json:"name,omitempty"`
+	Description   string                 `protobuf:"bytes,7,opt,name=description,proto3" json:"description,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -95,6 +96,13 @@ func (x *AppMain) GetActive() bool {
 	return false
 }
 
+func (x *AppMain) GetNamespace() string {
+	if x != nil {
+		return x.Namespace
+	}
+	return ""
+}
+
 func (x *AppMain) GetName() string {
 	if x != nil {
 		return x.Name
@@ -113,7 +121,8 @@ type AppListReq struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
 	ListParams    *common.ListParamsSt   `protobuf:"bytes,1,opt,name=list_params,json=listParams,proto3" json:"list_params,omitempty"`
 	Active        *bool                  `protobuf:"varint,2,opt,name=active,proto3,oneof" json:"active,omitempty"`
-	Search        *string                `protobuf:"bytes,3,opt,name=search,proto3,oneof" json:"search,omitempty"`
+	Namespace     *string                `protobuf:"bytes,3,opt,name=namespace,proto3,oneof" json:"namespace,omitempty"`
+	Search        *string                `protobuf:"bytes,4,opt,name=search,proto3,oneof" json:"search,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -160,6 +169,13 @@ func (x *AppListReq) GetActive() bool {
 		return *x.Active
 	}
 	return false
+}
+
+func (x *AppListReq) GetNamespace() string {
+	if x != nil && x.Namespace != nil {
+		return *x.Namespace
+	}
+	return ""
 }
 
 func (x *AppListReq) GetSearch() string {
@@ -268,8 +284,9 @@ func (x *AppGetReq) GetId() string {
 type AppCreateReq struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
 	Active        *bool                  `protobuf:"varint,1,opt,name=active,proto3,oneof" json:"active,omitempty"`
-	Name          string                 `protobuf:"bytes,2,opt,name=name,proto3" json:"name,omitempty"`
-	Description   string                 `protobuf:"bytes,3,opt,name=description,proto3" json:"description,omitempty"`
+	Namespace     string                 `protobuf:"bytes,2,opt,name=namespace,proto3" json:"namespace,omitempty"`
+	Name          string                 `protobuf:"bytes,3,opt,name=name,proto3" json:"name,omitempty"`
+	Description   string                 `protobuf:"bytes,4,opt,name=description,proto3" json:"description,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -309,6 +326,13 @@ func (x *AppCreateReq) GetActive() bool {
 		return *x.Active
 	}
 	return false
+}
+
+func (x *AppCreateReq) GetNamespace() string {
+	if x != nil {
+		return x.Namespace
+	}
+	return ""
 }
 
 func (x *AppCreateReq) GetName() string {
@@ -373,8 +397,9 @@ type AppUpdateReq struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
 	Id            string                 `protobuf:"bytes,1,opt,name=id,proto3" json:"id,omitempty"`
 	Active        *bool                  `protobuf:"varint,2,opt,name=active,proto3,oneof" json:"active,omitempty"`
-	Name          *string                `protobuf:"bytes,3,opt,name=name,proto3,oneof" json:"name,omitempty"`
-	Description   *string                `protobuf:"bytes,4,opt,name=description,proto3,oneof" json:"description,omitempty"`
+	Namespace     *string                `protobuf:"bytes,3,opt,name=namespace,proto3,oneof" json:"namespace,omitempty"`
+	Name          *string                `protobuf:"bytes,4,opt,name=name,proto3,oneof" json:"name,omitempty"`
+	Description   *string                `protobuf:"bytes,5,opt,name=description,proto3,oneof" json:"description,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -423,6 +448,13 @@ func (x *AppUpdateReq) GetActive() bool {
 	return false
 }
 
+func (x *AppUpdateReq) GetNamespace() string {
+	if x != nil && x.Namespace != nil {
+		return *x.Namespace
+	}
+	return ""
+}
+
 func (x *AppUpdateReq) GetName() string {
 	if x != nil && x.Name != nil {
 		return *x.Name
@@ -441,55 +473,59 @@ var File_kusec_v1_app_proto protoreflect.FileDescriptor
 
 const file_kusec_v1_app_proto_rawDesc = "" +
 	"\n" +
-	"\x12kusec_v1/app.proto\x12\bkusec_v1\x1a\x1cgoogle/api/annotations.proto\x1a\x1bgoogle/protobuf/empty.proto\x1a\x1fgoogle/protobuf/timestamp.proto\x1a\x13common/common.proto\"\xdd\x01\n" +
+	"\x12kusec_v1/app.proto\x12\bkusec_v1\x1a\x1cgoogle/api/annotations.proto\x1a\x1bgoogle/protobuf/empty.proto\x1a\x1fgoogle/protobuf/timestamp.proto\x1a\x13common/common.proto\"\xfb\x01\n" +
 	"\aAppMain\x12\x0e\n" +
 	"\x02id\x18\x01 \x01(\tR\x02id\x129\n" +
 	"\n" +
 	"created_at\x18\x02 \x01(\v2\x1a.google.protobuf.TimestampR\tcreatedAt\x129\n" +
 	"\n" +
 	"updated_at\x18\x03 \x01(\v2\x1a.google.protobuf.TimestampR\tupdatedAt\x12\x16\n" +
-	"\x06active\x18\x04 \x01(\bR\x06active\x12\x12\n" +
-	"\x04name\x18\x05 \x01(\tR\x04name\x12 \n" +
-	"\vdescription\x18\x06 \x01(\tR\vdescription\"\x93\x01\n" +
+	"\x06active\x18\x04 \x01(\bR\x06active\x12\x1c\n" +
+	"\tnamespace\x18\x05 \x01(\tR\tnamespace\x12\x12\n" +
+	"\x04name\x18\x06 \x01(\tR\x04name\x12 \n" +
+	"\vdescription\x18\a \x01(\tR\vdescription\"\xc4\x01\n" +
 	"\n" +
 	"AppListReq\x125\n" +
 	"\vlist_params\x18\x01 \x01(\v2\x14.common.ListParamsStR\n" +
 	"listParams\x12\x1b\n" +
-	"\x06active\x18\x02 \x01(\bH\x00R\x06active\x88\x01\x01\x12\x1b\n" +
-	"\x06search\x18\x03 \x01(\tH\x01R\x06search\x88\x01\x01B\t\n" +
-	"\a_activeB\t\n" +
+	"\x06active\x18\x02 \x01(\bH\x00R\x06active\x88\x01\x01\x12!\n" +
+	"\tnamespace\x18\x03 \x01(\tH\x01R\tnamespace\x88\x01\x01\x12\x1b\n" +
+	"\x06search\x18\x04 \x01(\tH\x02R\x06search\x88\x01\x01B\t\n" +
+	"\a_activeB\f\n" +
+	"\n" +
+	"_namespaceB\t\n" +
 	"\a_search\"|\n" +
 	"\n" +
 	"AppListRep\x12A\n" +
 	"\x0fpagination_info\x18\x01 \x01(\v2\x18.common.PaginationInfoStR\x0epaginationInfo\x12+\n" +
 	"\aresults\x18\x02 \x03(\v2\x11.kusec_v1.AppMainR\aresults\"\x1b\n" +
 	"\tAppGetReq\x12\x0e\n" +
-	"\x02id\x18\x01 \x01(\tR\x02id\"l\n" +
+	"\x02id\x18\x01 \x01(\tR\x02id\"\x8a\x01\n" +
 	"\fAppCreateReq\x12\x1b\n" +
-	"\x06active\x18\x01 \x01(\bH\x00R\x06active\x88\x01\x01\x12\x12\n" +
-	"\x04name\x18\x02 \x01(\tR\x04name\x12 \n" +
-	"\vdescription\x18\x03 \x01(\tR\vdescriptionB\t\n" +
+	"\x06active\x18\x01 \x01(\bH\x00R\x06active\x88\x01\x01\x12\x1c\n" +
+	"\tnamespace\x18\x02 \x01(\tR\tnamespace\x12\x12\n" +
+	"\x04name\x18\x03 \x01(\tR\x04name\x12 \n" +
+	"\vdescription\x18\x04 \x01(\tR\vdescriptionB\t\n" +
 	"\a_active\"\x1e\n" +
 	"\fAppCreateRep\x12\x0e\n" +
-	"\x02id\x18\x01 \x01(\tR\x02id\"\x9f\x01\n" +
+	"\x02id\x18\x01 \x01(\tR\x02id\"\xd0\x01\n" +
 	"\fAppUpdateReq\x12\x0e\n" +
 	"\x02id\x18\x01 \x01(\tR\x02id\x12\x1b\n" +
-	"\x06active\x18\x02 \x01(\bH\x00R\x06active\x88\x01\x01\x12\x17\n" +
-	"\x04name\x18\x03 \x01(\tH\x01R\x04name\x88\x01\x01\x12%\n" +
-	"\vdescription\x18\x04 \x01(\tH\x02R\vdescription\x88\x01\x01B\t\n" +
-	"\a_activeB\a\n" +
+	"\x06active\x18\x02 \x01(\bH\x00R\x06active\x88\x01\x01\x12!\n" +
+	"\tnamespace\x18\x03 \x01(\tH\x01R\tnamespace\x88\x01\x01\x12\x17\n" +
+	"\x04name\x18\x04 \x01(\tH\x02R\x04name\x88\x01\x01\x12%\n" +
+	"\vdescription\x18\x05 \x01(\tH\x03R\vdescription\x88\x01\x01B\t\n" +
+	"\a_activeB\f\n" +
+	"\n" +
+	"_namespaceB\a\n" +
 	"\x05_nameB\x0e\n" +
-	"\f_description2\xf3\x02\n" +
-	"\x03App\x12A\n" +
-	"\x04List\x12\x14.kusec_v1.AppListReq\x1a\x14.kusec_v1.AppListRep\"\r\x82\xd3\xe4\x93\x02\a\x12\x05/apps\x12A\n" +
-	"\x03Get\x12\x13.kusec_v1.AppGetReq\x1a\x11.kusec_v1.AppMain\"\x12\x82\xd3\xe4\x93\x02\f\x12\n" +
-	"/apps/{id}\x12J\n" +
-	"\x06Create\x12\x16.kusec_v1.AppCreateReq\x1a\x16.kusec_v1.AppCreateRep\"\x10\x82\xd3\xe4\x93\x02\n" +
-	":\x01*\"\x05/apps\x12O\n" +
-	"\x06Update\x12\x16.kusec_v1.AppUpdateReq\x1a\x16.google.protobuf.Empty\"\x15\x82\xd3\xe4\x93\x02\x0f:\x01*2\n" +
-	"/apps/{id}\x12I\n" +
-	"\x06Delete\x12\x13.kusec_v1.AppGetReq\x1a\x16.google.protobuf.Empty\"\x12\x82\xd3\xe4\x93\x02\f*\n" +
-	"/apps/{id}B\vZ\t/kusec_v1b\x06proto3"
+	"\f_description2\xee\x02\n" +
+	"\x03App\x12@\n" +
+	"\x04List\x12\x14.kusec_v1.AppListReq\x1a\x14.kusec_v1.AppListRep\"\f\x82\xd3\xe4\x93\x02\x06\x12\x04/app\x12@\n" +
+	"\x03Get\x12\x13.kusec_v1.AppGetReq\x1a\x11.kusec_v1.AppMain\"\x11\x82\xd3\xe4\x93\x02\v\x12\t/app/{id}\x12I\n" +
+	"\x06Create\x12\x16.kusec_v1.AppCreateReq\x1a\x16.kusec_v1.AppCreateRep\"\x0f\x82\xd3\xe4\x93\x02\t:\x01*\"\x04/app\x12N\n" +
+	"\x06Update\x12\x16.kusec_v1.AppUpdateReq\x1a\x16.google.protobuf.Empty\"\x14\x82\xd3\xe4\x93\x02\x0e:\x01*2\t/app/{id}\x12H\n" +
+	"\x06Delete\x12\x13.kusec_v1.AppGetReq\x1a\x16.google.protobuf.Empty\"\x11\x82\xd3\xe4\x93\x02\v*\t/app/{id}B\vZ\t/kusec_v1b\x06proto3"
 
 var (
 	file_kusec_v1_app_proto_rawDescOnce sync.Once

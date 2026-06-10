@@ -26,7 +26,7 @@ func New(con *pgxpool.Pool) *Repo {
 		ModelStore: &mobone.ModelStore{
 			Con:       base.Con,
 			QB:        base.QB,
-			TableName: "items",
+			TableName: "item",
 		},
 	}
 }

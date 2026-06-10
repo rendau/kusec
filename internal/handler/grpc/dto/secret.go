@@ -3,64 +3,61 @@ package dto
 import (
 	"google.golang.org/protobuf/types/known/timestamppb"
 
-	domainModel "github.com/mechta-market/kusec/internal/domain/item/model"
+	domainModel "github.com/mechta-market/kusec/internal/domain/secret/model"
 	proto "github.com/mechta-market/kusec/pkg/proto/kusec_v1"
 )
 
 // domain → proto
 
-func EncodeItemMain(v *domainModel.Main, _ int) *proto.ItemMain {
+func EncodeSecretMain(v *domainModel.Main, _ int) *proto.SecretMain {
 	if v == nil {
 		return nil
 	}
-	return &proto.ItemMain{
+	return &proto.SecretMain{
 		Id:          v.Id,
 		CreatedAt:   timestamppb.New(v.CreatedAt),
 		UpdatedAt:   timestamppb.New(v.UpdatedAt),
-		SecretId:    v.SecretId,
+		AppId:       v.AppId,
 		Active:      v.Active,
-		Key:         v.Key,
-		Value:       v.Value,
+		SlugName:    v.SlugName,
 		Description: v.Description,
 	}
 }
 
 // proto → domain
 
-func DecodeItemListReq(v *proto.ItemListReq) *domainModel.ListReq {
+func DecodeSecretListReq(v *proto.SecretListReq) *domainModel.ListReq {
 	if v == nil {
 		return nil
 	}
 	return &domainModel.ListReq{
 		ListParams: DecodeListParams(v.ListParams),
-		SecretId:   v.SecretId,
+		AppId:      v.AppId,
 		Active:     v.Active,
 		Search:     v.Search,
 	}
 }
 
-func DecodeItemCreateReq(v *proto.ItemCreateReq) *domainModel.Edit {
+func DecodeSecretCreateReq(v *proto.SecretCreateReq) *domainModel.Edit {
 	if v == nil {
 		return nil
 	}
 	return &domainModel.Edit{
-		SecretId:    &v.SecretId,
+		AppId:       &v.AppId,
 		Active:      v.Active,
-		Key:         &v.Key,
-		Value:       &v.Value,
+		SlugName:    &v.SlugName,
 		Description: &v.Description,
 	}
 }
 
-func DecodeItemUpdateReq(v *proto.ItemUpdateReq) *domainModel.Edit {
+func DecodeSecretUpdateReq(v *proto.SecretUpdateReq) *domainModel.Edit {
 	if v == nil {
 		return nil
 	}
 	return &domainModel.Edit{
-		SecretId:    v.SecretId,
+		AppId:       v.AppId,
 		Active:      v.Active,
-		Key:         v.Key,
-		Value:       v.Value,
+		SlugName:    v.SlugName,
 		Description: v.Description,
 	}
 }

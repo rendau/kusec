@@ -52,7 +52,7 @@ func (r *Repo) GetByUsername(ctx context.Context, username string) (*model.Main,
 
 	query, args, err := r.QB.
 		Select(colNames...).
-		From("usrs").
+		From("usr").
 		Where(sq.Eq{"username": username}).
 		Limit(1).
 		ToSql()
@@ -74,7 +74,7 @@ func (r *Repo) GetByUsername(ctx context.Context, username string) (*model.Main,
 func (r *Repo) HasAny(ctx context.Context) (bool, error) {
 	query, args, err := r.QB.
 		Select("1").
-		From("usrs").
+		From("usr").
 		Limit(1).
 		ToSql()
 	if err != nil {

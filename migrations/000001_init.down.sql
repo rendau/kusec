@@ -1,3 +1,4 @@
-drop table if exists items cascade;
-drop table if exists apps cascade;
-drop table if exists usrs cascade;
+drop table if exists item cascade;
+drop table if exists secret cascade;
+drop table if exists app cascade;
+drop table if exists usr cascade;

@@ -11,20 +11,18 @@ type Main struct {
 	Id          string
 	CreatedAt   time.Time
 	UpdatedAt   time.Time
-	SecretId    string
+	AppId       string
 	Active      bool
-	Key         string
-	Value       string
+	SlugName    string
 	Description string
 }
 
 // Edit — мутация (все поля pointer-типы для partial update)
 type Edit struct {
 	UpdatedAt   *time.Time
-	SecretId    *string
+	AppId       *string
 	Active      *bool
-	Key         *string
-	Value       *string
+	SlugName    *string
 	Description *string
 }
 
@@ -32,7 +30,7 @@ type Edit struct {
 type ListReq struct {
 	commonModel.ListParams
 
-	SecretId *string
-	Active   *bool
-	Search   *string
+	AppId  *string
+	Active *bool
+	Search *string
 }

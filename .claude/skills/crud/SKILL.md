@@ -98,7 +98,7 @@ internal/handler/grpc/
 - [ ] `api/proto/<svc_name>_v1/<entity>.proto` — сервис + все CRUD сообщения
 - [ ] `Create<Entity>` возвращает `<Entity>CreateRep { id }` (не `Empty`) — для сущностей с id
 - [ ] `optional` поля в `Update<Entity>Request` для partial update
-- [ ] HTTP-аннотации через `google.api.http` для каждого RPC
+- [ ] HTTP-аннотации через `google.api.http` для каждого RPC; REST-пути всегда в единственном числе, без plural (`/entity`, `/entity/{id}`)
 - [ ] `make generate-proto` — сгенерировать `pkg/proto/<svc_name>_v1/`
 
 ### Domain Model (`layers/model.md`)
@@ -113,7 +113,7 @@ internal/handler/grpc/
 ### Repository (`layers/repo.md`)
 - [ ] `repo/db/model/select.go` — `Select` с `ListColumnMap`, `PKColumnMap`, `DefaultSortColumns` + `EncodeSelect`
 - [ ] `repo/db/model/upsert.go` — `Upsert` с `PKId`, `NewId`, `CreateColumnMap`, `UpdateColumnMap`, `PKColumnMap`, `ReturningColumnMap` (возвращает `{"id": &m.NewId}`) + `DecodeUpsert`
-- [ ] `repo/db/repo.go` — `Repo`, конструктор `New`, CRUD-методы
+- [ ] `repo/db/repo.go` — `Repo`, конструктор `New`, CRUD-методы; `TableName` в единственном числе, без plural
 - [ ] `repo/db/custom.go` — `getConditions`, `allowedSortFields`, кастомные методы
 - [ ] Wrapping ошибок: `fmt.Errorf("ModelStore.<Method>: %w", err)`
 
@@ -126,5 +126,5 @@ internal/handler/grpc/
 - [ ] `handler/grpc/dto/<entity>.go` — `Decode*` (proto→domain), `Encode*` (domain→proto)
 
 ### Infrastructure
-- [ ] SQL миграция в `migrations/` (`.up.sql` / `.down.sql`); в `down` все `DROP` с `CASCADE`, в обратном порядке
+- [ ] SQL миграция в `migrations/` (`.up.sql` / `.down.sql`); имя таблицы в единственном числе, без plural; в `down` все `DROP` с `CASCADE`, в обратном порядке
 - [ ] Wiring в `internal/app/app.go`

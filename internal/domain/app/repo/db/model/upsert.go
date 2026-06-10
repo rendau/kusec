@@ -12,6 +12,7 @@ type Upsert struct {
 
 	UpdatedAt   *time.Time
 	Active      *bool
+	Namespace   *string
 	Name        *string
 	Description *string
 }
@@ -23,6 +24,9 @@ func (m *Upsert) CreateColumnMap() map[string]any {
 	}
 	if m.Active != nil {
 		result["active"] = *m.Active
+	}
+	if m.Namespace != nil {
+		result["namespace"] = *m.Namespace
 	}
 	if m.Name != nil {
 		result["name"] = *m.Name
@@ -51,6 +55,7 @@ func DecodeUpsert(v *domainModel.Edit) *Upsert {
 	return &Upsert{
 		UpdatedAt:   v.UpdatedAt,
 		Active:      v.Active,
+		Namespace:   v.Namespace,
 		Name:        v.Name,
 		Description: v.Description,
 	}
