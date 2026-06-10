@@ -6,9 +6,12 @@ import type {
   UsrBootstrapStatusRep,
   UsrCreateRep,
   UsrCreateReq,
+  UsrListRep,
+  UsrListReq,
   UsrLoginRep,
   UsrMain,
   UsrUpdateProfileReq,
+  UsrUpdateReq,
 } from './types'
 
 /**
@@ -58,7 +61,51 @@ export function createUser(req: UsrCreateReq): Promise<UsrCreateRep> {
 
 export function updateProfile(req: UsrUpdateProfileReq): Promise<void> {
   return apiFetch<void>('/usr/profile', {
-    method: 'PATCH',
+    method: 'PUT',
     body: JSON.stringify(req),
+  })
+}
+
+// ── Admin user management ──────────────────────────────────
+
+/** Flatten the (possibly nested) list request into gateway query params. */
+function buildUserListQuery(req: UsrListReq): string {
+  const params = new URLSearchParams()
+  const lp = req.list_params
+  if (lp) {
+    if (lp.page != null) params.set('list_params.page', String(lp.page))
+    if (lp.page_size != null)
+      params.set('list_params.page_size', String(lp.page_size))
+    if (lp.with_total_count != null)
+      params.set('list_params.with_total_count', String(lp.with_total_count))
+    if (lp.sort_name) params.set('list_params.sort_name', lp.sort_name)
+    for (const s of lp.sort ?? []) params.append('list_params.sort', s)
+  }
+  if (req.active != null) params.set('active', String(req.active))
+  if (req.is_admin != null) params.set('is_admin', String(req.is_admin))
+  if (req.search) params.set('search', req.search)
+
+  const query = params.toString()
+  return query ? `?${query}` : ''
+}
+
+export function listUsers(req: UsrListReq = {}): Promise<UsrListRep> {
+  return apiFetch<UsrListRep>(`/usr${buildUserListQuery(req)}`)
+}
+
+export function getUser(id: number | string): Promise<UsrMain> {
+  return apiFetch<UsrMain>(`/usr/${encodeURIComponent(String(id))}`)
+}
+
+export function updateUser(id: number | string, req: UsrUpdateReq): Promise<void> {
+  return apiFetch<void>(`/usr/${encodeURIComponent(String(id))}`, {
+    method: 'PUT',
+    body: JSON.stringify(req),
+  })
+}
+
+export function deleteUser(id: number | string): Promise<void> {
+  return apiFetch<void>(`/usr/${encodeURIComponent(String(id))}`, {
+    method: 'DELETE',
   })
 }

@@ -51,7 +51,7 @@ export function createApp(req: AppCreateReq): Promise<AppCreateRep> {
 
 export function updateApp(id: string, req: AppUpdateReq): Promise<void> {
   return apiFetch<void>(`/app/${encodeURIComponent(id)}`, {
-    method: 'PATCH',
+    method: 'PUT',
     body: JSON.stringify(req),
   })
 }

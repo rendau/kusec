@@ -52,7 +52,7 @@ export function createSecret(req: SecretCreateReq): Promise<SecretCreateRep> {
 
 export function updateSecret(id: string, req: SecretUpdateReq): Promise<void> {
   return apiFetch<void>(`/secret/${encodeURIComponent(id)}`, {
-    method: 'PATCH',
+    method: 'PUT',
     body: JSON.stringify(req),
   })
 }

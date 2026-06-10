@@ -50,6 +50,32 @@ export interface UsrUpdateProfileReq {
 }
 
 /**
+ * `UsrListReq` — admin user listing filters.
+ * Note: `UsrMain.id` is an `int64` the gateway serialises as a JSON string.
+ */
+export interface UsrListReq {
+  list_params?: ListParams
+  active?: boolean
+  is_admin?: boolean
+  search?: string
+}
+
+/** `UsrListRep`. */
+export interface UsrListRep {
+  pagination_info?: PaginationInfo
+  results: UsrMain[]
+}
+
+/** `UsrUpdateReq` — partial update; omit `password` to keep it unchanged. */
+export interface UsrUpdateReq {
+  active?: boolean
+  is_admin?: boolean
+  name?: string
+  username?: string
+  password?: string
+}
+
+/**
  * TypeScript mirrors of the kusec `App` proto messages
  * (see api/proto/kusec_v1/app.proto).
  *
@@ -172,5 +198,62 @@ export interface SecretUpdateReq {
   app_id?: string
   active?: boolean
   slug_name?: string
+  description?: string
+}
+
+/**
+ * TypeScript mirrors of the kusec `Item` proto messages
+ * (see api/proto/kusec_v1/item.proto).
+ *
+ * An Item belongs to a Secret via `secret_id` (FK, ON DELETE CASCADE).
+ * `key` is unique per secret (`uq_item_secret_id_key`). `value` is sensitive.
+ */
+
+/** Item entity (`ItemMain`). */
+export interface ItemMain {
+  id: string
+  created_at: string
+  updated_at: string
+  secret_id: string
+  active: boolean
+  key: string
+  value: string
+  description: string
+}
+
+/** `ItemListReq` — filters for the list endpoint. */
+export interface ItemListReq {
+  list_params?: ListParams
+  secret_id?: string
+  active?: boolean
+  search?: string
+}
+
+/** `ItemListRep`. */
+export interface ItemListRep {
+  pagination_info?: PaginationInfo
+  results: ItemMain[]
+}
+
+/** `ItemCreateReq`. */
+export interface ItemCreateReq {
+  secret_id: string
+  active?: boolean
+  key: string
+  value: string
+  description: string
+}
+
+/** `ItemCreateRep`. */
+export interface ItemCreateRep {
+  id: string
+}
+
+/** `ItemUpdateReq`. */
+export interface ItemUpdateReq {
+  secret_id?: string
+  active?: boolean
+  key?: string
+  value?: string
   description?: string
 }

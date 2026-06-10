@@ -19,37 +19,38 @@ import {
 import type { DataTableColumns, SelectOption } from 'naive-ui'
 
 import { ApiError } from '@/api/http'
-import { deleteSecret, listSecrets } from '@/api/secret'
-import type { SecretListReq, SecretMain } from '@/api/types'
-import { useAppOptions } from '@/composables/useAppOptions'
+import { deleteItem, listItems } from '@/api/item'
+import type { ItemListReq, ItemMain } from '@/api/types'
+import { useSecretOptions } from '@/composables/useSecretOptions'
 
-import SecretDetailDrawer from '@/components/secret/SecretDetailDrawer.vue'
-import SecretFormModal from '@/components/secret/SecretFormModal.vue'
+import ItemDetailDrawer from '@/components/item/ItemDetailDrawer.vue'
+import ItemFormModal from '@/components/item/ItemFormModal.vue'
 
 const message = useMessage()
 const route = useRoute()
 const router = useRouter()
 
 const {
-  options: appOptions,
-  loading: appsLoading,
-  search: searchApps,
-  ensure: ensureApp,
-  nameOf: appNameOf,
-} = useAppOptions()
+  options: secretOptions,
+  loading: secretsLoading,
+  search: searchSecrets,
+  ensure: ensureSecret,
+  nameOf: secretNameOf,
+} = useSecretOptions()
 
-const rows = ref<SecretMain[]>([])
+const rows = ref<ItemMain[]>([])
 const loading = ref(false)
+const revealed = ref(new Set<string>())
 
 const filters = reactive<{
   search: string
   active: boolean | null
-  appId: string | null
+  secretId: string | null
 }>({
   search: '',
   active: null,
-  // Deep-link: /secret?app_id=<id> pre-filters by application.
-  appId: typeof route.query.app_id === 'string' ? route.query.app_id : null,
+  // Deep-link: /item?secret_id=<id> pre-filters by secret.
+  secretId: typeof route.query.secret_id === 'string' ? route.query.secret_id : null,
 })
 
 const activeOptions: SelectOption[] = [
@@ -69,13 +70,13 @@ const pagination = reactive({
 const detailId = ref<string | null>(null)
 const showDetail = ref(false)
 
-const editing = ref<SecretMain | null>(null)
+const editing = ref<ItemMain | null>(null)
 const showForm = ref(false)
 
-async function fetchSecrets(): Promise<void> {
+async function fetchItems(): Promise<void> {
   loading.value = true
   try {
-    const req: SecretListReq = {
+    const req: ItemListReq = {
       list_params: {
         // API pagination is zero-based; naive-ui's table is 1-based.
         page: pagination.page - 1,
@@ -86,19 +87,18 @@ async function fetchSecrets(): Promise<void> {
     const search = filters.search.trim()
     if (search) req.search = search
     if (filters.active !== null) req.active = filters.active
-    if (filters.appId) req.app_id = filters.appId
+    if (filters.secretId) req.secret_id = filters.secretId
 
-    const rep = await listSecrets(req)
+    const rep = await listItems(req)
     rows.value = rep.results ?? []
     pagination.itemCount = Number(rep.pagination_info?.total_count ?? 0)
+    revealed.value = new Set()
 
-    // Resolve app names for the rows on screen.
-    const ids = [...new Set(rows.value.map((r) => r.app_id))]
-    await Promise.all(ids.map((id) => ensureApp(id)))
+    // Resolve secret names for the rows on screen.
+    const ids = [...new Set(rows.value.map((r) => r.secret_id))]
+    await Promise.all(ids.map((id) => ensureSecret(id)))
   } catch (error) {
-    message.error(
-      error instanceof ApiError ? error.message : 'Failed to load secrets',
-    )
+    message.error(error instanceof ApiError ? error.message : 'Failed to load items')
   } finally {
     loading.value = false
   }
@@ -106,7 +106,7 @@ async function fetchSecrets(): Promise<void> {
 
 function applyFilters(): void {
   pagination.page = 1
-  void fetchSecrets()
+  void fetchItems()
 }
 
 function onActiveChange(value: string): void {
@@ -114,32 +114,38 @@ function onActiveChange(value: string): void {
   applyFilters()
 }
 
-function onAppFilterChange(value: string | null): void {
-  filters.appId = value ?? null
-  // Keep the URL in sync so the filtered view is shareable.
+function onSecretFilterChange(value: string | null): void {
+  filters.secretId = value ?? null
   void router.replace({
-    query: value ? { ...route.query, app_id: value } : omitAppId(route.query),
+    query: value ? { ...route.query, secret_id: value } : omitSecretId(route.query),
   })
   applyFilters()
 }
 
-function omitAppId(query: LocationQuery): LocationQuery {
-  const { app_id: _omit, ...rest } = query
+function omitSecretId(query: LocationQuery): LocationQuery {
+  const { secret_id: _omit, ...rest } = query
   return rest
+}
+
+function toggleReveal(id: string): void {
+  const next = new Set(revealed.value)
+  if (next.has(id)) next.delete(id)
+  else next.add(id)
+  revealed.value = next
 }
 
 function onPageChange(page: number): void {
   pagination.page = page
-  void fetchSecrets()
+  void fetchItems()
 }
 
 function onPageSizeChange(size: number): void {
   pagination.pageSize = size
   pagination.page = 1
-  void fetchSecrets()
+  void fetchItems()
 }
 
-function openDetail(row: SecretMain): void {
+function openDetail(row: ItemMain): void {
   detailId.value = row.id
   showDetail.value = true
 }
@@ -149,54 +155,63 @@ function openCreate(): void {
   showForm.value = true
 }
 
-function openEdit(row: SecretMain): void {
+function openEdit(row: ItemMain): void {
   editing.value = row
   showForm.value = true
 }
 
-function openItems(row: SecretMain): void {
-  void router.push({ name: 'item-list', query: { secret_id: row.id } })
-}
-
-async function removeSecret(row: SecretMain): Promise<void> {
+async function removeItem(row: ItemMain): Promise<void> {
   try {
-    await deleteSecret(row.id)
-    message.success('Secret deleted')
+    await deleteItem(row.id)
+    message.success('Item deleted')
     if (rows.value.length === 1 && pagination.page > 1) {
       pagination.page -= 1
     }
-    await fetchSecrets()
+    await fetchItems()
   } catch (error) {
-    message.error(
-      error instanceof ApiError ? error.message : 'Failed to delete secret',
-    )
+    message.error(error instanceof ApiError ? error.message : 'Failed to delete item')
   }
 }
 
-const columns: DataTableColumns<SecretMain> = [
+const columns: DataTableColumns<ItemMain> = [
   {
-    title: 'Slug',
-    key: 'slug_name',
+    title: 'Key',
+    key: 'key',
     render: (row) =>
       h(
         NButton,
         { text: true, type: 'primary', onClick: () => openDetail(row) },
-        { default: () => row.slug_name },
+        { default: () => row.key },
       ),
   },
   {
-    title: 'Application',
-    key: 'app_id',
+    title: 'Secret',
+    key: 'secret_id',
     render: (row) =>
-      h(NTag, { size: 'small', type: 'info' }, { default: () => appNameOf(row.app_id) }),
+      h(
+        NTag,
+        { size: 'small', type: 'info' },
+        { default: () => secretNameOf(row.secret_id) },
+      ),
   },
   {
-    title: 'Description',
-    key: 'description',
+    title: 'Value',
+    key: 'value',
     render: (row) =>
-      row.description
-        ? h(NEllipsis, { style: 'max-width: 280px' }, { default: () => row.description })
-        : h(NText, { depth: 3 }, { default: () => '—' }),
+      h(NSpace, { align: 'center', size: 8, wrapItem: false }, () => [
+        revealed.value.has(row.id)
+          ? h(
+              NEllipsis,
+              { style: 'max-width: 200px' },
+              { default: () => row.value || '—' },
+            )
+          : h(NText, { depth: 3 }, { default: () => '••••••••' }),
+        h(
+          NButton,
+          { text: true, type: 'primary', size: 'tiny', onClick: () => toggleReveal(row.id) },
+          { default: () => (revealed.value.has(row.id) ? 'Hide' : 'Show') },
+        ),
+      ]),
   },
   {
     title: 'Status',
@@ -212,7 +227,7 @@ const columns: DataTableColumns<SecretMain> = [
   {
     title: 'Actions',
     key: 'actions',
-    width: 300,
+    width: 220,
     render: (row) =>
       h(NSpace, { size: 8 }, () => [
         h(
@@ -222,17 +237,12 @@ const columns: DataTableColumns<SecretMain> = [
         ),
         h(
           NButton,
-          { size: 'small', onClick: () => openItems(row) },
-          { default: () => 'Items' },
-        ),
-        h(
-          NButton,
           { size: 'small', onClick: () => openEdit(row) },
           { default: () => 'Edit' },
         ),
         h(
           NPopconfirm,
-          { onPositiveClick: () => removeSecret(row) },
+          { onPositiveClick: () => removeItem(row) },
           {
             trigger: () =>
               h(
@@ -240,7 +250,7 @@ const columns: DataTableColumns<SecretMain> = [
                 { size: 'small', type: 'error', secondary: true },
                 { default: () => 'Delete' },
               ),
-            default: () => `Delete "${row.slug_name}"?`,
+            default: () => `Delete "${row.key}"?`,
           },
         ),
       ]),
@@ -248,39 +258,39 @@ const columns: DataTableColumns<SecretMain> = [
 ]
 
 onMounted(async () => {
-  await searchApps()
-  if (filters.appId) await ensureApp(filters.appId)
-  await fetchSecrets()
+  await searchSecrets()
+  if (filters.secretId) await ensureSecret(filters.secretId)
+  await fetchItems()
 })
 </script>
 
 <template>
   <NSpace vertical :size="16">
-    <NCard title="Secrets">
+    <NCard title="Items">
       <template #header-extra>
-        <NButton type="primary" @click="openCreate">New secret</NButton>
+        <NButton type="primary" @click="openCreate">New item</NButton>
       </template>
 
       <NFlex align="center" wrap :size="12" style="margin-bottom: 16px">
         <NInput
           v-model:value="filters.search"
-          placeholder="Search by slug"
+          placeholder="Search by key"
           clearable
           style="max-width: 280px"
           @keyup.enter="applyFilters"
           @clear="applyFilters"
         />
         <NSelect
-          :value="filters.appId"
-          :options="appOptions"
-          :loading="appsLoading"
+          :value="filters.secretId"
+          :options="secretOptions"
+          :loading="secretsLoading"
           filterable
           remote
           clearable
-          placeholder="Filter by application"
+          placeholder="Filter by secret"
           style="width: 240px"
-          @search="searchApps"
-          @update:value="onAppFilterChange"
+          @search="searchSecrets"
+          @update:value="onSecretFilterChange"
         />
         <NSelect
           :default-value="'all'"
@@ -295,19 +305,19 @@ onMounted(async () => {
         :columns="columns"
         :data="rows"
         :loading="loading"
-        :row-key="(row: SecretMain) => row.id"
+        :row-key="(row: ItemMain) => row.id"
         :pagination="pagination"
         @update:page="onPageChange"
         @update:page-size="onPageSizeChange"
       />
     </NCard>
 
-    <SecretDetailDrawer v-model:show="showDetail" :secret-id="detailId" />
-    <SecretFormModal
+    <ItemDetailDrawer v-model:show="showDetail" :item-id="detailId" />
+    <ItemFormModal
       v-model:show="showForm"
-      :secret="editing"
-      :default-app-id="filters.appId"
-      @saved="fetchSecrets"
+      :item="editing"
+      :default-secret-id="filters.secretId"
+      @saved="fetchItems"
     />
   </NSpace>
 </template>

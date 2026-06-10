@@ -553,7 +553,7 @@ const file_kusec_v1_item_proto_rawDesc = "" +
 	"/item/{id}\x12L\n" +
 	"\x06Create\x12\x17.kusec_v1.ItemCreateReq\x1a\x17.kusec_v1.ItemCreateRep\"\x10\x82\xd3\xe4\x93\x02\n" +
 	":\x01*\"\x05/item\x12P\n" +
-	"\x06Update\x12\x17.kusec_v1.ItemUpdateReq\x1a\x16.google.protobuf.Empty\"\x15\x82\xd3\xe4\x93\x02\x0f:\x01*2\n" +
+	"\x06Update\x12\x17.kusec_v1.ItemUpdateReq\x1a\x16.google.protobuf.Empty\"\x15\x82\xd3\xe4\x93\x02\x0f:\x01*\x1a\n" +
 	"/item/{id}\x12J\n" +
 	"\x06Delete\x12\x14.kusec_v1.ItemGetReq\x1a\x16.google.protobuf.Empty\"\x12\x82\xd3\xe4\x93\x02\f*\n" +
 	"/item/{id}B\vZ\t/kusec_v1b\x06proto3"

@@ -30,7 +30,7 @@ service Usr {
 
   rpc Update(UsrUpdateReq) returns (google.protobuf.Empty) {
     option (google.api.http) = {
-      patch: "/usr/{id}"
+      put: "/usr/{id}"
       body: "*"
     };
   }
@@ -62,7 +62,7 @@ service Usr {
 
   rpc UpdateProfile(UsrUpdateProfileReq) returns (google.protobuf.Empty) {
     option (google.api.http) = {
-      patch: "/usr/profile"
+      put: "/usr/profile"
       body: "*"
     };
   }

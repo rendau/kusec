@@ -197,7 +197,7 @@
           "App"
         ]
       },
-      "patch": {
+      "put": {
         "operationId": "App_Update",
         "responses": {
           "200": {
@@ -407,7 +407,7 @@
           "Item"
         ]
       },
-      "patch": {
+      "put": {
         "operationId": "Item_Update",
         "responses": {
           "200": {
@@ -617,7 +617,7 @@
           "Secret"
         ]
       },
-      "patch": {
+      "put": {
         "operationId": "Secret_Update",
         "responses": {
           "200": {
@@ -844,7 +844,7 @@
           "Usr"
         ]
       },
-      "patch": {
+      "put": {
         "operationId": "Usr_UpdateProfile",
         "responses": {
           "200": {
@@ -936,7 +936,7 @@
           "Usr"
         ]
       },
-      "patch": {
+      "put": {
         "operationId": "Usr_Update",
         "responses": {
           "200": {

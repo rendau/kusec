@@ -32,7 +32,7 @@ function renderRouterLink(to: string, label: string): Component {
   return () => h(RouterLink, { to }, { default: () => label })
 }
 
-const menuOptions: MenuOption[] = [
+const menuOptions = computed<MenuOption[]>(() => [
   {
     label: renderRouterLink('/', 'Dashboard'),
     key: 'home',
@@ -45,17 +45,36 @@ const menuOptions: MenuOption[] = [
     label: renderRouterLink('/secret', 'Secrets'),
     key: 'secret-list',
   },
-]
+  {
+    label: renderRouterLink('/item', 'Items'),
+    key: 'item-list',
+  },
+  // User management is admin-only.
+  ...(authStore.isAdmin
+    ? [
+        {
+          label: renderRouterLink('/usr', 'Users'),
+          key: 'usr-list',
+        },
+      ]
+    : []),
+])
 
 const profileName = computed(
   () => authStore.profile?.name || authStore.profile?.username || 'User',
 )
 const profileRole = computed(() => (authStore.isAdmin ? 'admin' : 'user'))
 
-const userMenuOptions: DropdownOption[] = [{ label: 'Log out', key: 'logout' }]
+const userMenuOptions: DropdownOption[] = [
+  { label: 'My profile', key: 'profile' },
+  { type: 'divider', key: 'd1' },
+  { label: 'Log out', key: 'logout' },
+]
 
 function onUserMenuSelect(key: string | number): void {
-  if (key === 'logout') {
+  if (key === 'profile') {
+    void router.push({ name: 'profile' })
+  } else if (key === 'logout') {
     confirmLogout()
   }
 }

@@ -522,7 +522,7 @@ const file_kusec_v1_secret_proto_rawDesc = "" +
 	"\x04List\x12\x17.kusec_v1.SecretListReq\x1a\x17.kusec_v1.SecretListRep\"\x0f\x82\xd3\xe4\x93\x02\t\x12\a/secret\x12I\n" +
 	"\x03Get\x12\x16.kusec_v1.SecretGetReq\x1a\x14.kusec_v1.SecretMain\"\x14\x82\xd3\xe4\x93\x02\x0e\x12\f/secret/{id}\x12R\n" +
 	"\x06Create\x12\x19.kusec_v1.SecretCreateReq\x1a\x19.kusec_v1.SecretCreateRep\"\x12\x82\xd3\xe4\x93\x02\f:\x01*\"\a/secret\x12T\n" +
-	"\x06Update\x12\x19.kusec_v1.SecretUpdateReq\x1a\x16.google.protobuf.Empty\"\x17\x82\xd3\xe4\x93\x02\x11:\x01*2\f/secret/{id}\x12N\n" +
+	"\x06Update\x12\x19.kusec_v1.SecretUpdateReq\x1a\x16.google.protobuf.Empty\"\x17\x82\xd3\xe4\x93\x02\x11:\x01*\x1a\f/secret/{id}\x12N\n" +
 	"\x06Delete\x12\x16.kusec_v1.SecretGetReq\x1a\x16.google.protobuf.Empty\"\x14\x82\xd3\xe4\x93\x02\x0e*\f/secret/{id}B\vZ\t/kusec_v1b\x06proto3"
 
 var (

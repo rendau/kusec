@@ -724,14 +724,14 @@ const file_kusec_v1_usr_proto_rawDesc = "" +
 	"\x04List\x12\x14.kusec_v1.UsrListReq\x1a\x14.kusec_v1.UsrListRep\"\f\x82\xd3\xe4\x93\x02\x06\x12\x04/usr\x12@\n" +
 	"\x03Get\x12\x13.kusec_v1.UsrGetReq\x1a\x11.kusec_v1.UsrMain\"\x11\x82\xd3\xe4\x93\x02\v\x12\t/usr/{id}\x12I\n" +
 	"\x06Create\x12\x16.kusec_v1.UsrCreateReq\x1a\x16.kusec_v1.UsrCreateRep\"\x0f\x82\xd3\xe4\x93\x02\t:\x01*\"\x04/usr\x12N\n" +
-	"\x06Update\x12\x16.kusec_v1.UsrUpdateReq\x1a\x16.google.protobuf.Empty\"\x14\x82\xd3\xe4\x93\x02\x0e:\x01*2\t/usr/{id}\x12H\n" +
+	"\x06Update\x12\x16.kusec_v1.UsrUpdateReq\x1a\x16.google.protobuf.Empty\"\x14\x82\xd3\xe4\x93\x02\x0e:\x01*\x1a\t/usr/{id}\x12H\n" +
 	"\x06Delete\x12\x13.kusec_v1.UsrGetReq\x1a\x16.google.protobuf.Empty\"\x11\x82\xd3\xe4\x93\x02\v*\t/usr/{id}\x12L\n" +
 	"\x05Login\x12\x15.kusec_v1.UsrLoginReq\x1a\x15.kusec_v1.UsrLoginRep\"\x15\x82\xd3\xe4\x93\x02\x0f:\x01*\"\n" +
 	"/usr/login\x12i\n" +
 	"\x0fBootstrapStatus\x12\x16.google.protobuf.Empty\x1a\x1f.kusec_v1.UsrBootstrapStatusRep\"\x1d\x82\xd3\xe4\x93\x02\x17\x12\x15/usr/bootstrap/status\x12M\n" +
 	"\n" +
 	"GetProfile\x12\x16.google.protobuf.Empty\x1a\x11.kusec_v1.UsrMain\"\x14\x82\xd3\xe4\x93\x02\x0e\x12\f/usr/profile\x12_\n" +
-	"\rUpdateProfile\x12\x1d.kusec_v1.UsrUpdateProfileReq\x1a\x16.google.protobuf.Empty\"\x17\x82\xd3\xe4\x93\x02\x11:\x01*2\f/usr/profileB\vZ\t/kusec_v1b\x06proto3"
+	"\rUpdateProfile\x12\x1d.kusec_v1.UsrUpdateProfileReq\x1a\x16.google.protobuf.Empty\"\x17\x82\xd3\xe4\x93\x02\x11:\x01*\x1a\f/usr/profileB\vZ\t/kusec_v1b\x06proto3"
 
 var (
 	file_kusec_v1_usr_proto_rawDescOnce sync.Once

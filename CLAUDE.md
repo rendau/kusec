@@ -100,6 +100,10 @@ domain service → repo
   Первая страница — `page=0`. Относится к `common.ListParamsSt.page` и всем
   клиентам API. UI с 1-based пагинацией (напр. naive-ui) обязан конвертировать:
   `apiPage = uiPage - 1`.
+- **Update-методы используют HTTP `PUT`** (не `PATCH`). В proto-аннотациях
+  (`google.api.http`) для `Update`/`Update*` указывать `put: "/<entity>/{id}"`,
+  все клиенты API шлют `PUT`. CORS (`internal/app/grpc_gateway.go`) должен
+  разрешать `PUT`.
 
 ### Ошибки и валидация
 - Семантические ошибки — через `internal/errs` (см. gRPC interceptor в `internal/app/grpc.go`).

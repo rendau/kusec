@@ -524,7 +524,7 @@ const file_kusec_v1_app_proto_rawDesc = "" +
 	"\x04List\x12\x14.kusec_v1.AppListReq\x1a\x14.kusec_v1.AppListRep\"\f\x82\xd3\xe4\x93\x02\x06\x12\x04/app\x12@\n" +
 	"\x03Get\x12\x13.kusec_v1.AppGetReq\x1a\x11.kusec_v1.AppMain\"\x11\x82\xd3\xe4\x93\x02\v\x12\t/app/{id}\x12I\n" +
 	"\x06Create\x12\x16.kusec_v1.AppCreateReq\x1a\x16.kusec_v1.AppCreateRep\"\x0f\x82\xd3\xe4\x93\x02\t:\x01*\"\x04/app\x12N\n" +
-	"\x06Update\x12\x16.kusec_v1.AppUpdateReq\x1a\x16.google.protobuf.Empty\"\x14\x82\xd3\xe4\x93\x02\x0e:\x01*2\t/app/{id}\x12H\n" +
+	"\x06Update\x12\x16.kusec_v1.AppUpdateReq\x1a\x16.google.protobuf.Empty\"\x14\x82\xd3\xe4\x93\x02\x0e:\x01*\x1a\t/app/{id}\x12H\n" +
 	"\x06Delete\x12\x13.kusec_v1.AppGetReq\x1a\x16.google.protobuf.Empty\"\x11\x82\xd3\xe4\x93\x02\v*\t/app/{id}B\vZ\t/kusec_v1b\x06proto3"
 
 var (

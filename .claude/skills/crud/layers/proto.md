@@ -53,7 +53,7 @@ service <Entity>Service {
 
   rpc Update<Entity>(Update<Entity>Request) returns (google.protobuf.Empty) {
     option (google.api.http) = {
-      patch: "/<entity>/{id}"
+      put: "/<entity>/{id}"
       body: "*"
     };
   }

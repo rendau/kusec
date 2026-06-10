@@ -22,6 +22,12 @@ const routes: RouteRecordRaw[] = [
         meta: { title: 'Dashboard' },
       },
       {
+        path: 'profile',
+        name: 'profile',
+        component: () => import('@/views/ProfileView.vue'),
+        meta: { title: 'My profile' },
+      },
+      {
         path: 'app',
         name: 'app-list',
         component: () => import('@/views/AppListView.vue'),
@@ -32,6 +38,18 @@ const routes: RouteRecordRaw[] = [
         name: 'secret-list',
         component: () => import('@/views/SecretListView.vue'),
         meta: { title: 'Secrets' },
+      },
+      {
+        path: 'item',
+        name: 'item-list',
+        component: () => import('@/views/ItemListView.vue'),
+        meta: { title: 'Items' },
+      },
+      {
+        path: 'usr',
+        name: 'usr-list',
+        component: () => import('@/views/UsrListView.vue'),
+        meta: { title: 'Users', requiresAdmin: true },
       },
     ],
   },
