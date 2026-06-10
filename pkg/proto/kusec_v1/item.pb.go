@@ -34,6 +34,7 @@ type ItemMain struct {
 	Active        bool                   `protobuf:"varint,5,opt,name=active,proto3" json:"active,omitempty"`
 	Key           string                 `protobuf:"bytes,6,opt,name=key,proto3" json:"key,omitempty"`
 	Value         string                 `protobuf:"bytes,7,opt,name=value,proto3" json:"value,omitempty"`
+	ValueFormat   string                 `protobuf:"bytes,9,opt,name=value_format,json=valueFormat,proto3" json:"value_format,omitempty"`
 	Description   string                 `protobuf:"bytes,8,opt,name=description,proto3" json:"description,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
@@ -114,6 +115,13 @@ func (x *ItemMain) GetKey() string {
 func (x *ItemMain) GetValue() string {
 	if x != nil {
 		return x.Value
+	}
+	return ""
+}
+
+func (x *ItemMain) GetValueFormat() string {
+	if x != nil {
+		return x.ValueFormat
 	}
 	return ""
 }
@@ -295,6 +303,7 @@ type ItemCreateReq struct {
 	Active        *bool                  `protobuf:"varint,2,opt,name=active,proto3,oneof" json:"active,omitempty"`
 	Key           string                 `protobuf:"bytes,3,opt,name=key,proto3" json:"key,omitempty"`
 	Value         string                 `protobuf:"bytes,4,opt,name=value,proto3" json:"value,omitempty"`
+	ValueFormat   *string                `protobuf:"bytes,6,opt,name=value_format,json=valueFormat,proto3,oneof" json:"value_format,omitempty"`
 	Description   string                 `protobuf:"bytes,5,opt,name=description,proto3" json:"description,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
@@ -358,6 +367,13 @@ func (x *ItemCreateReq) GetValue() string {
 	return ""
 }
 
+func (x *ItemCreateReq) GetValueFormat() string {
+	if x != nil && x.ValueFormat != nil {
+		return *x.ValueFormat
+	}
+	return ""
+}
+
 func (x *ItemCreateReq) GetDescription() string {
 	if x != nil {
 		return x.Description
@@ -416,6 +432,7 @@ type ItemUpdateReq struct {
 	Active        *bool                  `protobuf:"varint,3,opt,name=active,proto3,oneof" json:"active,omitempty"`
 	Key           *string                `protobuf:"bytes,4,opt,name=key,proto3,oneof" json:"key,omitempty"`
 	Value         *string                `protobuf:"bytes,5,opt,name=value,proto3,oneof" json:"value,omitempty"`
+	ValueFormat   *string                `protobuf:"bytes,7,opt,name=value_format,json=valueFormat,proto3,oneof" json:"value_format,omitempty"`
 	Description   *string                `protobuf:"bytes,6,opt,name=description,proto3,oneof" json:"description,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
@@ -486,6 +503,13 @@ func (x *ItemUpdateReq) GetValue() string {
 	return ""
 }
 
+func (x *ItemUpdateReq) GetValueFormat() string {
+	if x != nil && x.ValueFormat != nil {
+		return *x.ValueFormat
+	}
+	return ""
+}
+
 func (x *ItemUpdateReq) GetDescription() string {
 	if x != nil && x.Description != nil {
 		return *x.Description
@@ -497,7 +521,7 @@ var File_kusec_v1_item_proto protoreflect.FileDescriptor
 
 const file_kusec_v1_item_proto_rawDesc = "" +
 	"\n" +
-	"\x13kusec_v1/item.proto\x12\bkusec_v1\x1a\x1cgoogle/api/annotations.proto\x1a\x1bgoogle/protobuf/empty.proto\x1a\x1fgoogle/protobuf/timestamp.proto\x1a\x13common/common.proto\"\x8f\x02\n" +
+	"\x13kusec_v1/item.proto\x12\bkusec_v1\x1a\x1cgoogle/api/annotations.proto\x1a\x1bgoogle/protobuf/empty.proto\x1a\x1fgoogle/protobuf/timestamp.proto\x1a\x13common/common.proto\"\xb2\x02\n" +
 	"\bItemMain\x12\x0e\n" +
 	"\x02id\x18\x01 \x01(\tR\x02id\x129\n" +
 	"\n" +
@@ -507,7 +531,8 @@ const file_kusec_v1_item_proto_rawDesc = "" +
 	"\tsecret_id\x18\x04 \x01(\tR\bsecretId\x12\x16\n" +
 	"\x06active\x18\x05 \x01(\bR\x06active\x12\x10\n" +
 	"\x03key\x18\x06 \x01(\tR\x03key\x12\x14\n" +
-	"\x05value\x18\a \x01(\tR\x05value\x12 \n" +
+	"\x05value\x18\a \x01(\tR\x05value\x12!\n" +
+	"\fvalue_format\x18\t \x01(\tR\vvalueFormat\x12 \n" +
 	"\vdescription\x18\b \x01(\tR\vdescription\"\xc4\x01\n" +
 	"\vItemListReq\x125\n" +
 	"\vlist_params\x18\x01 \x01(\v2\x14.common.ListParamsStR\n" +
@@ -524,28 +549,32 @@ const file_kusec_v1_item_proto_rawDesc = "" +
 	"\aresults\x18\x02 \x03(\v2\x12.kusec_v1.ItemMainR\aresults\"\x1c\n" +
 	"\n" +
 	"ItemGetReq\x12\x0e\n" +
-	"\x02id\x18\x01 \x01(\tR\x02id\"\x9e\x01\n" +
+	"\x02id\x18\x01 \x01(\tR\x02id\"\xd7\x01\n" +
 	"\rItemCreateReq\x12\x1b\n" +
 	"\tsecret_id\x18\x01 \x01(\tR\bsecretId\x12\x1b\n" +
 	"\x06active\x18\x02 \x01(\bH\x00R\x06active\x88\x01\x01\x12\x10\n" +
 	"\x03key\x18\x03 \x01(\tR\x03key\x12\x14\n" +
-	"\x05value\x18\x04 \x01(\tR\x05value\x12 \n" +
+	"\x05value\x18\x04 \x01(\tR\x05value\x12&\n" +
+	"\fvalue_format\x18\x06 \x01(\tH\x01R\vvalueFormat\x88\x01\x01\x12 \n" +
 	"\vdescription\x18\x05 \x01(\tR\vdescriptionB\t\n" +
-	"\a_active\"\x1f\n" +
+	"\a_activeB\x0f\n" +
+	"\r_value_format\"\x1f\n" +
 	"\rItemCreateRep\x12\x0e\n" +
-	"\x02id\x18\x01 \x01(\tR\x02id\"\xf2\x01\n" +
+	"\x02id\x18\x01 \x01(\tR\x02id\"\xab\x02\n" +
 	"\rItemUpdateReq\x12\x0e\n" +
 	"\x02id\x18\x01 \x01(\tR\x02id\x12 \n" +
 	"\tsecret_id\x18\x02 \x01(\tH\x00R\bsecretId\x88\x01\x01\x12\x1b\n" +
 	"\x06active\x18\x03 \x01(\bH\x01R\x06active\x88\x01\x01\x12\x15\n" +
 	"\x03key\x18\x04 \x01(\tH\x02R\x03key\x88\x01\x01\x12\x19\n" +
-	"\x05value\x18\x05 \x01(\tH\x03R\x05value\x88\x01\x01\x12%\n" +
-	"\vdescription\x18\x06 \x01(\tH\x04R\vdescription\x88\x01\x01B\f\n" +
+	"\x05value\x18\x05 \x01(\tH\x03R\x05value\x88\x01\x01\x12&\n" +
+	"\fvalue_format\x18\a \x01(\tH\x04R\vvalueFormat\x88\x01\x01\x12%\n" +
+	"\vdescription\x18\x06 \x01(\tH\x05R\vdescription\x88\x01\x01B\f\n" +
 	"\n" +
 	"_secret_idB\t\n" +
 	"\a_activeB\x06\n" +
 	"\x04_keyB\b\n" +
-	"\x06_valueB\x0e\n" +
+	"\x06_valueB\x0f\n" +
+	"\r_value_formatB\x0e\n" +
 	"\f_description2\xfc\x02\n" +
 	"\x04Item\x12C\n" +
 	"\x04List\x12\x15.kusec_v1.ItemListReq\x1a\x15.kusec_v1.ItemListRep\"\r\x82\xd3\xe4\x93\x02\a\x12\x05/item\x12C\n" +

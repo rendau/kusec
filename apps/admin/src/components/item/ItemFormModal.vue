@@ -1,11 +1,13 @@
 <script setup lang="ts">
-import { onMounted, reactive, ref, watch } from 'vue'
+import { defineAsyncComponent, onMounted, reactive, ref, watch } from 'vue'
 import {
   NButton,
   NForm,
   NFormItem,
   NInput,
   NModal,
+  NRadioButton,
+  NRadioGroup,
   NSelect,
   NSpace,
   NSwitch,
@@ -17,6 +19,11 @@ import { ApiError } from '@/api/http'
 import { createItem, updateItem } from '@/api/item'
 import type { ItemMain, ItemUpdateReq } from '@/api/types'
 import { useSecretOptions } from '@/composables/useSecretOptions'
+
+// Lazy — pulls in the CodeMirror chunk only when the item form is opened.
+const ValueEditor = defineAsyncComponent(
+  () => import('@/components/common/ValueEditor.vue'),
+)
 
 const props = defineProps<{
   show: boolean
@@ -43,6 +50,9 @@ const {
 
 const formRef = ref<FormInst | null>(null)
 const submitting = ref(false)
+
+// Editing aid only — not persisted; switches the value editor mode.
+const valueFormat = ref<'text' | 'yaml'>('text')
 
 interface FormModel {
   secret_id: string | null
@@ -89,6 +99,7 @@ watch(
     model.value = item?.value ?? ''
     model.description = item?.description ?? ''
     model.active = item?.active ?? true
+    valueFormat.value = item?.value_format === 'yaml' ? 'yaml' : 'text'
     formRef.value?.restoreValidation()
     if (model.secret_id) await ensure(model.secret_id)
   },
@@ -96,6 +107,15 @@ watch(
 
 function close(): void {
   emit('update:show', false)
+}
+
+async function copyValue(): Promise<void> {
+  try {
+    await navigator.clipboard.writeText(model.value)
+    message.success('Value copied')
+  } catch {
+    message.error('Clipboard unavailable')
+  }
 }
 
 async function submit(): Promise<void> {
@@ -111,6 +131,7 @@ async function submit(): Promise<void> {
       const update: ItemUpdateReq = {
         key: model.key,
         value: model.value,
+        value_format: valueFormat.value,
         description: model.description,
         active: model.active,
       }
@@ -122,6 +143,7 @@ async function submit(): Promise<void> {
         secret_id: model.secret_id as string,
         key: model.key,
         value: model.value,
+        value_format: valueFormat.value,
         description: model.description,
         active: model.active,
       })
@@ -144,7 +166,7 @@ async function submit(): Promise<void> {
     :show="show"
     preset="card"
     :title="isEdit() ? 'Edit item' : 'New item'"
-    style="max-width: 520px"
+    style="max-width: 680px"
     :mask-closable="!submitting"
     @update:show="emit('update:show', $event)"
   >
@@ -172,12 +194,23 @@ async function submit(): Promise<void> {
         <NInput v-model:value="model.key" placeholder="e.g. password" clearable />
       </NFormItem>
       <NFormItem label="Value" path="value">
-        <NInput
-          v-model:value="model.value"
-          type="textarea"
-          placeholder="Secret value"
-          :autosize="{ minRows: 1, maxRows: 6 }"
-        />
+        <div class="value-field">
+          <div class="value-field__bar">
+            <NRadioGroup v-model:value="valueFormat" size="small">
+              <NRadioButton value="text">Text</NRadioButton>
+              <NRadioButton value="yaml">YAML</NRadioButton>
+            </NRadioGroup>
+            <NButton
+              size="small"
+              tertiary
+              :disabled="!model.value"
+              @click="copyValue"
+            >
+              Copy
+            </NButton>
+          </div>
+          <ValueEditor v-model:value="model.value" :format="valueFormat" />
+        </div>
       </NFormItem>
       <NFormItem label="Description" path="description">
         <NInput
@@ -202,3 +235,17 @@ async function submit(): Promise<void> {
     </template>
   </NModal>
 </template>
+
+<style scoped>
+.value-field {
+  width: 100%;
+}
+
+.value-field__bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  margin-bottom: 8px;
+}
+</style>

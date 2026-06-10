@@ -44,9 +44,10 @@ create table item (
     updated_at  timestamptz not null default now(),
     secret_id   text        not null,
     active      boolean     not null default true,
-    key         text        not null default '',
-    value       text        not null default '',
-    description text        not null default '',
+    key          text        not null default '',
+    value        text        not null default '',
+    value_format text        not null default 'text',
+    description  text        not null default '',
     primary key (id),
     foreign key (secret_id) references secret (id) on delete cascade
 );

@@ -15,6 +15,7 @@ type Upsert struct {
 	Active      *bool
 	Key         *string
 	Value       *string
+	ValueFormat *string
 	Description *string
 }
 
@@ -34,6 +35,9 @@ func (m *Upsert) CreateColumnMap() map[string]any {
 	}
 	if m.Value != nil {
 		result["value"] = *m.Value
+	}
+	if m.ValueFormat != nil {
+		result["value_format"] = *m.ValueFormat
 	}
 	if m.Description != nil {
 		result["description"] = *m.Description
@@ -62,6 +66,7 @@ func DecodeUpsert(v *domainModel.Edit) *Upsert {
 		Active:      v.Active,
 		Key:         v.Key,
 		Value:       v.Value,
+		ValueFormat: v.ValueFormat,
 		Description: v.Description,
 	}
 }

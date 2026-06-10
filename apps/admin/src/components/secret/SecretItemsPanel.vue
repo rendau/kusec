@@ -58,6 +58,15 @@ function toggleReveal(id: string): void {
   revealed.value = next
 }
 
+async function copyValue(value: string): Promise<void> {
+  try {
+    await navigator.clipboard.writeText(value)
+    message.success('Value copied')
+  } catch {
+    message.error('Clipboard unavailable')
+  }
+}
+
 function openDetail(row: ItemMain): void {
   detailId.value = row.id
   showDetail.value = true
@@ -115,6 +124,16 @@ const columns: DataTableColumns<ItemMain> = [
             onClick: () => toggleReveal(row.id),
           },
           { default: () => (revealed.value.has(row.id) ? 'Hide' : 'Show') },
+        ),
+        h(
+          NButton,
+          {
+            text: true,
+            type: 'primary',
+            size: 'tiny',
+            onClick: () => copyValue(row.value),
+          },
+          { default: () => 'Copy' },
         ),
       ]),
   },

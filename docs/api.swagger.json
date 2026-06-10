@@ -1139,6 +1139,9 @@
         "value": {
           "type": "string"
         },
+        "value_format": {
+          "type": "string"
+        },
         "description": {
           "type": "string"
         }
@@ -1185,6 +1188,9 @@
         "value": {
           "type": "string"
         },
+        "value_format": {
+          "type": "string"
+        },
         "description": {
           "type": "string"
         }
@@ -1203,6 +1209,9 @@
           "type": "string"
         },
         "value": {
+          "type": "string"
+        },
+        "value_format": {
           "type": "string"
         },
         "description": {

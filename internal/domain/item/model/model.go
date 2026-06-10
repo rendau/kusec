@@ -15,6 +15,7 @@ type Main struct {
 	Active      bool
 	Key         string
 	Value       string
+	ValueFormat string
 	Description string
 }
 
@@ -25,6 +26,7 @@ type Edit struct {
 	Active      *bool
 	Key         *string
 	Value       *string
+	ValueFormat *string
 	Description *string
 }
 

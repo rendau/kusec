@@ -14,19 +14,21 @@ type Select struct {
 	Active      bool
 	Key         string
 	Value       string
+	ValueFormat string
 	Description string
 }
 
 func (m *Select) ListColumnMap() map[string]any {
 	return map[string]any{
-		"id":          &m.Id,
-		"created_at":  &m.CreatedAt,
-		"updated_at":  &m.UpdatedAt,
-		"secret_id":   &m.SecretId,
-		"active":      &m.Active,
-		"key":         &m.Key,
-		"value":       &m.Value,
-		"description": &m.Description,
+		"id":           &m.Id,
+		"created_at":   &m.CreatedAt,
+		"updated_at":   &m.UpdatedAt,
+		"secret_id":    &m.SecretId,
+		"active":       &m.Active,
+		"key":          &m.Key,
+		"value":        &m.Value,
+		"value_format": &m.ValueFormat,
+		"description":  &m.Description,
 	}
 }
 
@@ -49,6 +51,7 @@ func EncodeSelect(v *Select, _ int) *domainModel.Main {
 		Active:      v.Active,
 		Key:         v.Key,
 		Value:       v.Value,
+		ValueFormat: v.ValueFormat,
 		Description: v.Description,
 	}
 }

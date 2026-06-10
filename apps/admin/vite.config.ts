@@ -23,12 +23,12 @@ export default defineConfig(({ mode }) => {
     server,
     preview: server,
     build: {
+      // Emit a single JavaScript bundle (inline all dynamic imports —
+      // route-level lazy views and the async value editor).
+      chunkSizeWarningLimit: 5000,
       rollupOptions: {
         output: {
-          manualChunks: {
-            vue: ['vue', 'vue-router', 'pinia'],
-            'naive-ui': ['naive-ui'],
-          },
+          inlineDynamicImports: true,
         },
       },
     },

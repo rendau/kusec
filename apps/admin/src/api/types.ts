@@ -222,6 +222,8 @@ export interface ItemMain {
   active: boolean
   key: string
   value: string
+  /** Editor format of `value` (e.g. "text" | "yaml"). */
+  value_format: string
   description: string
 }
 
@@ -245,6 +247,7 @@ export interface ItemCreateReq {
   active?: boolean
   key: string
   value: string
+  value_format?: string
   description: string
 }
 
@@ -259,5 +262,6 @@ export interface ItemUpdateReq {
   active?: boolean
   key?: string
   value?: string
+  value_format?: string
   description?: string
 }

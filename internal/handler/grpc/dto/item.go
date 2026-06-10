@@ -21,6 +21,7 @@ func EncodeItemMain(v *domainModel.Main, _ int) *proto.ItemMain {
 		Active:      v.Active,
 		Key:         v.Key,
 		Value:       v.Value,
+		ValueFormat: v.ValueFormat,
 		Description: v.Description,
 	}
 }
@@ -48,6 +49,7 @@ func DecodeItemCreateReq(v *proto.ItemCreateReq) *domainModel.Edit {
 		Active:      v.Active,
 		Key:         &v.Key,
 		Value:       &v.Value,
+		ValueFormat: v.ValueFormat,
 		Description: &v.Description,
 	}
 }
@@ -61,6 +63,7 @@ func DecodeItemUpdateReq(v *proto.ItemUpdateReq) *domainModel.Edit {
 		Active:      v.Active,
 		Key:         v.Key,
 		Value:       v.Value,
+		ValueFormat: v.ValueFormat,
 		Description: v.Description,
 	}
 }
