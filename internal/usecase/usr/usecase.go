@@ -9,7 +9,6 @@ import (
 
 	"github.com/mechta-market/kusec/internal/domain/usr/model"
 	"github.com/mechta-market/kusec/internal/errs"
-	"github.com/mechta-market/kusec/internal/util"
 )
 
 type Usecase struct {
@@ -107,9 +106,6 @@ func (u *Usecase) UpdateProfile(ctx context.Context, req *UpdateProfileReq) erro
 func (u *Usecase) List(ctx context.Context, pars *model.ListReq) ([]*model.Main, int64, error) {
 	if !u.sessionSvc.CtxIsAuthorized(ctx) {
 		return nil, 0, errs.NotAuthorized
-	}
-	if err := util.RequirePageSize(pars.ListParams, 0); err != nil {
-		return nil, 0, err
 	}
 
 	items, tCount, err := u.svc.List(ctx, pars)
