@@ -96,6 +96,10 @@ domain service → repo
 - DTO маппинг: `internal/handler/grpc/dto`.
 - **REST-пути (route paths) всегда в единственном числе**, без plural:
   `/secret`, `/secret/{id}`, `/app`, `/item` (не `/secrets`, `/apps`, `/items`).
+- **Пагинация: во всех list-запросах `page` начинается с 0** (zero-based).
+  Первая страница — `page=0`. Относится к `common.ListParamsSt.page` и всем
+  клиентам API. UI с 1-based пагинацией (напр. naive-ui) обязан конвертировать:
+  `apiPage = uiPage - 1`.
 
 ### Ошибки и валидация
 - Семантические ошибки — через `internal/errs` (см. gRPC interceptor в `internal/app/grpc.go`).

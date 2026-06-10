@@ -21,6 +21,18 @@ const routes: RouteRecordRaw[] = [
         component: () => import('@/views/HomeView.vue'),
         meta: { title: 'Dashboard' },
       },
+      {
+        path: 'app',
+        name: 'app-list',
+        component: () => import('@/views/AppListView.vue'),
+        meta: { title: 'Applications' },
+      },
+      {
+        path: 'secret',
+        name: 'secret-list',
+        component: () => import('@/views/SecretListView.vue'),
+        meta: { title: 'Secrets' },
+      },
     ],
   },
   {

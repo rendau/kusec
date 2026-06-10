@@ -37,6 +37,14 @@ const menuOptions: MenuOption[] = [
     label: renderRouterLink('/', 'Dashboard'),
     key: 'home',
   },
+  {
+    label: renderRouterLink('/app', 'Applications'),
+    key: 'app-list',
+  },
+  {
+    label: renderRouterLink('/secret', 'Secrets'),
+    key: 'secret-list',
+  },
 ]
 
 const profileName = computed(
