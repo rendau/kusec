@@ -24,6 +24,8 @@ const props = defineProps<{
   item: ItemMain | null
   /** Pre-selected secret id when creating from within a secret context. */
   defaultSecretId?: string | null
+  /** Lock the secret field (the item is bound to its secret). */
+  lockSecret?: boolean
 }>()
 
 const emit = defineEmits<{
@@ -158,9 +160,10 @@ async function submit(): Promise<void> {
           v-model:value="model.secret_id"
           :options="secretOptions"
           :loading="secretsLoading"
+          :disabled="lockSecret"
+          :clearable="!lockSecret"
           filterable
           remote
-          clearable
           placeholder="Select a secret"
           @search="search"
         />

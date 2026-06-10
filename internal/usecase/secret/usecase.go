@@ -43,8 +43,10 @@ func (u *Usecase) List(ctx context.Context, pars *model.ListReq) ([]*model.Main,
 	if !u.sessionSvc.CtxIsAuthorized(ctx) {
 		return nil, 0, errs.NotAuthorized
 	}
-	if err := util.RequirePageSize(pars.ListParams, 0); err != nil {
-		return nil, 0, err
+	if pars.AppId == nil {
+		if err := util.RequirePageSize(pars.ListParams, 0); err != nil {
+			return nil, 0, err
+		}
 	}
 	items, tCount, err := u.svc.List(ctx, pars)
 	if err != nil {

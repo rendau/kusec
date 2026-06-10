@@ -24,6 +24,8 @@ const props = defineProps<{
   secret: SecretMain | null
   /** Pre-selected app id when creating from within an app context. */
   defaultAppId?: string | null
+  /** Lock the application field (the secret is bound to its app). */
+  lockApp?: boolean
 }>()
 
 const emit = defineEmits<{
@@ -152,9 +154,10 @@ async function submit(): Promise<void> {
           v-model:value="model.app_id"
           :options="appOptions"
           :loading="appsLoading"
+          :disabled="lockApp"
+          :clearable="!lockApp"
           filterable
           remote
-          clearable
           placeholder="Select an application"
           @search="search"
         />

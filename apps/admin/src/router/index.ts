@@ -29,21 +29,15 @@ const routes: RouteRecordRaw[] = [
       },
       {
         path: 'app',
-        name: 'app-list',
-        component: () => import('@/views/AppListView.vue'),
+        name: 'app-home',
+        component: () => import('@/views/AppWorkspaceView.vue'),
         meta: { title: 'Applications' },
       },
       {
-        path: 'secret',
-        name: 'secret-list',
-        component: () => import('@/views/SecretListView.vue'),
-        meta: { title: 'Secrets' },
-      },
-      {
-        path: 'item',
-        name: 'item-list',
-        component: () => import('@/views/ItemListView.vue'),
-        meta: { title: 'Items' },
+        path: 'app/:id',
+        name: 'app-workspace',
+        component: () => import('@/views/AppWorkspaceView.vue'),
+        meta: { title: 'Application' },
       },
       {
         path: 'usr',

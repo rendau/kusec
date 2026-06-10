@@ -1,10 +1,9 @@
 <script setup lang="ts">
 import { computed, h } from 'vue'
-import type { Component, VNode } from 'vue'
+import type { Component } from 'vue'
 import { RouterLink, useRoute, useRouter } from 'vue-router'
 import {
   NDropdown,
-  NIcon,
   NLayout,
   NLayoutHeader,
   NLayoutSider,
@@ -19,6 +18,8 @@ import { storeToRefs } from 'pinia'
 import { useAppStore } from '@/stores/app'
 import { useAuthStore } from '@/stores/auth'
 
+import AppNavSidebar from '@/components/app/AppNavSidebar.vue'
+
 const appStore = useAppStore()
 const { sidebarCollapsed } = storeToRefs(appStore)
 
@@ -27,69 +28,23 @@ const router = useRouter()
 const dialog = useDialog()
 
 const route = useRoute()
-const activeKey = computed(() => (route.name as string | undefined) ?? null)
+
+// Primary nav lives in the header now; the sidebar is dedicated to applications.
+const navActiveKey = computed(() => {
+  const name = route.name as string | undefined
+  if (name === 'usr-list') return 'users'
+  if (name === 'home') return 'home'
+  return null
+})
 
 function renderRouterLink(to: string, label: string): Component {
   return () => h(RouterLink, { to }, { default: () => label })
 }
 
-// Inline SVG icons (no icon-library dependency). Rendered via NIcon so the
-// collapsed sidebar still shows a glyph for every menu item.
-function renderIcon(path: string): () => VNode {
-  return () =>
-    h(NIcon, null, {
-      default: () =>
-        h(
-          'svg',
-          { viewBox: '0 0 24 24', width: '1em', height: '1em' },
-          [h('path', { d: path, fill: 'currentColor' })],
-        ),
-    })
-}
-
-const icons = {
-  dashboard:
-    'M3 13h8V3H3v10zm0 8h8v-6H3v6zm10 0h8V11h-8v10zm0-18v6h8V3h-8z',
-  app:
-    'M4 8h4V4H4v4zm6 12h4v-4h-4v4zm-6 0h4v-4H4v4zm0-6h4v-4H4v4zm6 0h4v-4h-4v4zm6-10v4h4V4h-4zm-6 4h4V4h-4v4zm6 6h4v-4h-4v4zm0 6h4v-4h-4v4z',
-  secret:
-    'M12.65 10C11.83 7.67 9.61 6 7 6c-3.31 0-6 2.69-6 6s2.69 6 6 6c2.61 0 4.83-1.67 5.65-4H17v4h4v-4h2v-4H12.65zM7 14c-1.1 0-2-.9-2-2s.9-2 2-2 2 .9 2 2-.9 2-2 2z',
-  item:
-    'M3 13h2v-2H3v2zm0 4h2v-2H3v2zm0-8h2V7H3v2zm4 4h14v-2H7v2zm0 4h14v-2H7v2zM7 7v2h14V7H7z',
-  user:
-    'M16 11c1.66 0 2.99-1.34 2.99-3S17.66 5 16 5c-1.66 0-3 1.34-3 3s1.34 3 3 3zm-8 0c1.66 0 2.99-1.34 2.99-3S9.66 5 8 5C6.34 5 5 6.34 5 8s1.34 3 3 3zm0 2c-2.33 0-7 1.17-7 3.5V19h14v-2.5c0-2.33-4.67-3.5-7-3.5zm8 0c-.29 0-.62.02-.97.05 1.16.84 1.97 1.97 1.97 3.45V19h6v-2.5c0-2.33-4.67-3.5-7-3.5z',
-} as const
-
-const menuOptions = computed<MenuOption[]>(() => [
-  {
-    label: renderRouterLink('/', 'Dashboard'),
-    key: 'home',
-    icon: renderIcon(icons.dashboard),
-  },
-  {
-    label: renderRouterLink('/app', 'Applications'),
-    key: 'app-list',
-    icon: renderIcon(icons.app),
-  },
-  {
-    label: renderRouterLink('/secret', 'Secrets'),
-    key: 'secret-list',
-    icon: renderIcon(icons.secret),
-  },
-  {
-    label: renderRouterLink('/item', 'Items'),
-    key: 'item-list',
-    icon: renderIcon(icons.item),
-  },
-  // User management is admin-only.
+const navOptions = computed<MenuOption[]>(() => [
+  { label: renderRouterLink('/', 'Dashboard'), key: 'home' },
   ...(authStore.isAdmin
-    ? [
-        {
-          label: renderRouterLink('/usr', 'Users'),
-          key: 'usr-list',
-          icon: renderIcon(icons.user),
-        },
-      ]
+    ? [{ label: renderRouterLink('/usr', 'Users'), key: 'users' }]
     : []),
 ])
 
@@ -129,7 +84,15 @@ function confirmLogout(): void {
 <template>
   <NLayout position="absolute">
     <NLayoutHeader bordered class="app-header">
-      <span class="app-header__title">Secret Management System</span>
+      <div class="app-header__left">
+        <span class="app-header__title">Secret Management System</span>
+        <NMenu
+          mode="horizontal"
+          :value="navActiveKey"
+          :options="navOptions"
+          class="app-header__nav"
+        />
+      </div>
       <NDropdown
         trigger="click"
         :options="userMenuOptions"
@@ -147,18 +110,13 @@ function confirmLogout(): void {
       <NLayoutSider
         bordered
         collapse-mode="width"
-        :collapsed-width="64"
-        :width="240"
+        :collapsed-width="0"
+        :width="260"
         :collapsed="sidebarCollapsed"
-        show-trigger
+        show-trigger="arrow-circle"
         @update:collapsed="appStore.toggleSidebar"
       >
-        <NMenu
-          :value="activeKey"
-          :collapsed="sidebarCollapsed"
-          :collapsed-width="64"
-          :options="menuOptions"
-        />
+        <AppNavSidebar />
       </NLayoutSider>
       <NLayoutContent class="app-content">
         <RouterView />
@@ -176,9 +134,21 @@ function confirmLogout(): void {
   padding: 0 24px;
 }
 
+.app-header__left {
+  display: flex;
+  align-items: center;
+  gap: 24px;
+  min-width: 0;
+}
+
 .app-header__title {
   font-size: 18px;
   font-weight: 600;
+  white-space: nowrap;
+}
+
+.app-header__nav {
+  background: transparent;
 }
 
 .app-header__user {
