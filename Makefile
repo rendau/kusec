@@ -3,6 +3,7 @@
 BINARY_NAME = svc
 BUILD_PATH = cmd/build
 SERVICE_NAME = kusec_v1
+ADMIN_PATH = apps/admin
 
 # vendor repo sparse dirs
 protos-dirs = google protoc-gen-openapiv2 common
@@ -16,6 +17,9 @@ build:
 
 clean:
 	rm -rf $(BUILD_PATH)
+
+run-admin:
+	pnpm --dir $(ADMIN_PATH) dev
 
 lint:
 	golangci-lint run
