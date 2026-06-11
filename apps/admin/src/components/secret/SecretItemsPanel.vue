@@ -16,6 +16,7 @@ import { ApiError } from '@/api/http'
 import { deleteItem, listItems } from '@/api/item'
 import type { ItemMain } from '@/api/types'
 
+import ItemBulkPasteModal from '@/components/item/ItemBulkPasteModal.vue'
 import ItemDetailDrawer from '@/components/item/ItemDetailDrawer.vue'
 import ItemFormModal from '@/components/item/ItemFormModal.vue'
 import ValueEditor from '@/components/common/ValueEditor.vue'
@@ -91,6 +92,8 @@ const showDetail = ref(false)
 
 const editing = ref<ItemMain | null>(null)
 const showForm = ref(false)
+
+const showPaste = ref(false)
 
 async function fetchItems(): Promise<void> {
   loading.value = true
@@ -170,7 +173,10 @@ onMounted(fetchItems)
       style="margin-bottom: 8px; padding-left: 20px"
     >
       <NText depth="3" style="font-size: 12px">Items</NText>
-      <NButton size="tiny" type="primary" @click="openCreate">New item</NButton>
+      <NSpace :size="8">
+        <NButton size="tiny" @click="showPaste = true">Paste items</NButton>
+        <NButton size="tiny" type="primary" @click="openCreate">New item</NButton>
+      </NSpace>
     </NFlex>
 
     <NSpin :show="loading">
@@ -273,6 +279,12 @@ onMounted(fetchItems)
     </NSpin>
 
     <ItemDetailDrawer v-model:show="showDetail" :item-id="detailId" />
+    <ItemBulkPasteModal
+      v-model:show="showPaste"
+      :secret-id="secretId"
+      :items="rows"
+      @saved="fetchItems"
+    />
     <ItemFormModal
       v-model:show="showForm"
       :item="editing"
