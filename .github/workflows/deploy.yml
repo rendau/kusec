@@ -21,6 +21,6 @@ jobs:
 
       - run: echo ${{ secrets.GITHUB_TOKEN }} | docker login ghcr.io -u $ --password-stdin
 
-      - run: docker build -t ghcr.io/$OWNER/$IMAGE .
+      - run: docker build -f deploy/docker/Dockerfile -t ghcr.io/$OWNER/$IMAGE .
 
       - run: docker push ghcr.io/$OWNER/$IMAGE

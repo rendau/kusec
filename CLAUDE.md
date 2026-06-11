@@ -17,7 +17,11 @@
 - `migrations/` — SQL миграции Postgres.
 - `docs/` — swagger JSON и статические доки, выдаются через `/docs/*`.
 - `vendor-proto/` — внешние `.proto` зависимости (обновляются Makefile).
-- `Dockerfile`, `Makefile` — сборка, запуск, генерация proto.
+- `Makefile` — сборка, запуск, генерация proto, docker-образы.
+- `deploy/docker/` — `Dockerfile` (CI, готовый бинарник из `make build`) и
+  `Dockerfile.local` (полная сборка в Docker: бэкенд + вшитая админка).
+  Helm-chart для локального подъёма живёт в отдельном репо `local_kube`
+  (`charts/kusec`, поднимается там через helmfile).
 - `.env.example`, `.migrate_scripts.example` — примеры окружения и миграций.
 
 ### Внутренние пакеты (`internal/`)
@@ -148,7 +152,10 @@ domain service → repo
 
 ### Сборка
 - `make build` создаёт бинарник `cmd/build/svc`.
-- Dockerfile копирует бинарник, `docs/` и `migrations/` в `/app`.
+- `deploy/docker/Dockerfile` (CI) копирует готовый бинарник и `docs/` в `/app`.
+- `make docker-build` собирает локальный образ `kusec:local` целиком в Docker
+  (`deploy/docker/Dockerfile.local`): бинарник + `docs/` + `migrations/` +
+  админка в `admin-dist/` (раздаётся бэком с `/`, API под `/api`).
 
 ### Flow проверки изменений
 ```

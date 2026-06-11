@@ -1,0 +1,11 @@
+# Общий ignore для обоих Dockerfile (deploy/docker/*), контекст — корень.
+# cmd/build НЕ исключать: CI-Dockerfile копирует из него готовый бинарник.
+.git
+.idea
+.vscode
+apps/admin/node_modules
+apps/admin/dist
+deploy
+*.md
+.env
+.env.*
