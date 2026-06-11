@@ -1,0 +1,46 @@
+syntax = "proto3";
+
+package kusec_v1;
+
+import "google/api/annotations.proto";
+import "google/protobuf/empty.proto";
+
+option go_package = "/kusec_v1";
+
+// Синхронизация секретов из базы в Kubernetes (только изнутри кластера).
+// Имя k8s-секрета: {app.slug_name}-{secret.slug_name}, namespace — из app.
+// Управляемые секреты помечаются лейблом app.kubernetes.io/managed-by=kusec;
+// удаляются только они.
+service Kube {
+  rpc SyncSecrets(google.protobuf.Empty) returns (KubeSyncSecretsRep) {
+    option (google.api.http) = {
+      post: "/kube/sync-secret"
+      body: "*"
+    };
+  }
+
+  rpc ListNamespaces(google.protobuf.Empty) returns (KubeListNamespacesRep) {
+    option (google.api.http) = {
+      get: "/kube/namespace"
+    };
+  }
+}
+
+// ── Messages ────────────────────────────────────────────
+
+message KubeListNamespacesRep {
+  // false — сервис запущен вне кластера (namespaces тогда пуст).
+  bool in_cluster = 1;
+  // Имена namespace-ов кластера без системных kube-*.
+  repeated string namespaces = 2;
+}
+
+message KubeSyncSecretsRep {
+  // Списки в формате "namespace/name".
+  repeated string created = 1;
+  repeated string updated = 2;
+  repeated string deleted = 3;
+  int64 unchanged = 4;
+  // Ошибки по отдельным секретам (sync продолжается для остальных).
+  repeated string errors = 5;
+}

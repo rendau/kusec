@@ -32,9 +32,12 @@ import (
 
 	grpcHandler "github.com/mechta-market/kusec/internal/handler/grpc"
 
+	kubeService "github.com/mechta-market/kusec/internal/service/kube"
+
 	appUsc "github.com/mechta-market/kusec/internal/usecase/app"
 	dashboardUsc "github.com/mechta-market/kusec/internal/usecase/dashboard"
 	itemUsc "github.com/mechta-market/kusec/internal/usecase/item"
+	kubeUsc "github.com/mechta-market/kusec/internal/usecase/kube"
 	secretUsc "github.com/mechta-market/kusec/internal/usecase/secret"
 	usrUsc "github.com/mechta-market/kusec/internal/usecase/usr"
 
@@ -99,6 +102,9 @@ func (a *App) Init() {
 	dashboardHandler := grpcHandler.NewDashboard(
 		dashboardUsc.New(appSvc, secretSvc, itemSvc, usrSvc, sessionSvc),
 	)
+	kubeHandler := grpcHandler.NewKube(
+		kubeUsc.New(kubeService.New(appSvc, secretSvc, itemSvc), sessionSvc),
+	)
 
 	// grpc server
 	{
@@ -108,6 +114,7 @@ func (a *App) Init() {
 			proto.RegisterSecretServer(server, secretHandler)
 			proto.RegisterItemServer(server, itemHandler)
 			proto.RegisterDashboardServer(server, dashboardHandler)
+			proto.RegisterKubeServer(server, kubeHandler)
 		})
 	}
 
@@ -129,6 +136,7 @@ func (a *App) Init() {
 				proto.RegisterSecretHandler,
 				proto.RegisterItemHandler,
 				proto.RegisterDashboardHandler,
+				proto.RegisterKubeHandler,
 			}
 			for _, h := range handlers {
 				err = h(context.Background(), mux, conn)

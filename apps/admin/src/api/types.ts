@@ -257,6 +257,25 @@ export interface DashboardRep {
   recent_secrets: DashboardRecentSecret[]
 }
 
+/** `KubeListNamespacesRep` — cluster namespaces for the app form picker. */
+export interface KubeListNamespacesRep {
+  /** false — the service runs outside a cluster (namespaces is empty). */
+  in_cluster: boolean
+  namespaces: string[]
+}
+
+/**
+ * Kubernetes sync (`KubeSyncSecretsRep`, see api/proto/kusec_v1/kube.proto).
+ * Lists are "namespace/name"; `unchanged` is an int64 → JSON string.
+ */
+export interface KubeSyncSecretsRep {
+  created: string[]
+  updated: string[]
+  deleted: string[]
+  unchanged: number | string
+  errors: string[]
+}
+
 /** Item entity (`ItemMain`). */
 export interface ItemMain {
   id: string

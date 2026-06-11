@@ -22,7 +22,9 @@ create table app (
     primary key (id)
 );
 
-create unique index uq_app_name on app (name);
+-- Имя k8s-секрета: {app.slug_name}-{secret.slug_name} в namespace приложения,
+-- поэтому пара (namespace, slug_name) уникальна.
+create unique index uq_app_namespace_slug_name on app (namespace, slug_name);
 
 create table secret (
     id          text        not null default gen_random_uuid()::text,

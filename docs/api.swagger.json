@@ -15,6 +15,9 @@
       "name": "Item"
     },
     {
+      "name": "Kube"
+    },
+    {
       "name": "Secret"
     },
     {
@@ -467,6 +470,61 @@
         ],
         "tags": [
           "Item"
+        ]
+      }
+    },
+    "/kube/namespace": {
+      "get": {
+        "operationId": "Kube_ListNamespaces",
+        "responses": {
+          "200": {
+            "description": "A successful response.",
+            "schema": {
+              "$ref": "#/definitions/kusec_v1KubeListNamespacesRep"
+            }
+          },
+          "default": {
+            "description": "An unexpected error response.",
+            "schema": {
+              "$ref": "#/definitions/rpcStatus"
+            }
+          }
+        },
+        "tags": [
+          "Kube"
+        ]
+      }
+    },
+    "/kube/sync-secret": {
+      "post": {
+        "operationId": "Kube_SyncSecrets",
+        "responses": {
+          "200": {
+            "description": "A successful response.",
+            "schema": {
+              "$ref": "#/definitions/kusec_v1KubeSyncSecretsRep"
+            }
+          },
+          "default": {
+            "description": "An unexpected error response.",
+            "schema": {
+              "$ref": "#/definitions/rpcStatus"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "body",
+            "in": "body",
+            "required": true,
+            "schema": {
+              "type": "object",
+              "properties": {}
+            }
+          }
+        ],
+        "tags": [
+          "Kube"
         ]
       }
     },
@@ -1370,6 +1428,57 @@
         },
         "description": {
           "type": "string"
+        }
+      }
+    },
+    "kusec_v1KubeListNamespacesRep": {
+      "type": "object",
+      "properties": {
+        "in_cluster": {
+          "type": "boolean",
+          "description": "false — сервис запущен вне кластера (namespaces тогда пуст)."
+        },
+        "namespaces": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "description": "Имена namespace-ов кластера без системных kube-*."
+        }
+      }
+    },
+    "kusec_v1KubeSyncSecretsRep": {
+      "type": "object",
+      "properties": {
+        "created": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "description": "Списки в формате \"namespace/name\"."
+        },
+        "updated": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "deleted": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "unchanged": {
+          "type": "string",
+          "format": "int64"
+        },
+        "errors": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "description": "Ошибки по отдельным секретам (sync продолжается для остальных)."
         }
       }
     },

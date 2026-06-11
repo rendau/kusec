@@ -22,6 +22,9 @@ const (
 	NameRequired     = Err("name_required")
 	UsernameRequired = Err("username_required")
 	PasswordRequired = Err("password_required")
+
+	NotInCluster   = Err("not_in_cluster")
+	SyncInProgress = Err("sync_in_progress")
 )
 
 type ErrFull struct {
