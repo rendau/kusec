@@ -32,7 +32,7 @@ import {
   isProbablyText,
   textToBase64,
 } from '@/utils/binary'
-import { normalizeValueFormat } from '@/utils/format'
+import { normalizeValueFormat, stripCommonIndent } from '@/utils/format'
 
 const MAX_FILE_BYTES = 5 * 1024 * 1024
 
@@ -106,6 +106,18 @@ const rules: FormRules = {
   key: [{ required: true, message: 'Key is required', trigger: ['blur', 'input'] }],
 }
 
+/**
+ * Значение к сохранению: для yaml/json убираем общий левый отступ
+ * (вставка из вложенной секции другого файла). Файлы (base64) и
+ * неструктурированный text не трогаем — там отступ может быть значимым.
+ */
+function preparedValue(): string {
+  if (model.encoding === 'base64' || valueFormat.value === 'text') {
+    return model.value
+  }
+  return stripCommonIndent(model.value)
+}
+
 const { formRef, submitting, isEdit, submit } = useEntityForm<ItemMain>({
   show: () => props.show,
   entity: () => props.item,
@@ -125,7 +137,7 @@ const { formRef, submitting, isEdit, submit } = useEntityForm<ItemMain>({
     createItem({
       secret_id: model.secret_id as string,
       key: model.key,
-      value: model.value,
+      value: preparedValue(),
       value_format: valueFormat.value,
       encoding: model.encoding,
       file_name: model.file_name,
@@ -136,7 +148,7 @@ const { formRef, submitting, isEdit, submit } = useEntityForm<ItemMain>({
   update: (item) => {
     const update: ItemUpdateReq = {
       key: model.key,
-      value: model.value,
+      value: preparedValue(),
       value_format: valueFormat.value,
       encoding: model.encoding,
       file_name: model.file_name,

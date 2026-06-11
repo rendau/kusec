@@ -98,8 +98,13 @@ function openSecret(secret: DashboardRecentSecret): void {
   void router.push({ name: 'app-workspace', params: { id: secret.app_id } })
 }
 
-async function onAppSaved(): Promise<void> {
+async function onAppSaved(createdId?: string): Promise<void> {
   await appsStore.refresh()
+  // Созданное приложение сразу открываем в workspace.
+  if (createdId) {
+    void router.push({ name: 'app-workspace', params: { id: createdId } })
+    return
+  }
   await loadDashboard()
 }
 

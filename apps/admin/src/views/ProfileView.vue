@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { reactive, ref, watch } from 'vue'
+import { useRouter } from 'vue-router'
 import {
   NButton,
   NCard,
@@ -18,6 +19,7 @@ import type { UsrUpdateProfileReq } from '@/api/types'
 import { useAuthStore } from '@/stores/auth'
 
 const message = useMessage()
+const router = useRouter()
 const authStore = useAuthStore()
 const { profile } = storeToRefs(authStore)
 
@@ -84,6 +86,8 @@ async function submit(): Promise<void> {
     model.password = ''
     model.passwordConfirm = ''
     message.success('Profile updated')
+    // Возврат туда, откуда пришли (профиль — модальный по смыслу экран).
+    router.back()
   } catch (error) {
     message.error(apiErrorMessage(error, 'Unexpected error, please try again'))
   } finally {

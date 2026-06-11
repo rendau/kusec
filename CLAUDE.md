@@ -98,6 +98,10 @@ domain service → repo
 - gRPC сервисы: `api/proto/kusec_v1/*`.
 - HTTP-gateway: через grpc-gateway + swagger (`docs/api.swagger.json`).
 - DTO маппинг: `internal/handler/grpc/dto`.
+- Массовый импорт/экспорт: `POST /transfer/import` (upsert по натуральным
+  ключам, см. `docs/transfer-import-api.md`) и `GET /transfer/tree`
+  (всё дерево без значений item-ов, **без аутентификации** — для внешних
+  агентов, см. `docs/transfer-tree-api.md`).
 - **REST-пути (route paths) всегда в единственном числе**, без plural:
   `/secret`, `/secret/{id}`, `/app`, `/item` (не `/secrets`, `/apps`, `/items`).
 - **Пагинация: во всех list-запросах `page` начинается с 0** (zero-based).

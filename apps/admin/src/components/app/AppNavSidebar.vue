@@ -50,8 +50,12 @@ function select(app: AppMain): void {
   void router.push({ name: 'app-workspace', params: { id: app.id } })
 }
 
-async function onSaved(): Promise<void> {
+async function onSaved(createdId?: string): Promise<void> {
   await appsStore.refresh()
+  // Созданное приложение сразу открываем в workspace.
+  if (createdId) {
+    void router.push({ name: 'app-workspace', params: { id: createdId } })
+  }
 }
 
 onMounted(() => {

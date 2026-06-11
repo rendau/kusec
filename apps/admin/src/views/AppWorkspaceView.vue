@@ -115,8 +115,13 @@ function openAppEdit(): void {
   if (app.value) showAppForm.value = true
 }
 
-async function onAppSaved(): Promise<void> {
+async function onAppSaved(createdId?: string): Promise<void> {
   await appsStore.refresh()
+  // Созданное приложение (из пустого состояния) сразу открываем.
+  if (createdId) {
+    void router.push({ name: 'app-workspace', params: { id: createdId } })
+    return
+  }
   await ensureApp()
 }
 

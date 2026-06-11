@@ -21,6 +21,9 @@
       "name": "Secret"
     },
     {
+      "name": "Transfer"
+    },
+    {
       "name": "Usr"
     }
   ],
@@ -735,6 +738,60 @@
         ],
         "tags": [
           "Secret"
+        ]
+      }
+    },
+    "/transfer/import": {
+      "post": {
+        "operationId": "Transfer_Import",
+        "responses": {
+          "200": {
+            "description": "A successful response.",
+            "schema": {
+              "$ref": "#/definitions/kusec_v1TransferImportRep"
+            }
+          },
+          "default": {
+            "description": "An unexpected error response.",
+            "schema": {
+              "$ref": "#/definitions/rpcStatus"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "body",
+            "in": "body",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/kusec_v1TransferImportReq"
+            }
+          }
+        ],
+        "tags": [
+          "Transfer"
+        ]
+      }
+    },
+    "/transfer/tree": {
+      "get": {
+        "operationId": "Transfer_Tree",
+        "responses": {
+          "200": {
+            "description": "A successful response.",
+            "schema": {
+              "$ref": "#/definitions/kusec_v1TransferTreeRep"
+            }
+          },
+          "default": {
+            "description": "An unexpected error response.",
+            "schema": {
+              "$ref": "#/definitions/rpcStatus"
+            }
+          }
+        },
+        "tags": [
+          "Transfer"
         ]
       }
     },
@@ -1564,6 +1621,250 @@
         },
         "description": {
           "type": "string"
+        }
+      }
+    },
+    "kusec_v1TransferImportAppSt": {
+      "type": "object",
+      "properties": {
+        "namespace": {
+          "type": "string"
+        },
+        "name": {
+          "type": "string"
+        },
+        "slug_name": {
+          "type": "string"
+        },
+        "description": {
+          "type": "string"
+        },
+        "active": {
+          "type": "boolean"
+        },
+        "secrets": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "$ref": "#/definitions/kusec_v1TransferImportSecretSt"
+          }
+        }
+      }
+    },
+    "kusec_v1TransferImportItemSt": {
+      "type": "object",
+      "properties": {
+        "key": {
+          "type": "string"
+        },
+        "value": {
+          "type": "string"
+        },
+        "value_format": {
+          "type": "string",
+          "description": "\"text\" | \"yaml\" | \"json\" (по умолчанию text)."
+        },
+        "encoding": {
+          "type": "string",
+          "description": "\"plain\" | \"base64\" (по умолчанию plain)."
+        },
+        "file_name": {
+          "type": "string"
+        },
+        "content_type": {
+          "type": "string"
+        },
+        "description": {
+          "type": "string"
+        },
+        "active": {
+          "type": "boolean"
+        }
+      }
+    },
+    "kusec_v1TransferImportRep": {
+      "type": "object",
+      "properties": {
+        "apps_created": {
+          "type": "string",
+          "format": "int64"
+        },
+        "apps_updated": {
+          "type": "string",
+          "format": "int64"
+        },
+        "secrets_created": {
+          "type": "string",
+          "format": "int64"
+        },
+        "secrets_updated": {
+          "type": "string",
+          "format": "int64"
+        },
+        "items_created": {
+          "type": "string",
+          "format": "int64"
+        },
+        "items_updated": {
+          "type": "string",
+          "format": "int64"
+        },
+        "unchanged": {
+          "type": "string",
+          "format": "int64",
+          "description": "Записи без изменений (upsert-noop)."
+        },
+        "errors": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "description": "Ошибки отдельных записей (импорт продолжается для остальных)."
+        }
+      }
+    },
+    "kusec_v1TransferImportReq": {
+      "type": "object",
+      "properties": {
+        "apps": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "$ref": "#/definitions/kusec_v1TransferImportAppSt"
+          }
+        }
+      }
+    },
+    "kusec_v1TransferImportSecretSt": {
+      "type": "object",
+      "properties": {
+        "slug_name": {
+          "type": "string"
+        },
+        "description": {
+          "type": "string"
+        },
+        "active": {
+          "type": "boolean"
+        },
+        "items": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "$ref": "#/definitions/kusec_v1TransferImportItemSt"
+          }
+        }
+      }
+    },
+    "kusec_v1TransferTreeAppSt": {
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string"
+        },
+        "namespace": {
+          "type": "string"
+        },
+        "name": {
+          "type": "string"
+        },
+        "slug_name": {
+          "type": "string"
+        },
+        "description": {
+          "type": "string"
+        },
+        "active": {
+          "type": "boolean"
+        },
+        "updated_at": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "secrets": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "$ref": "#/definitions/kusec_v1TransferTreeSecretSt"
+          }
+        }
+      }
+    },
+    "kusec_v1TransferTreeItemSt": {
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string"
+        },
+        "key": {
+          "type": "string"
+        },
+        "value_format": {
+          "type": "string"
+        },
+        "encoding": {
+          "type": "string"
+        },
+        "file_name": {
+          "type": "string"
+        },
+        "content_type": {
+          "type": "string"
+        },
+        "description": {
+          "type": "string"
+        },
+        "active": {
+          "type": "boolean"
+        },
+        "updated_at": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "value_size": {
+          "type": "string",
+          "format": "int64",
+          "description": "Размер хранимого значения в байтах; само значение не отдаётся."
+        }
+      }
+    },
+    "kusec_v1TransferTreeRep": {
+      "type": "object",
+      "properties": {
+        "apps": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "$ref": "#/definitions/kusec_v1TransferTreeAppSt"
+          }
+        }
+      }
+    },
+    "kusec_v1TransferTreeSecretSt": {
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string"
+        },
+        "slug_name": {
+          "type": "string"
+        },
+        "description": {
+          "type": "string"
+        },
+        "active": {
+          "type": "boolean"
+        },
+        "updated_at": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "items": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "$ref": "#/definitions/kusec_v1TransferTreeItemSt"
+          }
         }
       }
     },

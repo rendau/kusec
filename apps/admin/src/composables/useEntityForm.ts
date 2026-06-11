@@ -4,7 +4,7 @@ import type { FormInst } from 'naive-ui'
 
 import { apiErrorMessage } from '@/api/http'
 
-interface UseEntityFormOptions<E> {
+interface UseEntityFormOptions<E, CreateRep> {
   /** Modal visibility (the `show` prop). */
   show: () => boolean
   /** The entity being edited, or `null` when creating. */
@@ -12,19 +12,25 @@ interface UseEntityFormOptions<E> {
   /** Seed the form model from the entity (or defaults when creating). */
   seed: (entity: E | null) => void | Promise<void>
   /** Persist a new entity. */
-  create: () => Promise<unknown>
+  create: () => Promise<CreateRep>
   /** Persist changes to an existing entity. */
   update: (entity: E) => Promise<unknown>
   messages: { created: string; updated: string }
-  /** Called after a successful save (emit `saved`, close the modal). */
-  onSaved: () => void
+  /**
+   * Called after a successful save (emit `saved`, close the modal).
+   * On create receives the API response (e.g. the new entity id);
+   * on update — `undefined`.
+   */
+  onSaved: (created?: CreateRep) => void
 }
 
 /**
  * Shared lifecycle of an entity create/edit modal: re-seed the form each
  * time it opens, validate + persist on submit, report errors via toast.
  */
-export function useEntityForm<E>(options: UseEntityFormOptions<E>) {
+export function useEntityForm<E, CreateRep = unknown>(
+  options: UseEntityFormOptions<E, CreateRep>,
+) {
   const message = useMessage()
 
   const formRef = ref<FormInst | null>(null)
@@ -50,11 +56,12 @@ export function useEntityForm<E>(options: UseEntityFormOptions<E>) {
       if (entity !== null) {
         await options.update(entity)
         message.success(options.messages.updated)
+        options.onSaved()
       } else {
-        await options.create()
+        const created = await options.create()
         message.success(options.messages.created)
+        options.onSaved(created)
       }
-      options.onSaved()
     } catch (error) {
       message.error(apiErrorMessage(error, 'Unexpected error, please try again'))
     } finally {
