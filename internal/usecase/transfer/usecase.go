@@ -349,6 +349,10 @@ func (u *Usecase) upsertItem(
 // предназначена для внешних инструментов анализа (ИИ-агентов) — выдавать им
 // токен нельзя, иначе через остальные ручки станут доступны сами секреты.
 func (u *Usecase) Tree(ctx context.Context) ([]*TreeApp, error) {
+	if !u.sessionSvc.CtxIsAuthorized(ctx) {
+		return nil, errs.NotAuthorized
+	}
+
 	apps, _, err := u.appSvc.List(ctx, &appModel.ListReq{})
 	if err != nil {
 		return nil, fmt.Errorf("appSvc.List: %w", err)
