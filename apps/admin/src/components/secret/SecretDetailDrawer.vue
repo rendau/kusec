@@ -1,5 +1,4 @@
 <script setup lang="ts">
-import { ref, watch } from 'vue'
 import {
   NDescriptions,
   NDescriptionsItem,
@@ -8,13 +7,12 @@ import {
   NSpin,
   NTag,
   NText,
-  useMessage,
 } from 'naive-ui'
 
-import { ApiError } from '@/api/http'
 import { getSecret } from '@/api/secret'
-import type { SecretMain } from '@/api/types'
 import { useAppOptions } from '@/composables/useAppOptions'
+import { useDrawerResource } from '@/composables/useDrawerResource'
+import { formatDate } from '@/utils/format'
 
 const props = defineProps<{
   show: boolean
@@ -26,36 +24,15 @@ const emit = defineEmits<{
   'update:show': [value: boolean]
 }>()
 
-const message = useMessage()
 const { nameOf, ensure } = useAppOptions()
 
-const loading = ref(false)
-const secret = ref<SecretMain | null>(null)
-
-watch(
-  () => [props.show, props.secretId] as const,
-  async ([show, id]) => {
-    if (!show || !id) return
-    loading.value = true
-    secret.value = null
-    try {
-      const loaded = await getSecret(id)
-      secret.value = loaded
-      await ensure(loaded.app_id)
-    } catch (error) {
-      message.error(error instanceof ApiError ? error.message : 'Failed to load')
-      emit('update:show', false)
-    } finally {
-      loading.value = false
-    }
-  },
-)
-
-function formatDate(value: string | undefined): string {
-  if (!value) return '—'
-  const parsed = new Date(value)
-  return Number.isNaN(parsed.getTime()) ? value : parsed.toLocaleString()
-}
+const { loading, item: secret } = useDrawerResource({
+  show: () => props.show,
+  id: () => props.secretId,
+  fetch: getSecret,
+  onLoaded: (loaded) => ensure(loaded.app_id),
+  onError: () => emit('update:show', false),
+})
 </script>
 
 <template>

@@ -72,11 +72,19 @@ func (h *Usr) Delete(ctx context.Context, req *proto.UsrGetReq) (*emptypb.Empty,
 }
 
 func (h *Usr) Login(ctx context.Context, req *proto.UsrLoginReq) (*proto.UsrLoginRep, error) {
-	jwtToken, err := h.usecase.Login(ctx, req.Username, req.Password)
+	accessToken, refreshToken, err := h.usecase.Login(ctx, req.Username, req.Password)
 	if err != nil {
 		return nil, err
 	}
-	return &proto.UsrLoginRep{Jwt: jwtToken}, nil
+	return &proto.UsrLoginRep{Jwt: accessToken, RefreshToken: refreshToken}, nil
+}
+
+func (h *Usr) RefreshToken(ctx context.Context, req *proto.UsrRefreshTokenReq) (*proto.UsrLoginRep, error) {
+	accessToken, refreshToken, err := h.usecase.RefreshToken(ctx, req.RefreshToken)
+	if err != nil {
+		return nil, err
+	}
+	return &proto.UsrLoginRep{Jwt: accessToken, RefreshToken: refreshToken}, nil
 }
 
 func (h *Usr) BootstrapStatus(ctx context.Context, _ *emptypb.Empty) (*proto.UsrBootstrapStatusRep, error) {

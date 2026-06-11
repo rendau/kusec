@@ -523,6 +523,7 @@ func (x *UsrLoginReq) GetPassword() string {
 type UsrLoginRep struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
 	Jwt           string                 `protobuf:"bytes,1,opt,name=jwt,proto3" json:"jwt,omitempty"`
+	RefreshToken  string                 `protobuf:"bytes,2,opt,name=refresh_token,json=refreshToken,proto3" json:"refresh_token,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -564,6 +565,57 @@ func (x *UsrLoginRep) GetJwt() string {
 	return ""
 }
 
+func (x *UsrLoginRep) GetRefreshToken() string {
+	if x != nil {
+		return x.RefreshToken
+	}
+	return ""
+}
+
+type UsrRefreshTokenReq struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	RefreshToken  string                 `protobuf:"bytes,1,opt,name=refresh_token,json=refreshToken,proto3" json:"refresh_token,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *UsrRefreshTokenReq) Reset() {
+	*x = UsrRefreshTokenReq{}
+	mi := &file_kusec_v1_usr_proto_msgTypes[9]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *UsrRefreshTokenReq) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*UsrRefreshTokenReq) ProtoMessage() {}
+
+func (x *UsrRefreshTokenReq) ProtoReflect() protoreflect.Message {
+	mi := &file_kusec_v1_usr_proto_msgTypes[9]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use UsrRefreshTokenReq.ProtoReflect.Descriptor instead.
+func (*UsrRefreshTokenReq) Descriptor() ([]byte, []int) {
+	return file_kusec_v1_usr_proto_rawDescGZIP(), []int{9}
+}
+
+func (x *UsrRefreshTokenReq) GetRefreshToken() string {
+	if x != nil {
+		return x.RefreshToken
+	}
+	return ""
+}
+
 type UsrBootstrapStatusRep struct {
 	state               protoimpl.MessageState `protogen:"open.v1"`
 	CanCreateFirstAdmin bool                   `protobuf:"varint,1,opt,name=can_create_first_admin,json=canCreateFirstAdmin,proto3" json:"can_create_first_admin,omitempty"`
@@ -573,7 +625,7 @@ type UsrBootstrapStatusRep struct {
 
 func (x *UsrBootstrapStatusRep) Reset() {
 	*x = UsrBootstrapStatusRep{}
-	mi := &file_kusec_v1_usr_proto_msgTypes[9]
+	mi := &file_kusec_v1_usr_proto_msgTypes[10]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -585,7 +637,7 @@ func (x *UsrBootstrapStatusRep) String() string {
 func (*UsrBootstrapStatusRep) ProtoMessage() {}
 
 func (x *UsrBootstrapStatusRep) ProtoReflect() protoreflect.Message {
-	mi := &file_kusec_v1_usr_proto_msgTypes[9]
+	mi := &file_kusec_v1_usr_proto_msgTypes[10]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -598,7 +650,7 @@ func (x *UsrBootstrapStatusRep) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use UsrBootstrapStatusRep.ProtoReflect.Descriptor instead.
 func (*UsrBootstrapStatusRep) Descriptor() ([]byte, []int) {
-	return file_kusec_v1_usr_proto_rawDescGZIP(), []int{9}
+	return file_kusec_v1_usr_proto_rawDescGZIP(), []int{10}
 }
 
 func (x *UsrBootstrapStatusRep) GetCanCreateFirstAdmin() bool {
@@ -619,7 +671,7 @@ type UsrUpdateProfileReq struct {
 
 func (x *UsrUpdateProfileReq) Reset() {
 	*x = UsrUpdateProfileReq{}
-	mi := &file_kusec_v1_usr_proto_msgTypes[10]
+	mi := &file_kusec_v1_usr_proto_msgTypes[11]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -631,7 +683,7 @@ func (x *UsrUpdateProfileReq) String() string {
 func (*UsrUpdateProfileReq) ProtoMessage() {}
 
 func (x *UsrUpdateProfileReq) ProtoReflect() protoreflect.Message {
-	mi := &file_kusec_v1_usr_proto_msgTypes[10]
+	mi := &file_kusec_v1_usr_proto_msgTypes[11]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -644,7 +696,7 @@ func (x *UsrUpdateProfileReq) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use UsrUpdateProfileReq.ProtoReflect.Descriptor instead.
 func (*UsrUpdateProfileReq) Descriptor() ([]byte, []int) {
-	return file_kusec_v1_usr_proto_rawDescGZIP(), []int{10}
+	return file_kusec_v1_usr_proto_rawDescGZIP(), []int{11}
 }
 
 func (x *UsrUpdateProfileReq) GetName() string {
@@ -718,9 +770,12 @@ const file_kusec_v1_usr_proto_rawDesc = "" +
 	"\t_password\"E\n" +
 	"\vUsrLoginReq\x12\x1a\n" +
 	"\busername\x18\x01 \x01(\tR\busername\x12\x1a\n" +
-	"\bpassword\x18\x02 \x01(\tR\bpassword\"\x1f\n" +
+	"\bpassword\x18\x02 \x01(\tR\bpassword\"D\n" +
 	"\vUsrLoginRep\x12\x10\n" +
-	"\x03jwt\x18\x01 \x01(\tR\x03jwt\"L\n" +
+	"\x03jwt\x18\x01 \x01(\tR\x03jwt\x12#\n" +
+	"\rrefresh_token\x18\x02 \x01(\tR\frefreshToken\"9\n" +
+	"\x12UsrRefreshTokenReq\x12#\n" +
+	"\rrefresh_token\x18\x01 \x01(\tR\frefreshToken\"L\n" +
 	"\x15UsrBootstrapStatusRep\x123\n" +
 	"\x16can_create_first_admin\x18\x01 \x01(\bR\x13canCreateFirstAdmin\"\x93\x01\n" +
 	"\x13UsrUpdateProfileReq\x12\x17\n" +
@@ -729,7 +784,7 @@ const file_kusec_v1_usr_proto_rawDesc = "" +
 	"\busername\x18\x03 \x01(\tH\x02R\busername\x88\x01\x01B\a\n" +
 	"\x05_nameB\v\n" +
 	"\t_passwordB\v\n" +
-	"\t_username2\xd7\x05\n" +
+	"\t_username2\xbb\x06\n" +
 	"\x03Usr\x12@\n" +
 	"\x04List\x12\x14.kusec_v1.UsrListReq\x1a\x14.kusec_v1.UsrListRep\"\f\x82\xd3\xe4\x93\x02\x06\x12\x04/usr\x12@\n" +
 	"\x03Get\x12\x13.kusec_v1.UsrGetReq\x1a\x11.kusec_v1.UsrMain\"\x11\x82\xd3\xe4\x93\x02\v\x12\t/usr/{id}\x12I\n" +
@@ -737,7 +792,8 @@ const file_kusec_v1_usr_proto_rawDesc = "" +
 	"\x06Update\x12\x16.kusec_v1.UsrUpdateReq\x1a\x16.google.protobuf.Empty\"\x14\x82\xd3\xe4\x93\x02\x0e:\x01*\x1a\t/usr/{id}\x12H\n" +
 	"\x06Delete\x12\x13.kusec_v1.UsrGetReq\x1a\x16.google.protobuf.Empty\"\x11\x82\xd3\xe4\x93\x02\v*\t/usr/{id}\x12L\n" +
 	"\x05Login\x12\x15.kusec_v1.UsrLoginReq\x1a\x15.kusec_v1.UsrLoginRep\"\x15\x82\xd3\xe4\x93\x02\x0f:\x01*\"\n" +
-	"/usr/login\x12i\n" +
+	"/usr/login\x12b\n" +
+	"\fRefreshToken\x12\x1c.kusec_v1.UsrRefreshTokenReq\x1a\x15.kusec_v1.UsrLoginRep\"\x1d\x82\xd3\xe4\x93\x02\x17:\x01*\"\x12/usr/token/refresh\x12i\n" +
 	"\x0fBootstrapStatus\x12\x16.google.protobuf.Empty\x1a\x1f.kusec_v1.UsrBootstrapStatusRep\"\x1d\x82\xd3\xe4\x93\x02\x17\x12\x15/usr/bootstrap/status\x12M\n" +
 	"\n" +
 	"GetProfile\x12\x16.google.protobuf.Empty\x1a\x11.kusec_v1.UsrMain\"\x14\x82\xd3\xe4\x93\x02\x0e\x12\f/usr/profile\x12_\n" +
@@ -755,7 +811,7 @@ func file_kusec_v1_usr_proto_rawDescGZIP() []byte {
 	return file_kusec_v1_usr_proto_rawDescData
 }
 
-var file_kusec_v1_usr_proto_msgTypes = make([]protoimpl.MessageInfo, 11)
+var file_kusec_v1_usr_proto_msgTypes = make([]protoimpl.MessageInfo, 12)
 var file_kusec_v1_usr_proto_goTypes = []any{
 	(*UsrMain)(nil),                 // 0: kusec_v1.UsrMain
 	(*UsrListReq)(nil),              // 1: kusec_v1.UsrListReq
@@ -766,15 +822,16 @@ var file_kusec_v1_usr_proto_goTypes = []any{
 	(*UsrUpdateReq)(nil),            // 6: kusec_v1.UsrUpdateReq
 	(*UsrLoginReq)(nil),             // 7: kusec_v1.UsrLoginReq
 	(*UsrLoginRep)(nil),             // 8: kusec_v1.UsrLoginRep
-	(*UsrBootstrapStatusRep)(nil),   // 9: kusec_v1.UsrBootstrapStatusRep
-	(*UsrUpdateProfileReq)(nil),     // 10: kusec_v1.UsrUpdateProfileReq
-	(*common.ListParamsSt)(nil),     // 11: common.ListParamsSt
-	(*common.PaginationInfoSt)(nil), // 12: common.PaginationInfoSt
-	(*emptypb.Empty)(nil),           // 13: google.protobuf.Empty
+	(*UsrRefreshTokenReq)(nil),      // 9: kusec_v1.UsrRefreshTokenReq
+	(*UsrBootstrapStatusRep)(nil),   // 10: kusec_v1.UsrBootstrapStatusRep
+	(*UsrUpdateProfileReq)(nil),     // 11: kusec_v1.UsrUpdateProfileReq
+	(*common.ListParamsSt)(nil),     // 12: common.ListParamsSt
+	(*common.PaginationInfoSt)(nil), // 13: common.PaginationInfoSt
+	(*emptypb.Empty)(nil),           // 14: google.protobuf.Empty
 }
 var file_kusec_v1_usr_proto_depIdxs = []int32{
-	11, // 0: kusec_v1.UsrListReq.list_params:type_name -> common.ListParamsSt
-	12, // 1: kusec_v1.UsrListRep.pagination_info:type_name -> common.PaginationInfoSt
+	12, // 0: kusec_v1.UsrListReq.list_params:type_name -> common.ListParamsSt
+	13, // 1: kusec_v1.UsrListRep.pagination_info:type_name -> common.PaginationInfoSt
 	0,  // 2: kusec_v1.UsrListRep.results:type_name -> kusec_v1.UsrMain
 	1,  // 3: kusec_v1.Usr.List:input_type -> kusec_v1.UsrListReq
 	3,  // 4: kusec_v1.Usr.Get:input_type -> kusec_v1.UsrGetReq
@@ -782,20 +839,22 @@ var file_kusec_v1_usr_proto_depIdxs = []int32{
 	6,  // 6: kusec_v1.Usr.Update:input_type -> kusec_v1.UsrUpdateReq
 	3,  // 7: kusec_v1.Usr.Delete:input_type -> kusec_v1.UsrGetReq
 	7,  // 8: kusec_v1.Usr.Login:input_type -> kusec_v1.UsrLoginReq
-	13, // 9: kusec_v1.Usr.BootstrapStatus:input_type -> google.protobuf.Empty
-	13, // 10: kusec_v1.Usr.GetProfile:input_type -> google.protobuf.Empty
-	10, // 11: kusec_v1.Usr.UpdateProfile:input_type -> kusec_v1.UsrUpdateProfileReq
-	2,  // 12: kusec_v1.Usr.List:output_type -> kusec_v1.UsrListRep
-	0,  // 13: kusec_v1.Usr.Get:output_type -> kusec_v1.UsrMain
-	5,  // 14: kusec_v1.Usr.Create:output_type -> kusec_v1.UsrCreateRep
-	13, // 15: kusec_v1.Usr.Update:output_type -> google.protobuf.Empty
-	13, // 16: kusec_v1.Usr.Delete:output_type -> google.protobuf.Empty
-	8,  // 17: kusec_v1.Usr.Login:output_type -> kusec_v1.UsrLoginRep
-	9,  // 18: kusec_v1.Usr.BootstrapStatus:output_type -> kusec_v1.UsrBootstrapStatusRep
-	0,  // 19: kusec_v1.Usr.GetProfile:output_type -> kusec_v1.UsrMain
-	13, // 20: kusec_v1.Usr.UpdateProfile:output_type -> google.protobuf.Empty
-	12, // [12:21] is the sub-list for method output_type
-	3,  // [3:12] is the sub-list for method input_type
+	9,  // 9: kusec_v1.Usr.RefreshToken:input_type -> kusec_v1.UsrRefreshTokenReq
+	14, // 10: kusec_v1.Usr.BootstrapStatus:input_type -> google.protobuf.Empty
+	14, // 11: kusec_v1.Usr.GetProfile:input_type -> google.protobuf.Empty
+	11, // 12: kusec_v1.Usr.UpdateProfile:input_type -> kusec_v1.UsrUpdateProfileReq
+	2,  // 13: kusec_v1.Usr.List:output_type -> kusec_v1.UsrListRep
+	0,  // 14: kusec_v1.Usr.Get:output_type -> kusec_v1.UsrMain
+	5,  // 15: kusec_v1.Usr.Create:output_type -> kusec_v1.UsrCreateRep
+	14, // 16: kusec_v1.Usr.Update:output_type -> google.protobuf.Empty
+	14, // 17: kusec_v1.Usr.Delete:output_type -> google.protobuf.Empty
+	8,  // 18: kusec_v1.Usr.Login:output_type -> kusec_v1.UsrLoginRep
+	8,  // 19: kusec_v1.Usr.RefreshToken:output_type -> kusec_v1.UsrLoginRep
+	10, // 20: kusec_v1.Usr.BootstrapStatus:output_type -> kusec_v1.UsrBootstrapStatusRep
+	0,  // 21: kusec_v1.Usr.GetProfile:output_type -> kusec_v1.UsrMain
+	14, // 22: kusec_v1.Usr.UpdateProfile:output_type -> google.protobuf.Empty
+	13, // [13:23] is the sub-list for method output_type
+	3,  // [3:13] is the sub-list for method input_type
 	3,  // [3:3] is the sub-list for extension type_name
 	3,  // [3:3] is the sub-list for extension extendee
 	0,  // [0:3] is the sub-list for field type_name
@@ -809,14 +868,14 @@ func file_kusec_v1_usr_proto_init() {
 	file_kusec_v1_usr_proto_msgTypes[1].OneofWrappers = []any{}
 	file_kusec_v1_usr_proto_msgTypes[4].OneofWrappers = []any{}
 	file_kusec_v1_usr_proto_msgTypes[6].OneofWrappers = []any{}
-	file_kusec_v1_usr_proto_msgTypes[10].OneofWrappers = []any{}
+	file_kusec_v1_usr_proto_msgTypes[11].OneofWrappers = []any{}
 	type x struct{}
 	out := protoimpl.TypeBuilder{
 		File: protoimpl.DescBuilder{
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_kusec_v1_usr_proto_rawDesc), len(file_kusec_v1_usr_proto_rawDesc)),
 			NumEnums:      0,
-			NumMessages:   11,
+			NumMessages:   12,
 			NumExtensions: 0,
 			NumServices:   1,
 		},

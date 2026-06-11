@@ -8,7 +8,7 @@ import { lintGutter, linter } from '@codemirror/lint'
 import type { Diagnostic } from '@codemirror/lint'
 import { oneDark } from '@codemirror/theme-one-dark'
 import { parseDocument } from 'yaml'
-import { useOsTheme } from 'naive-ui'
+import { useOsTheme, useThemeVars } from 'naive-ui'
 
 const props = withDefaults(
   defineProps<{
@@ -25,6 +25,7 @@ const props = withDefaults(
 const emit = defineEmits<{ 'update:value': [value: string] }>()
 
 const osTheme = useOsTheme()
+const themeVars = useThemeVars()
 
 const container = ref<HTMLElement | null>(null)
 let view: EditorView | null = null
@@ -76,7 +77,8 @@ onMounted(() => {
           borderRadius: '3px',
           maxHeight: props.maxHeight,
         },
-        '&.cm-focused': { outline: 'none', borderColor: '#18a058' },
+        // Focus border color follows the naive-ui theme (see scoped CSS).
+        '&.cm-focused': { outline: 'none' },
         '.cm-content': {
           fontFamily: 'ui-monospace, SFMono-Regular, Menlo, Consolas, monospace',
         },
@@ -133,5 +135,10 @@ watch(osTheme, () => {
 <style scoped>
 .value-editor {
   width: 100%;
+}
+
+/* Focus border follows the active naive-ui theme. */
+.value-editor :deep(.cm-editor.cm-focused) {
+  border-color: v-bind('themeVars.primaryColor');
 }
 </style>

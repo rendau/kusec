@@ -9,6 +9,9 @@
       "name": "App"
     },
     {
+      "name": "Dashboard"
+    },
+    {
       "name": "Item"
     },
     {
@@ -232,6 +235,28 @@
         ],
         "tags": [
           "App"
+        ]
+      }
+    },
+    "/dashboard": {
+      "get": {
+        "operationId": "Dashboard_Get",
+        "responses": {
+          "200": {
+            "description": "A successful response.",
+            "schema": {
+              "$ref": "#/definitions/kusec_v1DashboardRep"
+            }
+          },
+          "default": {
+            "description": "An unexpected error response.",
+            "schema": {
+              "$ref": "#/definitions/rpcStatus"
+            }
+          }
+        },
+        "tags": [
+          "Dashboard"
         ]
       }
     },
@@ -876,6 +901,38 @@
         ]
       }
     },
+    "/usr/token/refresh": {
+      "post": {
+        "operationId": "Usr_RefreshToken",
+        "responses": {
+          "200": {
+            "description": "A successful response.",
+            "schema": {
+              "$ref": "#/definitions/kusec_v1UsrLoginRep"
+            }
+          },
+          "default": {
+            "description": "An unexpected error response.",
+            "schema": {
+              "$ref": "#/definitions/rpcStatus"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "body",
+            "in": "body",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/kusec_v1UsrRefreshTokenReq"
+            }
+          }
+        ],
+        "tags": [
+          "Usr"
+        ]
+      }
+    },
     "/usr/{id}": {
       "get": {
         "operationId": "Usr_Get",
@@ -1113,6 +1170,76 @@
         },
         "description": {
           "type": "string"
+        }
+      }
+    },
+    "kusec_v1DashboardCountSt": {
+      "type": "object",
+      "properties": {
+        "total": {
+          "type": "string",
+          "format": "int64"
+        },
+        "active": {
+          "type": "string",
+          "format": "int64"
+        }
+      }
+    },
+    "kusec_v1DashboardRecentSecretSt": {
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string"
+        },
+        "app_id": {
+          "type": "string"
+        },
+        "app_name": {
+          "type": "string",
+          "description": "Имя приложения, к которому относится секрет (для отображения)."
+        },
+        "slug_name": {
+          "type": "string"
+        },
+        "description": {
+          "type": "string"
+        },
+        "active": {
+          "type": "boolean"
+        },
+        "updated_at": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "item_count": {
+          "type": "string",
+          "format": "int64",
+          "description": "Количество items в секрете."
+        }
+      }
+    },
+    "kusec_v1DashboardRep": {
+      "type": "object",
+      "properties": {
+        "app": {
+          "$ref": "#/definitions/kusec_v1DashboardCountSt"
+        },
+        "secret": {
+          "$ref": "#/definitions/kusec_v1DashboardCountSt"
+        },
+        "item": {
+          "$ref": "#/definitions/kusec_v1DashboardCountSt"
+        },
+        "usr": {
+          "$ref": "#/definitions/kusec_v1DashboardCountSt"
+        },
+        "recent_secrets": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "$ref": "#/definitions/kusec_v1DashboardRecentSecretSt"
+          }
         }
       }
     },
@@ -1388,6 +1515,9 @@
       "properties": {
         "jwt": {
           "type": "string"
+        },
+        "refresh_token": {
+          "type": "string"
         }
       }
     },
@@ -1419,6 +1549,14 @@
           "type": "string"
         },
         "username": {
+          "type": "string"
+        }
+      }
+    },
+    "kusec_v1UsrRefreshTokenReq": {
+      "type": "object",
+      "properties": {
+        "refresh_token": {
           "type": "string"
         }
       }

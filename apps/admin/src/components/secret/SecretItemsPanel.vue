@@ -1,32 +1,58 @@
 <script setup lang="ts">
 import { inject, onMounted, ref, watch } from 'vue'
-import type { Ref } from 'vue'
 import {
   NButton,
   NFlex,
+  NIcon,
   NPopconfirm,
   NSpace,
   NSpin,
   NTag,
   NText,
+  NTooltip,
   useMessage,
 } from 'naive-ui'
+import {
+  Binary,
+  Clipboard,
+  Copy,
+  Download,
+  Eye,
+  EyeOff,
+  Pencil,
+  Plus,
+  Trash,
+} from '@vicons/tabler'
 
-import { ApiError } from '@/api/http'
+import { apiErrorMessage } from '@/api/http'
 import { deleteItem, listItems } from '@/api/item'
 import type { ItemMain } from '@/api/types'
+import { itemsRevealCommandKey } from '@/constants/injection'
+import { useClipboard } from '@/composables/useClipboard'
 
 import ItemBulkPasteModal from '@/components/item/ItemBulkPasteModal.vue'
 import ItemDetailDrawer from '@/components/item/ItemDetailDrawer.vue'
 import ItemFormModal from '@/components/item/ItemFormModal.vue'
 import ValueEditor from '@/components/common/ValueEditor.vue'
-import { base64ByteSize, downloadBase64, formatBytes } from '@/utils/binary'
+import ValueFormatChip from '@/components/common/ValueFormatChip.vue'
+import {
+  base64ByteSize,
+  base64ToText,
+  downloadBase64,
+  formatBytes,
+  isProbablyBase64,
+} from '@/utils/binary'
+import { normalizeValueFormat } from '@/utils/format'
 
-function valueFormat(row: ItemMain): 'text' | 'yaml' | 'json' {
-  return row.value_format === 'yaml' || row.value_format === 'json'
-    ? row.value_format
-    : 'text'
-}
+const props = defineProps<{
+  secretId: string
+}>()
+
+const message = useMessage()
+const { copy } = useClipboard()
+
+const rows = ref<ItemMain[]>([])
+const loading = ref(false)
 
 function isFileRow(row: ItemMain): boolean {
   return row.encoding === 'base64'
@@ -44,15 +70,6 @@ function downloadFile(row: ItemMain): void {
   }
 }
 
-const props = defineProps<{
-  secretId: string
-}>()
-
-const message = useMessage()
-
-const rows = ref<ItemMain[]>([])
-const loading = ref(false)
-
 // Ids whose value block is revealed (shown under the row).
 const opened = ref(new Set<string>())
 
@@ -69,13 +86,9 @@ function toggleReveal(id: string): void {
 
 // Workspace "Show all / Hide all" broadcasts a command that sets our per-row
 // flags — rows stay individually togglable afterwards.
-interface RevealCommand {
-  action: 'show' | 'hide'
-  seq: number
-}
-const revealCommand = inject<Ref<RevealCommand>>(
-  'itemsRevealCommand',
-  ref({ action: 'hide', seq: 0 }),
+const revealCommand = inject(
+  itemsRevealCommandKey,
+  ref({ action: 'hide' as const, seq: 0 }),
 )
 
 function applyRevealCommand(): void {
@@ -103,37 +116,18 @@ async function fetchItems(): Promise<void> {
     rows.value = rep.results ?? []
     applyRevealCommand()
   } catch (error) {
-    message.error(error instanceof ApiError ? error.message : 'Failed to load items')
+    message.error(apiErrorMessage(error, 'Failed to load items'))
   } finally {
     loading.value = false
   }
 }
 
-async function copyValue(value: string): Promise<void> {
+/** Decode a base64 value and copy the result (offered for base64-looking values). */
+async function copyDecoded(value: string): Promise<void> {
   try {
-    await navigator.clipboard.writeText(value)
-    message.success('Value copied')
-  } catch {
-    message.error('Clipboard unavailable')
-  }
-}
-
-// Decode a base64 value and copy the result to the clipboard.
-async function decodeBase64ToClipboard(value: string): Promise<void> {
-  let decoded: string
-  try {
-    const binary = atob(value.trim())
-    const bytes = Uint8Array.from(binary, (c) => c.charCodeAt(0))
-    decoded = new TextDecoder().decode(bytes)
+    await copy(base64ToText(value.trim()), 'Decoded value copied')
   } catch {
     message.error('Invalid base64 value')
-    return
-  }
-  try {
-    await navigator.clipboard.writeText(decoded)
-    message.success('Decoded value copied')
-  } catch {
-    message.error('Clipboard unavailable')
   }
 }
 
@@ -158,7 +152,7 @@ async function removeItem(row: ItemMain): Promise<void> {
     message.success('Item deleted')
     await fetchItems()
   } catch (error) {
-    message.error(error instanceof ApiError ? error.message : 'Failed to delete item')
+    message.error(apiErrorMessage(error, 'Failed to delete item'))
   }
 }
 
@@ -174,8 +168,18 @@ onMounted(fetchItems)
     >
       <NText depth="3" style="font-size: 12px">Items</NText>
       <NSpace :size="8">
-        <NButton size="tiny" @click="showPaste = true">Paste items</NButton>
-        <NButton size="tiny" type="primary" @click="openCreate">New item</NButton>
+        <NButton size="tiny" @click="showPaste = true">
+          <template #icon>
+            <NIcon :component="Clipboard" />
+          </template>
+          Paste items
+        </NButton>
+        <NButton size="tiny" type="primary" @click="openCreate">
+          <template #icon>
+            <NIcon :component="Plus" />
+          </template>
+          New item
+        </NButton>
       </NSpace>
     </NFlex>
 
@@ -194,52 +198,84 @@ onMounted(fetchItems)
           <div v-if="i > 0" class="items__sep" />
 
           <div class="items__cell items__key">
-            <NButton text type="primary" @click="openDetail(row)">
+            <NButton text type="primary" class="items__key-btn" @click="openDetail(row)">
               {{ row.key }}
             </NButton>
           </div>
 
           <div class="items__cell">
-            <NSpace :size="6" align="center" :wrap-item="false">
+            <NSpace :size="4" align="center" :wrap-item="false">
               <template v-if="isFileRow(row)">
                 <NText depth="3" class="items__file-name">
                   {{ row.file_name || 'file' }}
                 </NText>
                 <NTag size="tiny" :bordered="false">{{ fileSize(row) }}</NTag>
-                <NButton
-                  text
-                  type="primary"
-                  size="tiny"
-                  @click="downloadFile(row)"
-                >
+                <NTooltip>
+                  <template #trigger>
+                    <NButton
+                      quaternary
+                      circle
+                      size="tiny"
+                      aria-label="Download file"
+                      @click="downloadFile(row)"
+                    >
+                      <template #icon>
+                        <NIcon :component="Download" />
+                      </template>
+                    </NButton>
+                  </template>
                   Download
-                </NButton>
+                </NTooltip>
               </template>
               <template v-else>
-                <NButton
-                  text
-                  type="primary"
-                  size="tiny"
-                  @click="toggleReveal(row.id)"
-                >
-                  {{ isOpen(row.id) ? 'Hide' : 'Show' }}
-                </NButton>
-                <NButton
-                  text
-                  type="primary"
-                  size="tiny"
-                  @click="copyValue(row.value)"
-                >
-                  Copy
-                </NButton>
-                <NButton
-                  text
-                  type="primary"
-                  size="tiny"
-                  @click="decodeBase64ToClipboard(row.value)"
-                >
-                  Decode
-                </NButton>
+                <NTooltip>
+                  <template #trigger>
+                    <NButton
+                      quaternary
+                      circle
+                      size="tiny"
+                      :aria-label="isOpen(row.id) ? 'Hide value' : 'Show value'"
+                      @click="toggleReveal(row.id)"
+                    >
+                      <template #icon>
+                        <NIcon :component="isOpen(row.id) ? EyeOff : Eye" />
+                      </template>
+                    </NButton>
+                  </template>
+                  {{ isOpen(row.id) ? 'Hide value' : 'Show value' }}
+                </NTooltip>
+                <NTooltip>
+                  <template #trigger>
+                    <NButton
+                      quaternary
+                      circle
+                      size="tiny"
+                      aria-label="Copy value"
+                      @click="copy(row.value)"
+                    >
+                      <template #icon>
+                        <NIcon :component="Copy" />
+                      </template>
+                    </NButton>
+                  </template>
+                  Copy value
+                </NTooltip>
+                <NTooltip v-if="isProbablyBase64(row.value)">
+                  <template #trigger>
+                    <NButton
+                      quaternary
+                      circle
+                      size="tiny"
+                      aria-label="Copy decoded value"
+                      @click="copyDecoded(row.value)"
+                    >
+                      <template #icon>
+                        <NIcon :component="Binary" />
+                      </template>
+                    </NButton>
+                  </template>
+                  Copy decoded (base64)
+                </NTooltip>
               </template>
             </NSpace>
           </div>
@@ -251,11 +287,36 @@ onMounted(fetchItems)
           </div>
 
           <div class="items__cell">
-            <NSpace :size="8">
-              <NButton size="tiny" @click="openEdit(row)">Edit</NButton>
+            <NSpace :size="4" :wrap-item="false">
+              <NTooltip>
+                <template #trigger>
+                  <NButton
+                    quaternary
+                    circle
+                    size="tiny"
+                    aria-label="Edit item"
+                    @click="openEdit(row)"
+                  >
+                    <template #icon>
+                      <NIcon :component="Pencil" />
+                    </template>
+                  </NButton>
+                </template>
+                Edit
+              </NTooltip>
               <NPopconfirm @positive-click="removeItem(row)">
                 <template #trigger>
-                  <NButton size="tiny" type="error" secondary>Delete</NButton>
+                  <NButton
+                    quaternary
+                    circle
+                    size="tiny"
+                    type="error"
+                    aria-label="Delete item"
+                  >
+                    <template #icon>
+                      <NIcon :component="Trash" />
+                    </template>
+                  </NButton>
                 </template>
                 Delete "{{ row.key }}"?
               </NPopconfirm>
@@ -264,10 +325,10 @@ onMounted(fetchItems)
 
           <Transition name="value">
             <div v-if="!isFileRow(row) && isOpen(row.id)" class="items__value">
-              <span class="items__value-type">{{ row.value_format || 'text' }}</span>
+              <ValueFormatChip :format="row.value_format" />
               <ValueEditor
                 :value="row.value"
-                :format="valueFormat(row)"
+                :format="normalizeValueFormat(row.value_format)"
                 readonly
                 min-height="0"
                 max-height="320px"
@@ -321,7 +382,7 @@ onMounted(fetchItems)
 
 .items {
   display: grid;
-  grid-template-columns: minmax(140px, 1.2fr) minmax(220px, 2fr) 100px 170px;
+  grid-template-columns: minmax(140px, 1.2fr) minmax(220px, 2fr) 100px 110px;
   column-gap: 12px;
   row-gap: 4px;
   align-items: center;
@@ -352,29 +413,17 @@ onMounted(fetchItems)
   white-space: nowrap;
 }
 
+/* Item keys are env-style identifiers — render them in monospace. */
+.items__key-btn {
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  font-size: 12.5px;
+}
+
 /* Value block: starts at the Value column and spans to the end (not under Key). */
 .items__value {
   position: relative;
   grid-column: 2 / -1;
   margin: 2px 0 6px;
-}
-
-.items__value-type {
-  position: absolute;
-  top: 6px;
-  right: 8px;
-  z-index: 1;
-  padding: 2px 7px;
-  font-size: 10px;
-  font-weight: 600;
-  line-height: 1.4;
-  letter-spacing: 0.04em;
-  text-transform: uppercase;
-  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
-  color: #18a058;
-  background: rgba(24, 160, 88, 0.14);
-  border-radius: 999px;
-  pointer-events: none;
 }
 
 /* Reveal animation. */
@@ -406,5 +455,4 @@ onMounted(fetchItems)
     transition: none;
   }
 }
-
 </style>

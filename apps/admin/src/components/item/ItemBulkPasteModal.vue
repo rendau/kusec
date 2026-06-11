@@ -15,6 +15,7 @@ import {
 import { ApiError } from '@/api/http'
 import { createItem, updateItem } from '@/api/item'
 import type { ItemMain } from '@/api/types'
+import { useClipboard } from '@/composables/useClipboard'
 import { parseKeyValueText } from '@/utils/kvParse'
 
 const props = defineProps<{
@@ -31,6 +32,7 @@ const emit = defineEmits<{
 }>()
 
 const message = useMessage()
+const { readSilently } = useClipboard()
 
 const text = ref('')
 const overwrite = ref(false)
@@ -53,11 +55,13 @@ const previewRows = computed<PreviewRow[]>(() => {
 })
 
 const importableCount = computed(
-  () =>
-    previewRows.value.filter((r) => !r.existing || overwrite.value).length,
+  () => previewRows.value.filter((r) => !r.existing || overwrite.value).length,
 )
 
-function rowStatus(row: PreviewRow): { label: string; type: 'success' | 'warning' | 'default' } {
+function rowStatus(row: PreviewRow): {
+  label: string
+  type: 'success' | 'warning' | 'default'
+} {
   if (!row.existing) return { label: 'New', type: 'success' }
   return overwrite.value
     ? { label: 'Overwrite', type: 'warning' }
@@ -71,25 +75,18 @@ watch(
     if (!show) return
     text.value = ''
     overwrite.value = false
-    try {
-      text.value = await navigator.clipboard.readText()
-    } catch {
-      // Clipboard permission denied / unsupported — user pastes manually.
-    }
+    // Permission denied / unsupported → empty string, user pastes manually.
+    text.value = await readSilently()
   },
 )
 
 async function readClipboard(): Promise<void> {
-  try {
-    const value = await navigator.clipboard.readText()
-    if (!value.trim()) {
-      message.warning('Clipboard is empty')
-      return
-    }
-    text.value = value
-  } catch {
-    message.error('Clipboard unavailable')
+  const value = await readSilently()
+  if (!value.trim()) {
+    message.warning('Clipboard is empty or unavailable')
+    return
   }
+  text.value = value
 }
 
 function close(): void {
@@ -132,9 +129,7 @@ async function submit(): Promise<void> {
         created++
       }
     } catch (error) {
-      failed.push(
-        error instanceof ApiError ? `${row.key}: ${error.message}` : row.key,
-      )
+      failed.push(error instanceof ApiError ? `${row.key}: ${error.message}` : row.key)
     }
   }
   submitting.value = false
@@ -166,14 +161,12 @@ async function submit(): Promise<void> {
     <NSpace vertical :size="12">
       <div class="paste-bar">
         <NText depth="3" style="font-size: 12px">
-          Paste key/value pairs — <code>key: value</code>, <code>key=value</code>,
-          one per line or separated by <code>,</code> / <code>;</code>,
-          .env (<code>export</code>, quotes, <code>#</code> comments),
-          JSON object or spreadsheet columns.
+          Paste key/value pairs — <code>key: value</code>, <code>key=value</code>, one
+          per line or separated by <code>,</code> / <code>;</code>, .env
+          (<code>export</code>, quotes, <code>#</code> comments), JSON object or
+          spreadsheet columns.
         </NText>
-        <NButton size="small" tertiary @click="readClipboard">
-          Read clipboard
-        </NButton>
+        <NButton size="small" tertiary @click="readClipboard"> Read clipboard </NButton>
       </div>
 
       <NInput

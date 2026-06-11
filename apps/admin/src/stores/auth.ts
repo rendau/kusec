@@ -2,7 +2,7 @@ import { computed, ref } from 'vue'
 import { defineStore } from 'pinia'
 
 import type { UsrMain, UsrUpdateProfileReq } from '@/api/types'
-import { getToken, patchCredentials } from '@/api/auth-session'
+import { getToken } from '@/api/auth-session'
 import {
   getProfile,
   login as apiLogin,
@@ -21,9 +21,7 @@ export const useAuthStore = defineStore('auth', () => {
   const initialized = ref(false)
   const loading = ref(false)
 
-  const isAuthenticated = computed(
-    () => Boolean(token.value) && Boolean(profile.value),
-  )
+  const isAuthenticated = computed(() => Boolean(token.value) && Boolean(profile.value))
   const isAdmin = computed(() => Boolean(profile.value?.is_admin))
 
   function syncToken(): void {
@@ -67,14 +65,6 @@ export const useAuthStore = defineStore('auth', () => {
 
   async function updateProfile(payload: UsrUpdateProfileReq): Promise<void> {
     await apiUpdateProfile(payload)
-    // Keep stored credentials in sync so silent token renewal still works
-    // after the user changes their username or password.
-    if (payload.username !== undefined || payload.password !== undefined) {
-      patchCredentials({
-        ...(payload.username !== undefined ? { username: payload.username } : {}),
-        ...(payload.password !== undefined ? { password: payload.password } : {}),
-      })
-    }
     await refreshProfile()
   }
 

@@ -33,6 +33,7 @@ import (
 	grpcHandler "github.com/mechta-market/kusec/internal/handler/grpc"
 
 	appUsc "github.com/mechta-market/kusec/internal/usecase/app"
+	dashboardUsc "github.com/mechta-market/kusec/internal/usecase/dashboard"
 	itemUsc "github.com/mechta-market/kusec/internal/usecase/item"
 	secretUsc "github.com/mechta-market/kusec/internal/usecase/secret"
 	usrUsc "github.com/mechta-market/kusec/internal/usecase/usr"
@@ -86,10 +87,18 @@ func (a *App) Init() {
 	sessionSvc := sessionService.New(config.Conf.JWTSecret)
 
 	// dependency graph
-	usrHandler := grpcHandler.NewUsr(usrUsc.New(usrService.New(usrDb.New(a.pgpool)), sessionSvc))
-	appHandler := grpcHandler.NewApp(appUsc.New(appService.New(appDb.New(a.pgpool)), sessionSvc))
-	secretHandler := grpcHandler.NewSecret(secretUsc.New(secretService.New(secretDb.New(a.pgpool)), sessionSvc))
-	itemHandler := grpcHandler.NewItem(itemUsc.New(itemService.New(itemDb.New(a.pgpool)), sessionSvc))
+	usrSvc := usrService.New(usrDb.New(a.pgpool))
+	appSvc := appService.New(appDb.New(a.pgpool))
+	secretSvc := secretService.New(secretDb.New(a.pgpool))
+	itemSvc := itemService.New(itemDb.New(a.pgpool))
+
+	usrHandler := grpcHandler.NewUsr(usrUsc.New(usrSvc, sessionSvc))
+	appHandler := grpcHandler.NewApp(appUsc.New(appSvc, sessionSvc))
+	secretHandler := grpcHandler.NewSecret(secretUsc.New(secretSvc, sessionSvc))
+	itemHandler := grpcHandler.NewItem(itemUsc.New(itemSvc, sessionSvc))
+	dashboardHandler := grpcHandler.NewDashboard(
+		dashboardUsc.New(appSvc, secretSvc, itemSvc, usrSvc, sessionSvc),
+	)
 
 	// grpc server
 	{
@@ -98,6 +107,7 @@ func (a *App) Init() {
 			proto.RegisterAppServer(server, appHandler)
 			proto.RegisterSecretServer(server, secretHandler)
 			proto.RegisterItemServer(server, itemHandler)
+			proto.RegisterDashboardServer(server, dashboardHandler)
 		})
 	}
 
@@ -118,6 +128,7 @@ func (a *App) Init() {
 				proto.RegisterAppHandler,
 				proto.RegisterSecretHandler,
 				proto.RegisterItemHandler,
+				proto.RegisterDashboardHandler,
 			}
 			for _, h := range handlers {
 				err = h(context.Background(), mux, conn)

@@ -26,6 +26,7 @@ const (
 	Usr_Update_FullMethodName          = "/kusec_v1.Usr/Update"
 	Usr_Delete_FullMethodName          = "/kusec_v1.Usr/Delete"
 	Usr_Login_FullMethodName           = "/kusec_v1.Usr/Login"
+	Usr_RefreshToken_FullMethodName    = "/kusec_v1.Usr/RefreshToken"
 	Usr_BootstrapStatus_FullMethodName = "/kusec_v1.Usr/BootstrapStatus"
 	Usr_GetProfile_FullMethodName      = "/kusec_v1.Usr/GetProfile"
 	Usr_UpdateProfile_FullMethodName   = "/kusec_v1.Usr/UpdateProfile"
@@ -41,6 +42,7 @@ type UsrClient interface {
 	Update(ctx context.Context, in *UsrUpdateReq, opts ...grpc.CallOption) (*emptypb.Empty, error)
 	Delete(ctx context.Context, in *UsrGetReq, opts ...grpc.CallOption) (*emptypb.Empty, error)
 	Login(ctx context.Context, in *UsrLoginReq, opts ...grpc.CallOption) (*UsrLoginRep, error)
+	RefreshToken(ctx context.Context, in *UsrRefreshTokenReq, opts ...grpc.CallOption) (*UsrLoginRep, error)
 	BootstrapStatus(ctx context.Context, in *emptypb.Empty, opts ...grpc.CallOption) (*UsrBootstrapStatusRep, error)
 	GetProfile(ctx context.Context, in *emptypb.Empty, opts ...grpc.CallOption) (*UsrMain, error)
 	UpdateProfile(ctx context.Context, in *UsrUpdateProfileReq, opts ...grpc.CallOption) (*emptypb.Empty, error)
@@ -114,6 +116,16 @@ func (c *usrClient) Login(ctx context.Context, in *UsrLoginReq, opts ...grpc.Cal
 	return out, nil
 }
 
+func (c *usrClient) RefreshToken(ctx context.Context, in *UsrRefreshTokenReq, opts ...grpc.CallOption) (*UsrLoginRep, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(UsrLoginRep)
+	err := c.cc.Invoke(ctx, Usr_RefreshToken_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
 func (c *usrClient) BootstrapStatus(ctx context.Context, in *emptypb.Empty, opts ...grpc.CallOption) (*UsrBootstrapStatusRep, error) {
 	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
 	out := new(UsrBootstrapStatusRep)
@@ -154,6 +166,7 @@ type UsrServer interface {
 	Update(context.Context, *UsrUpdateReq) (*emptypb.Empty, error)
 	Delete(context.Context, *UsrGetReq) (*emptypb.Empty, error)
 	Login(context.Context, *UsrLoginReq) (*UsrLoginRep, error)
+	RefreshToken(context.Context, *UsrRefreshTokenReq) (*UsrLoginRep, error)
 	BootstrapStatus(context.Context, *emptypb.Empty) (*UsrBootstrapStatusRep, error)
 	GetProfile(context.Context, *emptypb.Empty) (*UsrMain, error)
 	UpdateProfile(context.Context, *UsrUpdateProfileReq) (*emptypb.Empty, error)
@@ -184,6 +197,9 @@ func (UnimplementedUsrServer) Delete(context.Context, *UsrGetReq) (*emptypb.Empt
 }
 func (UnimplementedUsrServer) Login(context.Context, *UsrLoginReq) (*UsrLoginRep, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method Login not implemented")
+}
+func (UnimplementedUsrServer) RefreshToken(context.Context, *UsrRefreshTokenReq) (*UsrLoginRep, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method RefreshToken not implemented")
 }
 func (UnimplementedUsrServer) BootstrapStatus(context.Context, *emptypb.Empty) (*UsrBootstrapStatusRep, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method BootstrapStatus not implemented")
@@ -323,6 +339,24 @@ func _Usr_Login_Handler(srv interface{}, ctx context.Context, dec func(interface
 	return interceptor(ctx, in, info, handler)
 }
 
+func _Usr_RefreshToken_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(UsrRefreshTokenReq)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(UsrServer).RefreshToken(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: Usr_RefreshToken_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(UsrServer).RefreshToken(ctx, req.(*UsrRefreshTokenReq))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
 func _Usr_BootstrapStatus_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
 	in := new(emptypb.Empty)
 	if err := dec(in); err != nil {
@@ -407,6 +441,10 @@ var Usr_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "Login",
 			Handler:    _Usr_Login_Handler,
+		},
+		{
+			MethodName: "RefreshToken",
+			Handler:    _Usr_RefreshToken_Handler,
 		},
 		{
 			MethodName: "BootstrapStatus",

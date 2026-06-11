@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { onMounted, reactive, ref, watch } from 'vue'
+import { onMounted, reactive } from 'vue'
 import {
   NButton,
   NForm,
@@ -9,14 +9,13 @@ import {
   NSelect,
   NSpace,
   NSwitch,
-  useMessage,
 } from 'naive-ui'
-import type { FormInst, FormRules } from 'naive-ui'
+import type { FormRules } from 'naive-ui'
 
-import { ApiError } from '@/api/http'
 import { createSecret, updateSecret } from '@/api/secret'
 import type { SecretMain, SecretUpdateReq } from '@/api/types'
 import { useAppOptions } from '@/composables/useAppOptions'
+import { useEntityForm } from '@/composables/useEntityForm'
 
 const props = defineProps<{
   show: boolean
@@ -33,11 +32,7 @@ const emit = defineEmits<{
   saved: []
 }>()
 
-const message = useMessage()
 const { options: appOptions, loading: appsLoading, search, ensure } = useAppOptions()
-
-const formRef = ref<FormInst | null>(null)
-const submitting = ref(false)
 
 interface FormModel {
   app_id: string | null
@@ -59,8 +54,7 @@ const rules: FormRules = {
       required: true,
       message: 'Application is required',
       trigger: ['blur', 'change'],
-      validator: (_rule, value: string | null) =>
-        value != null && value !== '',
+      validator: (_rule, value: string | null) => value != null && value !== '',
     },
   ],
   slug_name: [
@@ -68,68 +62,46 @@ const rules: FormRules = {
   ],
 }
 
-const isEdit = () => props.secret !== null
+const { formRef, submitting, isEdit, submit } = useEntityForm<SecretMain>({
+  show: () => props.show,
+  entity: () => props.secret,
+  seed: async (secret) => {
+    model.app_id = secret?.app_id ?? props.defaultAppId ?? null
+    model.slug_name = secret?.slug_name ?? ''
+    model.description = secret?.description ?? ''
+    model.active = secret?.active ?? true
+    // Make sure the selected app is present in the options list.
+    if (model.app_id) await ensure(model.app_id)
+  },
+  create: () =>
+    createSecret({
+      app_id: model.app_id as string,
+      slug_name: model.slug_name,
+      description: model.description,
+      active: model.active,
+    }),
+  update: (secret) => {
+    const update: SecretUpdateReq = {
+      slug_name: model.slug_name,
+      description: model.description,
+      active: model.active,
+    }
+    if (model.app_id) update.app_id = model.app_id
+    return updateSecret(secret.id, update)
+  },
+  messages: { created: 'Secret created', updated: 'Secret updated' },
+  onSaved: () => {
+    emit('saved')
+    close()
+  },
+})
 
 onMounted(() => {
   void search()
 })
 
-// Reset the form whenever the modal opens, seeding it from the edited secret.
-watch(
-  () => props.show,
-  async (show) => {
-    if (!show) return
-    const secret = props.secret
-    model.app_id = secret?.app_id ?? props.defaultAppId ?? null
-    model.slug_name = secret?.slug_name ?? ''
-    model.description = secret?.description ?? ''
-    model.active = secret?.active ?? true
-    formRef.value?.restoreValidation()
-    // Make sure the selected app is present in the options list.
-    if (model.app_id) await ensure(model.app_id)
-  },
-)
-
 function close(): void {
   emit('update:show', false)
-}
-
-async function submit(): Promise<void> {
-  try {
-    await formRef.value?.validate()
-  } catch {
-    return
-  }
-
-  submitting.value = true
-  try {
-    if (props.secret) {
-      const update: SecretUpdateReq = {
-        slug_name: model.slug_name,
-        description: model.description,
-        active: model.active,
-      }
-      if (model.app_id) update.app_id = model.app_id
-      await updateSecret(props.secret.id, update)
-      message.success('Secret updated')
-    } else {
-      await createSecret({
-        app_id: model.app_id as string,
-        slug_name: model.slug_name,
-        description: model.description,
-        active: model.active,
-      })
-      message.success('Secret created')
-    }
-    emit('saved')
-    close()
-  } catch (error) {
-    message.error(
-      error instanceof ApiError ? error.message : 'Unexpected error, please try again',
-    )
-  } finally {
-    submitting.value = false
-  }
 }
 </script>
 
@@ -137,7 +109,7 @@ async function submit(): Promise<void> {
   <NModal
     :show="show"
     preset="card"
-    :title="isEdit() ? 'Edit secret' : 'New secret'"
+    :title="isEdit ? 'Edit secret' : 'New secret'"
     style="max-width: 520px"
     :mask-closable="!submitting"
     @update:show="emit('update:show', $event)"
@@ -186,7 +158,7 @@ async function submit(): Promise<void> {
       <NSpace justify="end">
         <NButton :disabled="submitting" @click="close">Cancel</NButton>
         <NButton type="primary" :loading="submitting" @click="submit">
-          {{ isEdit() ? 'Save' : 'Create' }}
+          {{ isEdit ? 'Save' : 'Create' }}
         </NButton>
       </NSpace>
     </template>

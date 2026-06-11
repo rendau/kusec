@@ -1,5 +1,4 @@
 <script setup lang="ts">
-import { ref, watch } from 'vue'
 import {
   NDescriptions,
   NDescriptionsItem,
@@ -8,12 +7,10 @@ import {
   NSpin,
   NTag,
   NText,
-  useMessage,
 } from 'naive-ui'
 
-import { ApiError } from '@/api/http'
 import { getUser } from '@/api/usr'
-import type { UsrMain } from '@/api/types'
+import { useDrawerResource } from '@/composables/useDrawerResource'
 
 const props = defineProps<{
   show: boolean
@@ -25,27 +22,12 @@ const emit = defineEmits<{
   'update:show': [value: boolean]
 }>()
 
-const message = useMessage()
-
-const loading = ref(false)
-const user = ref<UsrMain | null>(null)
-
-watch(
-  () => [props.show, props.userId] as const,
-  async ([show, id]) => {
-    if (!show || id == null) return
-    loading.value = true
-    user.value = null
-    try {
-      user.value = await getUser(id)
-    } catch (error) {
-      message.error(error instanceof ApiError ? error.message : 'Failed to load')
-      emit('update:show', false)
-    } finally {
-      loading.value = false
-    }
-  },
-)
+const { loading, item: user } = useDrawerResource({
+  show: () => props.show,
+  id: () => props.userId,
+  fetch: getUser,
+  onError: () => emit('update:show', false),
+})
 </script>
 
 <template>

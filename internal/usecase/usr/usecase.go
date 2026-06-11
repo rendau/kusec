@@ -23,24 +23,64 @@ func New(svc ServiceI, sessionSvc SessionServiceI) *Usecase {
 	}
 }
 
-// Login проверяет логин/пароль и возвращает подписанный HS256-токен.
-func (u *Usecase) Login(ctx context.Context, username, password string) (string, error) {
+// issueTokenPair выдаёт пару access + refresh для пользователя.
+func (u *Usecase) issueTokenPair(item *model.Main) (string, string, error) {
+	access, err := u.sessionSvc.CreateToken(item.Id, item.IsAdmin)
+	if err != nil {
+		return "", "", fmt.Errorf("sessionSvc.CreateToken: %w", err)
+	}
+
+	refresh, err := u.sessionSvc.CreateRefreshToken(item.Id, item.Password)
+	if err != nil {
+		return "", "", fmt.Errorf("sessionSvc.CreateRefreshToken: %w", err)
+	}
+
+	return access, refresh, nil
+}
+
+// Login проверяет логин/пароль и возвращает пару access + refresh токенов.
+func (u *Usecase) Login(ctx context.Context, username, password string) (string, string, error) {
 	username = strings.TrimSpace(username)
 
 	item, found, err := u.svc.AuthByUsernamePassword(ctx, username, password)
 	if err != nil {
-		return "", fmt.Errorf("svc.AuthByUsernamePassword: %w", err)
+		return "", "", fmt.Errorf("svc.AuthByUsernamePassword: %w", err)
 	}
 	if !found || !item.Active {
-		return "", errs.NotAuthorized
+		return "", "", errs.NotAuthorized
 	}
 
-	token, err := u.sessionSvc.CreateToken(item.Id, item.IsAdmin)
+	return u.issueTokenPair(item)
+}
+
+// RefreshToken обменивает валидный refresh-токен на новую пару токенов
+// (refresh ротируется). Пользователь перечитывается из БД: деактивация или
+// смена роли вступают в силу при ближайшем обновлении, а смена пароля
+// инвалидирует ранее выданные refresh-токены (несовпадение отпечатка).
+func (u *Usecase) RefreshToken(ctx context.Context, refreshToken string) (string, string, error) {
+	refreshToken = strings.TrimSpace(refreshToken)
+	if refreshToken == "" {
+		return "", "", errs.NotAuthorized
+	}
+
+	usrId, err := u.sessionSvc.RefreshTokenUserId(refreshToken)
 	if err != nil {
-		return "", fmt.Errorf("sessionSvc.CreateToken: %w", err)
+		return "", "", errs.NotAuthorized
 	}
 
-	return token, nil
+	item, found, err := u.svc.Get(ctx, usrId, false)
+	if err != nil {
+		return "", "", fmt.Errorf("svc.Get: %w", err)
+	}
+	if !found || !item.Active {
+		return "", "", errs.NotAuthorized
+	}
+
+	if _, err = u.sessionSvc.ParseRefreshToken(refreshToken, item.Password); err != nil {
+		return "", "", errs.NotAuthorized
+	}
+
+	return u.issueTokenPair(item)
 }
 
 // BootstrapStatus сообщает, можно ли создать первого администратора (нет ни одного пользователя).

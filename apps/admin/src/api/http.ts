@@ -7,9 +7,11 @@ import { clearSession, getToken, renewTokenOnce } from './auth-session'
  *
  * The gateway returns HTTP 400 for all business errors with a
  * `{ code, message, fields }` body, so auth failures are detected by the
- * `not_authorized` code rather than the HTTP status. On an auth failure a
- * single silent token renewal is attempted; if that fails the session is
- * cleared and an `auth:required` event is dispatched for App.vue to handle.
+ * `not_authorized` code rather than the HTTP status. On an auth failure
+ * (expired access token) the refresh token is exchanged for a fresh pair
+ * once and the original request is retried; if the refresh fails too, the
+ * session is cleared and an `auth:required` event is dispatched for
+ * App.vue to send the user to the login page.
  */
 
 export class ApiError extends Error {
@@ -31,6 +33,14 @@ export class ApiError extends Error {
   }
 }
 
+/**
+ * Human-readable message for any error thrown by the API layer.
+ * Use as the single place deciding between server and fallback text.
+ */
+export function apiErrorMessage(error: unknown, fallback: string): string {
+  return error instanceof ApiError ? error.message : fallback
+}
+
 function isAuthError(error: ApiError): boolean {
   return error.code === 'not_authorized' || error.status === 401
 }
@@ -42,8 +52,7 @@ function notifyAuthRequired(): void {
 async function parseApiError(response: Response): Promise<ApiError> {
   const payload = (await response.json().catch(() => ({}))) as Partial<ErrorRep>
   const code = payload.code || 'service_not_available'
-  const message =
-    payload.message || `Request failed with status ${response.status}`
+  const message = payload.message || `Request failed with status ${response.status}`
   return new ApiError(message, code, response.status, payload.fields)
 }
 

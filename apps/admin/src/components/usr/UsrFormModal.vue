@@ -1,20 +1,11 @@
 <script setup lang="ts">
-import { computed, reactive, ref, watch } from 'vue'
-import {
-  NButton,
-  NForm,
-  NFormItem,
-  NInput,
-  NModal,
-  NSpace,
-  NSwitch,
-  useMessage,
-} from 'naive-ui'
-import type { FormInst, FormRules } from 'naive-ui'
+import { computed, reactive } from 'vue'
+import { NButton, NForm, NFormItem, NInput, NModal, NSpace, NSwitch } from 'naive-ui'
+import type { FormRules } from 'naive-ui'
 
-import { ApiError } from '@/api/http'
 import { createUser, updateUser } from '@/api/usr'
 import type { UsrMain, UsrUpdateReq } from '@/api/types'
+import { useEntityForm } from '@/composables/useEntityForm'
 
 const props = defineProps<{
   show: boolean
@@ -26,11 +17,6 @@ const emit = defineEmits<{
   'update:show': [value: boolean]
   saved: []
 }>()
-
-const message = useMessage()
-
-const formRef = ref<FormInst | null>(null)
-const submitting = ref(false)
 
 interface FormModel {
   name: string
@@ -48,7 +34,41 @@ const model = reactive<FormModel>({
   active: true,
 })
 
-const isEdit = computed(() => props.user !== null)
+const { formRef, submitting, isEdit, submit } = useEntityForm<UsrMain>({
+  show: () => props.show,
+  entity: () => props.user,
+  seed: (user) => {
+    model.name = user?.name ?? ''
+    model.username = user?.username ?? ''
+    model.password = ''
+    model.is_admin = user?.is_admin ?? false
+    model.active = user?.active ?? true
+  },
+  create: () =>
+    createUser({
+      name: model.name,
+      username: model.username,
+      password: model.password,
+      is_admin: model.is_admin,
+      active: model.active,
+    }),
+  update: (user) => {
+    const update: UsrUpdateReq = {
+      name: model.name,
+      username: model.username,
+      is_admin: model.is_admin,
+      active: model.active,
+    }
+    // Only send the password when the admin actually typed a new one.
+    if (model.password) update.password = model.password
+    return updateUser(user.id, update)
+  },
+  messages: { created: 'User created', updated: 'User updated' },
+  onSaved: () => {
+    emit('saved')
+    close()
+  },
+})
 
 const rules = computed<FormRules>(() => ({
   name: [{ required: true, message: 'Name is required', trigger: ['blur', 'input'] }],
@@ -61,64 +81,8 @@ const rules = computed<FormRules>(() => ({
     : [{ required: true, message: 'Password is required', trigger: ['blur', 'input'] }],
 }))
 
-// Reset the form whenever the modal opens, seeding it from the edited user.
-watch(
-  () => props.show,
-  (show) => {
-    if (!show) return
-    const user = props.user
-    model.name = user?.name ?? ''
-    model.username = user?.username ?? ''
-    model.password = ''
-    model.is_admin = user?.is_admin ?? false
-    model.active = user?.active ?? true
-    formRef.value?.restoreValidation()
-  },
-)
-
 function close(): void {
   emit('update:show', false)
-}
-
-async function submit(): Promise<void> {
-  try {
-    await formRef.value?.validate()
-  } catch {
-    return
-  }
-
-  submitting.value = true
-  try {
-    if (props.user) {
-      const update: UsrUpdateReq = {
-        name: model.name,
-        username: model.username,
-        is_admin: model.is_admin,
-        active: model.active,
-      }
-      // Only send the password when the admin actually typed a new one.
-      if (model.password) update.password = model.password
-      await updateUser(props.user.id, update)
-      message.success('User updated')
-    } else {
-      await createUser({
-        name: model.name,
-        username: model.username,
-        password: model.password,
-        is_admin: model.is_admin,
-        active: model.active,
-      })
-      message.success('User created')
-    }
-    emit('saved')
-    close()
-  } catch (error) {
-    message.error(
-      error instanceof ApiError ? error.message : 'Unexpected error, please try again',
-    )
-  } finally {
-    submitting.value = false
-  }
 }
 </script>
 

@@ -3,6 +3,17 @@ import type { RouteRecordRaw } from 'vue-router'
 
 import { useAuthStore } from '@/stores/auth'
 
+declare module 'vue-router' {
+  interface RouteMeta {
+    /** Page title shown in `document.title`. */
+    title?: string
+    /** Accessible without authentication (login page). */
+    public?: boolean
+    requiresAuth?: boolean
+    requiresAdmin?: boolean
+  }
+}
+
 const routes: RouteRecordRaw[] = [
   {
     path: '/login',

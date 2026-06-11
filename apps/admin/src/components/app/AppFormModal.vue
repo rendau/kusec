@@ -1,20 +1,11 @@
 <script setup lang="ts">
-import { reactive, ref, watch } from 'vue'
-import {
-  NButton,
-  NForm,
-  NFormItem,
-  NInput,
-  NModal,
-  NSpace,
-  NSwitch,
-  useMessage,
-} from 'naive-ui'
-import type { FormInst, FormRules } from 'naive-ui'
+import { reactive } from 'vue'
+import { NButton, NForm, NFormItem, NInput, NModal, NSpace, NSwitch } from 'naive-ui'
+import type { FormRules } from 'naive-ui'
 
-import { ApiError } from '@/api/http'
 import { createApp, updateApp } from '@/api/app'
 import type { AppMain } from '@/api/types'
+import { useEntityForm } from '@/composables/useEntityForm'
 
 const props = defineProps<{
   show: boolean
@@ -26,11 +17,6 @@ const emit = defineEmits<{
   'update:show': [value: boolean]
   saved: []
 }>()
-
-const message = useMessage()
-
-const formRef = ref<FormInst | null>(null)
-const submitting = ref(false)
 
 interface FormModel {
   namespace: string
@@ -58,70 +44,41 @@ const rules: FormRules = {
   ],
 }
 
-const isEdit = () => props.app !== null
-
-// Reset the form whenever the modal opens, seeding it from the edited app.
-watch(
-  () => props.show,
-  (show) => {
-    if (!show) return
-    const app = props.app
+const { formRef, submitting, isEdit, submit } = useEntityForm<AppMain>({
+  show: () => props.show,
+  entity: () => props.app,
+  seed: (app) => {
     model.namespace = app?.namespace ?? 'default'
     model.name = app?.name ?? ''
     model.slug_name = app?.slug_name ?? ''
     model.description = app?.description ?? ''
     model.active = app?.active ?? true
-    formRef.value?.restoreValidation()
   },
-)
+  create: () =>
+    createApp({
+      namespace: model.namespace,
+      name: model.name,
+      slug_name: model.slug_name,
+      description: model.description,
+      active: model.active,
+    }),
+  update: (app) =>
+    updateApp(app.id, {
+      namespace: model.namespace,
+      name: model.name,
+      slug_name: model.slug_name,
+      description: model.description,
+      active: model.active,
+    }),
+  messages: { created: 'Application created', updated: 'Application updated' },
+  onSaved: () => {
+    emit('saved')
+    close()
+  },
+})
 
 function close(): void {
   emit('update:show', false)
-}
-
-async function applyFieldErrors(error: ApiError): Promise<void> {
-  message.error(error.message)
-}
-
-async function submit(): Promise<void> {
-  try {
-    await formRef.value?.validate()
-  } catch {
-    return
-  }
-
-  submitting.value = true
-  try {
-    if (props.app) {
-      await updateApp(props.app.id, {
-        namespace: model.namespace,
-        name: model.name,
-        slug_name: model.slug_name,
-        description: model.description,
-        active: model.active,
-      })
-      message.success('Application updated')
-    } else {
-      await createApp({
-        namespace: model.namespace,
-        name: model.name,
-        slug_name: model.slug_name,
-        description: model.description,
-        active: model.active,
-      })
-      message.success('Application created')
-    }
-    emit('saved')
-    close()
-  } catch (error) {
-    if (error instanceof ApiError) {
-      await applyFieldErrors(error)
-    } else {
-      message.error('Unexpected error, please try again')
-    }
-  } finally {
-    submitting.value = false
-  }
 }
 </script>
 
@@ -129,7 +86,7 @@ async function submit(): Promise<void> {
   <NModal
     :show="show"
     preset="card"
-    :title="isEdit() ? 'Edit application' : 'New application'"
+    :title="isEdit ? 'Edit application' : 'New application'"
     style="max-width: 520px"
     :mask-closable="!submitting"
     @update:show="emit('update:show', $event)"
@@ -179,7 +136,7 @@ async function submit(): Promise<void> {
       <NSpace justify="end">
         <NButton :disabled="submitting" @click="close">Cancel</NButton>
         <NButton type="primary" :loading="submitting" @click="submit">
-          {{ isEdit() ? 'Save' : 'Create' }}
+          {{ isEdit ? 'Save' : 'Create' }}
         </NButton>
       </NSpace>
     </template>

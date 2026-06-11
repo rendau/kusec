@@ -48,6 +48,13 @@ service Usr {
     };
   }
 
+  rpc RefreshToken(UsrRefreshTokenReq) returns (UsrLoginRep) {
+    option (google.api.http) = {
+      post: "/usr/token/refresh"
+      body: "*"
+    };
+  }
+
   rpc BootstrapStatus(google.protobuf.Empty) returns (UsrBootstrapStatusRep) {
     option (google.api.http) = {
       get: "/usr/bootstrap/status"
@@ -134,6 +141,11 @@ message UsrLoginReq {
 
 message UsrLoginRep {
   string jwt = 1;
+  string refresh_token = 2;
+}
+
+message UsrRefreshTokenReq {
+  string refresh_token = 1;
 }
 
 message UsrBootstrapStatusRep {

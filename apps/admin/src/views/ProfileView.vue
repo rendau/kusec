@@ -13,7 +13,7 @@ import {
 import type { FormInst, FormItemRule, FormRules } from 'naive-ui'
 import { storeToRefs } from 'pinia'
 
-import { ApiError } from '@/api/http'
+import { apiErrorMessage } from '@/api/http'
 import type { UsrUpdateProfileReq } from '@/api/types'
 import { useAuthStore } from '@/stores/auth'
 
@@ -85,9 +85,7 @@ async function submit(): Promise<void> {
     model.passwordConfirm = ''
     message.success('Profile updated')
   } catch (error) {
-    message.error(
-      error instanceof ApiError ? error.message : 'Unexpected error, please try again',
-    )
+    message.error(apiErrorMessage(error, 'Unexpected error, please try again'))
   } finally {
     submitting.value = false
   }

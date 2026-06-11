@@ -1,26 +1,31 @@
 <script setup lang="ts">
-import { computed, h, onMounted, reactive, ref } from 'vue'
+import { computed, h, onBeforeUnmount, onMounted, reactive, ref, watch } from 'vue'
 import {
   NButton,
   NCard,
   NDataTable,
   NFlex,
+  NIcon,
   NInput,
   NPopconfirm,
+  NSelect,
   NSpace,
   NTag,
+  NTooltip,
   useMessage,
 } from 'naive-ui'
 import type { DataTableColumns, SelectOption } from 'naive-ui'
-import { NSelect } from 'naive-ui'
+import { InfoCircle, Pencil, Plus, Trash } from '@vicons/tabler'
 
-import { ApiError } from '@/api/http'
+import { apiErrorMessage } from '@/api/http'
 import { deleteUser, listUsers } from '@/api/usr'
 import type { UsrListReq, UsrMain } from '@/api/types'
 import { useAuthStore } from '@/stores/auth'
 
 import UsrDetailDrawer from '@/components/usr/UsrDetailDrawer.vue'
 import UsrFormModal from '@/components/usr/UsrFormModal.vue'
+
+const SEARCH_DEBOUNCE_MS = 350
 
 const message = useMessage()
 const authStore = useAuthStore()
@@ -88,16 +93,32 @@ async function fetchUsers(): Promise<void> {
     rows.value = rep.results ?? []
     pagination.itemCount = Number(rep.pagination_info?.total_count ?? 0)
   } catch (error) {
-    message.error(error instanceof ApiError ? error.message : 'Failed to load users')
+    message.error(apiErrorMessage(error, 'Failed to load users'))
   } finally {
     loading.value = false
   }
 }
 
+let searchTimer: number | undefined
+
 function applyFilters(): void {
+  window.clearTimeout(searchTimer)
   pagination.page = 1
   void fetchUsers()
 }
+
+// Search-as-you-type with a small debounce (Enter still applies instantly).
+watch(
+  () => filters.search,
+  () => {
+    window.clearTimeout(searchTimer)
+    searchTimer = window.setTimeout(applyFilters, SEARCH_DEBOUNCE_MS)
+  },
+)
+
+onBeforeUnmount(() => {
+  window.clearTimeout(searchTimer)
+})
 
 function onRoleChange(value: string): void {
   filters.isAdmin = value === 'all' ? null : value === 'admin'
@@ -148,8 +169,37 @@ async function removeUser(row: UsrMain): Promise<void> {
     }
     await fetchUsers()
   } catch (error) {
-    message.error(error instanceof ApiError ? error.message : 'Failed to delete user')
+    message.error(apiErrorMessage(error, 'Failed to delete user'))
   }
+}
+
+function iconButton(
+  icon: typeof Pencil,
+  tooltip: string,
+  onClick: () => void,
+  options: { type?: 'error'; disabled?: boolean } = {},
+) {
+  return h(
+    NTooltip,
+    {},
+    {
+      trigger: () =>
+        h(
+          NButton,
+          {
+            quaternary: true,
+            circle: true,
+            size: 'small',
+            ...(options.type ? { type: options.type } : {}),
+            ...(options.disabled != null ? { disabled: options.disabled } : {}),
+            'aria-label': tooltip,
+            onClick,
+          },
+          { icon: () => h(NIcon, { component: icon }) },
+        ),
+      default: () => tooltip,
+    },
+  )
 }
 
 const columns: DataTableColumns<UsrMain> = [
@@ -189,25 +239,16 @@ const columns: DataTableColumns<UsrMain> = [
   {
     title: 'Actions',
     key: 'actions',
-    width: 220,
+    width: 140,
     render: (row) =>
-      h(NSpace, { size: 8 }, () => [
-        h(
-          NButton,
-          { size: 'small', onClick: () => openDetail(row) },
-          { default: () => 'View' },
-        ),
-        h(
-          NButton,
-          { size: 'small', onClick: () => openEdit(row) },
-          { default: () => 'Edit' },
-        ),
+      h(NSpace, { size: 4, wrapItem: false }, () => [
+        iconButton(InfoCircle, 'Details', () => openDetail(row)),
+        iconButton(Pencil, 'Edit', () => openEdit(row)),
         isSelf(row)
-          ? h(
-              NButton,
-              { size: 'small', type: 'error', secondary: true, disabled: true },
-              { default: () => 'Delete' },
-            )
+          ? iconButton(Trash, 'You cannot delete yourself', () => {}, {
+              type: 'error',
+              disabled: true,
+            })
           : h(
               NPopconfirm,
               { onPositiveClick: () => removeUser(row) },
@@ -215,8 +256,14 @@ const columns: DataTableColumns<UsrMain> = [
                 trigger: () =>
                   h(
                     NButton,
-                    { size: 'small', type: 'error', secondary: true },
-                    { default: () => 'Delete' },
+                    {
+                      quaternary: true,
+                      circle: true,
+                      size: 'small',
+                      type: 'error',
+                      'aria-label': 'Delete user',
+                    },
+                    { icon: () => h(NIcon, { component: Trash }) },
                   ),
                 default: () => `Delete "${row.username}"?`,
               },
@@ -232,7 +279,12 @@ onMounted(fetchUsers)
   <NSpace vertical :size="16">
     <NCard title="Users">
       <template #header-extra>
-        <NButton type="primary" @click="openCreate">New user</NButton>
+        <NButton type="primary" @click="openCreate">
+          <template #icon>
+            <NIcon :component="Plus" />
+          </template>
+          New user
+        </NButton>
       </template>
 
       <NFlex align="center" wrap :size="12" style="margin-bottom: 16px">
@@ -242,7 +294,6 @@ onMounted(fetchUsers)
           clearable
           style="max-width: 280px"
           @keyup.enter="applyFilters"
-          @clear="applyFilters"
         />
         <NSelect
           :default-value="'all'"

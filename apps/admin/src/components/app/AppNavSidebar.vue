@@ -1,7 +1,17 @@
 <script setup lang="ts">
 import { computed, onMounted, ref } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
-import { NButton, NEmpty, NInput, NScrollbar, NSpin, NTag } from 'naive-ui'
+import {
+  NButton,
+  NEmpty,
+  NIcon,
+  NInput,
+  NScrollbar,
+  NSpin,
+  NTag,
+  useThemeVars,
+} from 'naive-ui'
+import { Plus, Search } from '@vicons/tabler'
 import { storeToRefs } from 'pinia'
 
 import type { AppMain } from '@/api/types'
@@ -11,6 +21,7 @@ import AppFormModal from '@/components/app/AppFormModal.vue'
 
 const route = useRoute()
 const router = useRouter()
+const themeVars = useThemeVars()
 
 const appsStore = useAppsStore()
 const { apps, loading } = storeToRefs(appsStore)
@@ -25,8 +36,7 @@ const filtered = computed<AppMain[]>(() => {
   const q = search.value.trim().toLowerCase()
   if (!q) return apps.value
   return apps.value.filter(
-    (a) =>
-      a.name.toLowerCase().includes(q) || a.namespace.toLowerCase().includes(q),
+    (a) => a.name.toLowerCase().includes(q) || a.namespace.toLowerCase().includes(q),
   )
 })
 
@@ -53,7 +63,12 @@ onMounted(() => {
   <div class="app-nav">
     <div class="app-nav__head">
       <span class="app-nav__title">Applications</span>
-      <NButton size="tiny" type="primary" @click="openCreate">+ New</NButton>
+      <NButton size="tiny" type="primary" @click="openCreate">
+        <template #icon>
+          <NIcon :component="Plus" />
+        </template>
+        New
+      </NButton>
     </div>
 
     <div class="app-nav__search">
@@ -62,7 +77,11 @@ onMounted(() => {
         size="small"
         placeholder="Search applications"
         clearable
-      />
+      >
+        <template #prefix>
+          <NIcon :component="Search" />
+        </template>
+      </NInput>
     </div>
 
     <NScrollbar class="app-nav__list">
@@ -79,12 +98,7 @@ onMounted(() => {
           @click="select(app)"
         >
           <span class="app-nav__name">{{ app.name }}</span>
-          <NTag
-            v-if="!app.active"
-            size="tiny"
-            :bordered="false"
-            type="warning"
-          >
+          <NTag v-if="!app.active" size="tiny" :bordered="false" type="warning">
             off
           </NTag>
         </button>
@@ -150,8 +164,9 @@ onMounted(() => {
   background: rgba(128, 128, 128, 0.12);
 }
 
+/* Active item tint follows the naive-ui theme's primary color. */
 .app-nav__item--active {
-  background: rgba(99, 226, 183, 0.16);
+  background: v-bind('`${themeVars.primaryColor}29`');
   font-weight: 600;
 }
 

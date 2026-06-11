@@ -2,49 +2,36 @@ import { API_BASE_URL } from './config'
 import type { UsrLoginRep } from './types'
 
 /**
- * Token & credential persistence for the admin session.
+ * Token persistence and silent renewal for the admin session.
  *
- * The JWT is kept in localStorage so reloads stay authenticated. The login
- * credentials are also stored so a single silent re-login can be attempted
- * when the token expires (see `renewTokenOnce`), mirroring the kusec backend
- * which has no refresh-token endpoint.
+ * The backend issues a pair: a short-lived access JWT and a long-lived
+ * refresh token. Both are kept in localStorage so reloads stay
+ * authenticated. When a request fails auth (the access token expired),
+ * `apiFetch` calls `renewTokenOnce` — a single exchange of the refresh
+ * token for a fresh pair — and retries the original request. If the
+ * refresh token is rejected too, the session is cleared and the user is
+ * sent back to the login page.
  */
 
 const storageKeys = {
   token: 'kusec_admin_token',
-  credentials: 'kusec_admin_credentials',
+  refreshToken: 'kusec_admin_refresh_token',
 } as const
 
-interface Credentials {
-  username: string
-  password: string
-}
+// Older versions kept plaintext login credentials for silent re-login.
+// Purge them: the refresh-token flow made that (unsafe) mechanism obsolete.
+localStorage.removeItem('kusec_admin_credentials')
 
 let token = localStorage.getItem(storageKeys.token) ?? ''
+let refreshToken = localStorage.getItem(storageKeys.refreshToken) ?? ''
 let renewInFlight: Promise<boolean> | null = null
 
-function readCredentials(): Credentials | null {
-  const raw = localStorage.getItem(storageKeys.credentials)
-  if (!raw) {
-    return null
+function persist(key: string, value: string): void {
+  if (value) {
+    localStorage.setItem(key, value)
+  } else {
+    localStorage.removeItem(key)
   }
-  try {
-    const parsed = JSON.parse(raw) as Credentials
-    if (!parsed.username || !parsed.password) {
-      return null
-    }
-    return parsed
-  } catch {
-    return null
-  }
-}
-
-function writeCredentials(creds: Credentials | null): void {
-  if (!creds) {
-    localStorage.removeItem(storageKeys.credentials)
-    return
-  }
-  localStorage.setItem(storageKeys.credentials, JSON.stringify(creds))
 }
 
 export function getToken(): string {
@@ -53,76 +40,60 @@ export function getToken(): string {
 
 export function setToken(value: string): void {
   token = value.trim()
-  if (token) {
-    localStorage.setItem(storageKeys.token, token)
-  } else {
-    localStorage.removeItem(storageKeys.token)
-  }
+  persist(storageKeys.token, token)
 }
 
-export function setCredentials(username: string, password: string): void {
-  writeCredentials({ username: username.trim(), password })
+export function setRefreshToken(value: string): void {
+  refreshToken = value.trim()
+  persist(storageKeys.refreshToken, refreshToken)
 }
 
-/**
- * Merge changes into the stored credentials (kept in sync after a profile
- * edit so silent token renewal keeps working). No-op if nothing is stored.
- */
-export function patchCredentials(partial: Partial<Credentials>): void {
-  const current = readCredentials()
-  if (!current) {
-    return
-  }
-  writeCredentials({
-    username: (partial.username ?? current.username).trim(),
-    password: partial.password ?? current.password,
-  })
+/** Store a freshly issued access + refresh pair. */
+export function setSession(rep: Pick<UsrLoginRep, 'jwt' | 'refresh_token'>): void {
+  setToken(rep.jwt)
+  setRefreshToken(rep.refresh_token ?? '')
 }
 
 export function clearSession(): void {
   setToken('')
-  writeCredentials(null)
+  setRefreshToken('')
 }
 
-async function requestLogin(
-  username: string,
-  password: string,
-): Promise<string> {
-  const response = await fetch(`${API_BASE_URL}/usr/login`, {
+async function requestRefresh(currentRefreshToken: string): Promise<UsrLoginRep | null> {
+  const response = await fetch(`${API_BASE_URL}/usr/token/refresh`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ username, password }),
+    body: JSON.stringify({ refresh_token: currentRefreshToken }),
   })
 
   const data = (await response.json().catch(() => ({}))) as Partial<UsrLoginRep>
   if (!response.ok || typeof data.jwt !== 'string' || data.jwt.trim() === '') {
-    return ''
+    return null
   }
-  return data.jwt
+  return { jwt: data.jwt, refresh_token: data.refresh_token ?? '' }
 }
 
 /**
- * Attempt a single silent re-login using the stored credentials.
+ * Exchange the refresh token for a fresh access + refresh pair (rotation).
  * Concurrent callers share the same in-flight request.
  */
 export async function renewTokenOnce(): Promise<boolean> {
   if (renewInFlight) {
     return renewInFlight
   }
-
-  const credentials = readCredentials()
-  if (!credentials) {
+  if (!refreshToken) {
     return false
   }
 
-  renewInFlight = requestLogin(credentials.username, credentials.password)
-    .then((jwt) => {
-      if (!jwt) {
+  renewInFlight = requestRefresh(refreshToken)
+    .then((pair) => {
+      if (!pair) {
         return false
       }
-      setToken(jwt)
+      setSession(pair)
       return true
     })
+    .catch(() => false)
     .finally(() => {
       renewInFlight = null
     })

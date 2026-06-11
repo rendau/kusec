@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { computed, h } from 'vue'
-import type { Component } from 'vue'
+import type { Component as VueComponent } from 'vue'
 import { RouterLink, useRoute, useRouter } from 'vue-router'
 import {
   NDropdown,
@@ -11,6 +11,7 @@ import {
   NMenu,
   NTag,
   useDialog,
+  useThemeVars,
 } from 'naive-ui'
 import type { DropdownOption, MenuOption } from 'naive-ui'
 import { storeToRefs } from 'pinia'
@@ -22,6 +23,7 @@ import AppNavSidebar from '@/components/app/AppNavSidebar.vue'
 
 const appStore = useAppStore()
 const { sidebarCollapsed, sidebarWidth } = storeToRefs(appStore)
+const themeVars = useThemeVars()
 
 // Drag the right edge of the sidebar to resize it.
 function startResize(event: MouseEvent): void {
@@ -60,7 +62,7 @@ const navActiveKey = computed(() => {
   return null
 })
 
-function renderRouterLink(to: string, label: string): Component {
+function renderRouterLink(to: string, label: string): VueComponent {
   return () => h(RouterLink, { to }, { default: () => label })
 }
 
@@ -119,11 +121,7 @@ function confirmLogout(): void {
           class="app-header__nav"
         />
       </div>
-      <NDropdown
-        trigger="click"
-        :options="userMenuOptions"
-        @select="onUserMenuSelect"
-      >
+      <NDropdown trigger="click" :options="userMenuOptions" @select="onUserMenuSelect">
         <button class="app-header__user" type="button">
           <span class="app-header__user-name">{{ profileName }}</span>
           <NTag size="small" :type="authStore.isAdmin ? 'success' : 'default'">
@@ -241,6 +239,6 @@ function confirmLogout(): void {
 
 .sider-resizer:hover,
 .sider-resizer:active {
-  background: rgba(99, 226, 183, 0.3);
+  background: v-bind('`${themeVars.primaryColor}4d`');
 }
 </style>

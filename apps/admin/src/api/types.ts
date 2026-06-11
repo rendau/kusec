@@ -19,9 +19,15 @@ export interface UsrMain {
   username: string
 }
 
-/** `UsrLoginRep` — holds the issued JWT. */
+/** `UsrLoginRep` — the issued token pair (short-lived access + refresh). */
 export interface UsrLoginRep {
   jwt: string
+  refresh_token: string
+}
+
+/** `UsrRefreshTokenReq`. */
+export interface UsrRefreshTokenReq {
+  refresh_token: string
 }
 
 /** `UsrBootstrapStatusRep`. */
@@ -213,6 +219,44 @@ export interface SecretUpdateReq {
  * `key` is unique per secret (`uq_item_secret_id_key`). `value` is sensitive.
  */
 
+/** Editor format of an item value (what the UI sends; server stores a string). */
+export type ValueFormat = 'text' | 'yaml' | 'json'
+
+/** Storage encoding of an item value. */
+export type ValueEncoding = 'plain' | 'base64'
+
+/**
+ * Dashboard summary (`DashboardRep`, see api/proto/kusec_v1/dashboard.proto).
+ * Note: the gateway serialises `int64` counters as JSON strings.
+ */
+
+/** `DashboardCountSt` — entity counter (total / active). */
+export interface DashboardCount {
+  total: number | string
+  active: number | string
+}
+
+/** `DashboardRecentSecretSt` — recently updated secret, enriched for display. */
+export interface DashboardRecentSecret {
+  id: string
+  app_id: string
+  app_name: string
+  slug_name: string
+  description: string
+  active: boolean
+  updated_at: string
+  item_count: number | string
+}
+
+/** `DashboardRep`. */
+export interface DashboardRep {
+  app: DashboardCount
+  secret: DashboardCount
+  item: DashboardCount
+  usr: DashboardCount
+  recent_secrets: DashboardRecentSecret[]
+}
+
 /** Item entity (`ItemMain`). */
 export interface ItemMain {
   id: string
@@ -253,8 +297,8 @@ export interface ItemCreateReq {
   active?: boolean
   key: string
   value: string
-  value_format?: string
-  encoding?: string
+  value_format?: ValueFormat
+  encoding?: ValueEncoding
   file_name?: string
   content_type?: string
   description: string
@@ -271,8 +315,8 @@ export interface ItemUpdateReq {
   active?: boolean
   key?: string
   value?: string
-  value_format?: string
-  encoding?: string
+  value_format?: ValueFormat
+  encoding?: ValueEncoding
   file_name?: string
   content_type?: string
   description?: string

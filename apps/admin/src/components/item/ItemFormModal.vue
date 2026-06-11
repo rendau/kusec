@@ -1,6 +1,5 @@
 <script setup lang="ts">
-import { defineAsyncComponent, onMounted, reactive, ref, watch } from 'vue'
-import { computed } from 'vue'
+import { computed, defineAsyncComponent, onMounted, reactive, ref } from 'vue'
 import {
   NButton,
   NDropdown,
@@ -17,19 +16,23 @@ import {
   NText,
   useMessage,
 } from 'naive-ui'
-import type { FormInst, FormRules } from 'naive-ui'
+import type { FormRules } from 'naive-ui'
 
-import { ApiError } from '@/api/http'
 import { createItem, updateItem } from '@/api/item'
-import type { ItemMain, ItemUpdateReq } from '@/api/types'
+import type { ItemMain, ItemUpdateReq, ValueEncoding, ValueFormat } from '@/api/types'
+import { useClipboard } from '@/composables/useClipboard'
+import { useEntityForm } from '@/composables/useEntityForm'
 import { useSecretOptions } from '@/composables/useSecretOptions'
 import {
   base64ByteSize,
+  base64ToText,
   bytesToBase64,
   downloadBase64,
   formatBytes,
   isProbablyText,
+  textToBase64,
 } from '@/utils/binary'
+import { normalizeValueFormat } from '@/utils/format'
 
 const MAX_FILE_BYTES = 5 * 1024 * 1024
 
@@ -54,6 +57,7 @@ const emit = defineEmits<{
 }>()
 
 const message = useMessage()
+const { copy } = useClipboard()
 const {
   options: secretOptions,
   loading: secretsLoading,
@@ -61,17 +65,14 @@ const {
   ensure,
 } = useSecretOptions()
 
-const formRef = ref<FormInst | null>(null)
-const submitting = ref(false)
-
 // Editor mode for the value (persisted as `value_format`).
-const valueFormat = ref<'text' | 'yaml' | 'json'>('text')
+const valueFormat = ref<ValueFormat>('text')
 
 interface FormModel {
   secret_id: string | null
   key: string
   value: string
-  encoding: 'plain' | 'base64'
+  encoding: ValueEncoding
   file_name: string
   content_type: string
   description: string
@@ -105,18 +106,10 @@ const rules: FormRules = {
   key: [{ required: true, message: 'Key is required', trigger: ['blur', 'input'] }],
 }
 
-const isEdit = () => props.item !== null
-
-onMounted(() => {
-  void search()
-})
-
-// Reset the form whenever the modal opens, seeding it from the edited item.
-watch(
-  () => props.show,
-  async (show) => {
-    if (!show) return
-    const item = props.item
+const { formRef, submitting, isEdit, submit } = useEntityForm<ItemMain>({
+  show: () => props.show,
+  entity: () => props.item,
+  seed: async (item) => {
     model.secret_id = item?.secret_id ?? props.defaultSecretId ?? null
     model.key = item?.key ?? ''
     model.value = item?.value ?? ''
@@ -125,44 +118,60 @@ watch(
     model.content_type = item?.content_type ?? ''
     model.description = item?.description ?? ''
     model.active = item?.active ?? true
-    valueFormat.value =
-      item?.value_format === 'yaml' || item?.value_format === 'json'
-        ? item.value_format
-        : 'text'
-    formRef.value?.restoreValidation()
+    valueFormat.value = normalizeValueFormat(item?.value_format)
     if (model.secret_id) await ensure(model.secret_id)
   },
-)
+  create: () =>
+    createItem({
+      secret_id: model.secret_id as string,
+      key: model.key,
+      value: model.value,
+      value_format: valueFormat.value,
+      encoding: model.encoding,
+      file_name: model.file_name,
+      content_type: model.content_type,
+      description: model.description,
+      active: model.active,
+    }),
+  update: (item) => {
+    const update: ItemUpdateReq = {
+      key: model.key,
+      value: model.value,
+      value_format: valueFormat.value,
+      encoding: model.encoding,
+      file_name: model.file_name,
+      content_type: model.content_type,
+      description: model.description,
+      active: model.active,
+    }
+    if (model.secret_id) update.secret_id = model.secret_id
+    return updateItem(item.id, update)
+  },
+  messages: { created: 'Item created', updated: 'Item updated' },
+  onSaved: () => {
+    emit('saved')
+    close()
+  },
+})
+
+onMounted(() => {
+  void search()
+})
 
 function close(): void {
   emit('update:show', false)
 }
 
-async function copyValue(): Promise<void> {
-  try {
-    await navigator.clipboard.writeText(model.value)
-    message.success('Value copied')
-  } catch {
-    message.error('Clipboard unavailable')
-  }
-}
-
-// UTF-8-safe base64 (handles unicode/binary, unlike bare btoa/atob).
 function encodeBase64(): void {
   if (!model.value) return
-  const bytes = new TextEncoder().encode(model.value)
-  let binary = ''
-  bytes.forEach((b) => (binary += String.fromCharCode(b)))
-  model.value = btoa(binary)
+  model.value = textToBase64(model.value)
   message.success('Encoded to base64')
 }
 
 function decodeBase64(): void {
   if (!model.value) return
   try {
-    const binary = atob(model.value.trim())
-    const bytes = Uint8Array.from(binary, (c) => c.charCodeAt(0))
-    model.value = new TextDecoder().decode(bytes)
+    model.value = base64ToText(model.value.trim())
     message.success('Decoded from base64')
   } catch {
     message.error('Invalid base64 value')
@@ -183,7 +192,7 @@ function pickFile(): void {
   fileInput.value?.click()
 }
 
-function formatFromName(name: string): 'text' | 'yaml' | 'json' {
+function formatFromName(name: string): ValueFormat {
   const ext = name.split('.').pop()?.toLowerCase()
   if (ext === 'yaml' || ext === 'yml') return 'yaml'
   if (ext === 'json') return 'json'
@@ -237,61 +246,13 @@ function downloadFile(): void {
     message.error('Failed to download file')
   }
 }
-
-async function submit(): Promise<void> {
-  try {
-    await formRef.value?.validate()
-  } catch {
-    return
-  }
-
-  submitting.value = true
-  try {
-    if (props.item) {
-      const update: ItemUpdateReq = {
-        key: model.key,
-        value: model.value,
-        value_format: valueFormat.value,
-        encoding: model.encoding,
-        file_name: model.file_name,
-        content_type: model.content_type,
-        description: model.description,
-        active: model.active,
-      }
-      if (model.secret_id) update.secret_id = model.secret_id
-      await updateItem(props.item.id, update)
-      message.success('Item updated')
-    } else {
-      await createItem({
-        secret_id: model.secret_id as string,
-        key: model.key,
-        value: model.value,
-        value_format: valueFormat.value,
-        encoding: model.encoding,
-        file_name: model.file_name,
-        content_type: model.content_type,
-        description: model.description,
-        active: model.active,
-      })
-      message.success('Item created')
-    }
-    emit('saved')
-    close()
-  } catch (error) {
-    message.error(
-      error instanceof ApiError ? error.message : 'Unexpected error, please try again',
-    )
-  } finally {
-    submitting.value = false
-  }
-}
 </script>
 
 <template>
   <NModal
     :show="show"
     preset="card"
-    :title="isEdit() ? 'Edit item' : 'New item'"
+    :title="isEdit ? 'Edit item' : 'New item'"
     style="max-width: 680px"
     :mask-closable="!submitting"
     @update:show="emit('update:show', $event)"
@@ -370,7 +331,7 @@ async function submit(): Promise<void> {
                   size="small"
                   tertiary
                   :disabled="!model.value"
-                  @click="copyValue"
+                  @click="copy(model.value)"
                 >
                   Copy
                 </NButton>
@@ -397,7 +358,7 @@ async function submit(): Promise<void> {
       <NSpace justify="end">
         <NButton :disabled="submitting" @click="close">Cancel</NButton>
         <NButton type="primary" :loading="submitting" @click="submit">
-          {{ isEdit() ? 'Save' : 'Create' }}
+          {{ isEdit ? 'Save' : 'Create' }}
         </NButton>
       </NSpace>
     </template>

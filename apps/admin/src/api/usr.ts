@@ -1,6 +1,7 @@
 import { API_BASE_URL } from './config'
 import { ApiError, apiFetch } from './http'
-import { clearSession, setCredentials, setToken } from './auth-session'
+import { buildListQuery } from './query'
+import { clearSession, setSession } from './auth-session'
 import type {
   ErrorRep,
   UsrBootstrapStatusRep,
@@ -14,10 +15,7 @@ import type {
   UsrUpdateReq,
 } from './types'
 
-/**
- * Authenticate and persist the session.
- * Stores both the JWT and the credentials (for silent renewal).
- */
+/** Authenticate and persist the session (access + refresh token pair). */
 export async function login(username: string, password: string): Promise<void> {
   const response = await fetch(`${API_BASE_URL}/usr/login`, {
     method: 'POST',
@@ -36,8 +34,7 @@ export async function login(username: string, password: string): Promise<void> {
     )
   }
 
-  setToken(payload.jwt)
-  setCredentials(username, password)
+  setSession({ jwt: payload.jwt, refresh_token: payload.refresh_token ?? '' })
 }
 
 export function logout(): void {
@@ -68,29 +65,13 @@ export function updateProfile(req: UsrUpdateProfileReq): Promise<void> {
 
 // ── Admin user management ──────────────────────────────────
 
-/** Flatten the (possibly nested) list request into gateway query params. */
-function buildUserListQuery(req: UsrListReq): string {
-  const params = new URLSearchParams()
-  const lp = req.list_params
-  if (lp) {
-    if (lp.page != null) params.set('list_params.page', String(lp.page))
-    if (lp.page_size != null)
-      params.set('list_params.page_size', String(lp.page_size))
-    if (lp.with_total_count != null)
-      params.set('list_params.with_total_count', String(lp.with_total_count))
-    if (lp.sort_name) params.set('list_params.sort_name', lp.sort_name)
-    for (const s of lp.sort ?? []) params.append('list_params.sort', s)
-  }
-  if (req.active != null) params.set('active', String(req.active))
-  if (req.is_admin != null) params.set('is_admin', String(req.is_admin))
-  if (req.search) params.set('search', req.search)
-
-  const query = params.toString()
-  return query ? `?${query}` : ''
-}
-
 export function listUsers(req: UsrListReq = {}): Promise<UsrListRep> {
-  return apiFetch<UsrListRep>(`/usr${buildUserListQuery(req)}`)
+  const query = buildListQuery(req.list_params, {
+    active: req.active,
+    is_admin: req.is_admin,
+    search: req.search,
+  })
+  return apiFetch<UsrListRep>(`/usr${query}`)
 }
 
 export function getUser(id: number | string): Promise<UsrMain> {

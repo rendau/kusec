@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, ref, watch } from 'vue'
+import { computed, ref } from 'vue'
 import {
   NButton,
   NDescriptions,
@@ -13,12 +13,14 @@ import {
   useMessage,
 } from 'naive-ui'
 
-import { ApiError } from '@/api/http'
 import { getItem } from '@/api/item'
-import type { ItemMain } from '@/api/types'
+import { useClipboard } from '@/composables/useClipboard'
+import { useDrawerResource } from '@/composables/useDrawerResource'
 import { useSecretOptions } from '@/composables/useSecretOptions'
 import ValueEditor from '@/components/common/ValueEditor.vue'
-import { base64ByteSize, downloadBase64, formatBytes } from '@/utils/binary'
+import ValueFormatChip from '@/components/common/ValueFormatChip.vue'
+import { base64ByteSize, base64ToText, downloadBase64, formatBytes } from '@/utils/binary'
+import { formatDate, normalizeValueFormat } from '@/utils/format'
 
 const props = defineProps<{
   show: boolean
@@ -31,19 +33,26 @@ const emit = defineEmits<{
 }>()
 
 const message = useMessage()
+const { copy } = useClipboard()
 const { nameOf, ensure } = useSecretOptions()
 
-const loading = ref(false)
-const item = ref<ItemMain | null>(null)
 const revealed = ref(false)
 // Local copy so "Decode base64" can transform the shown value non-destructively.
 const displayValue = ref('')
 
-const valueFormat = computed<'text' | 'yaml' | 'json'>(() =>
-  item.value?.value_format === 'yaml' || item.value?.value_format === 'json'
-    ? item.value.value_format
-    : 'text',
-)
+const { loading, item } = useDrawerResource({
+  show: () => props.show,
+  id: () => props.itemId,
+  fetch: getItem,
+  onLoaded: async (loaded) => {
+    revealed.value = false
+    displayValue.value = loaded.value
+    await ensure(loaded.secret_id)
+  },
+  onError: () => emit('update:show', false),
+})
+
+const valueFormat = computed(() => normalizeValueFormat(item.value?.value_format))
 
 const isFile = computed(() => item.value?.encoding === 'base64')
 const fileSize = computed(() =>
@@ -53,59 +62,24 @@ const fileSize = computed(() =>
 function downloadFile(): void {
   if (!item.value) return
   try {
-    downloadBase64(item.value.value, item.value.file_name || item.value.key, item.value.content_type)
+    downloadBase64(
+      item.value.value,
+      item.value.file_name || item.value.key,
+      item.value.content_type,
+    )
   } catch {
     message.error('Failed to download file')
   }
 }
 
-watch(
-  () => [props.show, props.itemId] as const,
-  async ([show, id]) => {
-    if (!show || !id) return
-    loading.value = true
-    item.value = null
-    revealed.value = false
-    displayValue.value = ''
-    try {
-      const loaded = await getItem(id)
-      item.value = loaded
-      displayValue.value = loaded.value
-      await ensure(loaded.secret_id)
-    } catch (error) {
-      message.error(error instanceof ApiError ? error.message : 'Failed to load')
-      emit('update:show', false)
-    } finally {
-      loading.value = false
-    }
-  },
-)
-
-async function copyValue(): Promise<void> {
-  try {
-    await navigator.clipboard.writeText(displayValue.value)
-    message.success('Value copied')
-  } catch {
-    message.error('Clipboard unavailable')
-  }
-}
-
 function decodeBase64(): void {
   try {
-    const binary = atob(displayValue.value.trim())
-    const bytes = Uint8Array.from(binary, (c) => c.charCodeAt(0))
-    displayValue.value = new TextDecoder().decode(bytes)
+    displayValue.value = base64ToText(displayValue.value.trim())
     revealed.value = true
     message.success('Decoded from base64')
   } catch {
     message.error('Invalid base64 value')
   }
-}
-
-function formatDate(value: string | undefined): string {
-  if (!value) return '—'
-  const parsed = new Date(value)
-  return Number.isNaN(parsed.getTime()) ? value : parsed.toLocaleString()
 }
 </script>
 
@@ -156,7 +130,7 @@ function formatDate(value: string | undefined): string {
                   {{ revealed ? 'Hide' : 'Show' }}
                 </NButton>
                 <NButton size="tiny" tertiary @click="decodeBase64">Decode</NButton>
-                <NButton size="tiny" tertiary @click="copyValue">Copy</NButton>
+                <NButton size="tiny" tertiary @click="copy(displayValue)">Copy</NButton>
               </NSpace>
             </div>
 
@@ -175,7 +149,7 @@ function formatDate(value: string | undefined): string {
 
             <template v-else>
               <div v-if="revealed" class="value-box">
-                <span class="value-box__type">{{ item.value_format || 'text' }}</span>
+                <ValueFormatChip :format="item.value_format" />
                 <ValueEditor
                   :value="displayValue"
                   :format="valueFormat"
@@ -208,24 +182,6 @@ function formatDate(value: string | undefined): string {
 
 .value-box {
   position: relative;
-}
-
-.value-box__type {
-  position: absolute;
-  top: 6px;
-  right: 8px;
-  z-index: 1;
-  padding: 2px 7px;
-  font-size: 10px;
-  font-weight: 600;
-  line-height: 1.4;
-  letter-spacing: 0.04em;
-  text-transform: uppercase;
-  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
-  color: #18a058;
-  background: rgba(24, 160, 88, 0.14);
-  border-radius: 999px;
-  pointer-events: none;
 }
 
 .value-section__masked {

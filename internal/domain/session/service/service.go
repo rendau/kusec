@@ -2,6 +2,8 @@ package service
 
 import (
 	"context"
+	"crypto/sha256"
+	"encoding/hex"
 	"fmt"
 	"strconv"
 	"strings"
@@ -13,7 +15,20 @@ import (
 	"github.com/mechta-market/kusec/internal/errs"
 )
 
-const tokenTTL = 12 * time.Hour
+const (
+	// accessTokenTTL — короткий срок жизни access-токена: окно утечки
+	// ограничено, продление идёт через refresh-токен.
+	accessTokenTTL = 15 * time.Minute
+	// refreshTokenTTL — срок жизни refresh-токена (максимальная длина сессии
+	// без повторного логина).
+	refreshTokenTTL = 30 * 24 * time.Hour
+
+	// Значения claim "typ", разделяющие назначение токенов. Access-токены,
+	// выданные до введения refresh-flow, не имеют "typ" — они принимаются
+	// как access до их естественного истечения.
+	tokenTypeAccess  = "access"
+	tokenTypeRefresh = "refresh"
+)
 
 type contextKey string
 
@@ -55,8 +70,8 @@ func (s *Service) CtxIsAdmin(ctx context.Context) bool {
 	return s.FromContext(ctx).IsAdmin()
 }
 
-// FromToken парсит и валидирует HS256-токен, возвращая сессию.
-func (s *Service) FromToken(tokenStr string) (*sessionModel.Session, error) {
+// parseClaims парсит и валидирует подпись/срок HS256-токена.
+func (s *Service) parseClaims(tokenStr string) (jwtv5.MapClaims, error) {
 	if s.secret == "" {
 		return nil, errs.InvalidConfig
 	}
@@ -75,6 +90,29 @@ func (s *Service) FromToken(tokenStr string) (*sessionModel.Session, error) {
 			return nil, fmt.Errorf("fail to parse token")
 		}
 		return nil, err
+	}
+
+	return claims, nil
+}
+
+func tokenType(claims jwtv5.MapClaims) string {
+	if raw, ok := claims["typ"].(string); ok {
+		return raw
+	}
+	return ""
+}
+
+// FromToken парсит и валидирует access-токен, возвращая сессию.
+// Refresh-токены здесь отвергаются: они годятся только для RefreshToken.
+func (s *Service) FromToken(tokenStr string) (*sessionModel.Session, error) {
+	claims, err := s.parseClaims(tokenStr)
+	if err != nil {
+		return nil, err
+	}
+
+	// Токены без "typ" выданы до введения refresh-flow — принимаем как access.
+	if typ := tokenType(claims); typ != "" && typ != tokenTypeAccess {
+		return nil, fmt.Errorf("not an access token")
 	}
 
 	usrRaw, ok := claims["id"]
@@ -101,18 +139,83 @@ func (s *Service) FromToken(tokenStr string) (*sessionModel.Session, error) {
 	}, nil
 }
 
-// CreateToken подписывает HS256-токен с данными пользователя.
+// CreateToken подписывает короткоживущий access-токен с данными пользователя.
 func (s *Service) CreateToken(usrId int64, isAdmin bool) (string, error) {
-	if s.secret == "" {
-		return "", errs.InvalidConfig
-	}
-
 	now := time.Now().UTC()
-	claims := jwtv5.MapClaims{
+	return s.signClaims(jwtv5.MapClaims{
+		"typ":      tokenTypeAccess,
 		"id":       usrId,
 		"is_admin": isAdmin,
 		"iat":      now.Unix(),
-		"exp":      now.Add(tokenTTL).Unix(),
+		"exp":      now.Add(accessTokenTTL).Unix(),
+	})
+}
+
+// passwordFingerprint — необратимый отпечаток хеша пароля, зашиваемый в
+// refresh-токен: смена пароля инвалидирует все ранее выданные refresh-токены.
+func passwordFingerprint(passwordHash string) string {
+	sum := sha256.Sum256([]byte(passwordHash))
+	return hex.EncodeToString(sum[:8])
+}
+
+// CreateRefreshToken подписывает долгоживущий refresh-токен.
+func (s *Service) CreateRefreshToken(usrId int64, passwordHash string) (string, error) {
+	now := time.Now().UTC()
+	return s.signClaims(jwtv5.MapClaims{
+		"typ": tokenTypeRefresh,
+		"id":  usrId,
+		"pwd": passwordFingerprint(passwordHash),
+		"iat": now.Unix(),
+		"exp": now.Add(refreshTokenTTL).Unix(),
+	})
+}
+
+// ParseRefreshToken валидирует refresh-токен и возвращает id пользователя.
+// Отпечаток пароля сверяется с актуальным хешем — после смены пароля токен
+// считается отозванным.
+func (s *Service) ParseRefreshToken(tokenStr, currentPasswordHash string) (int64, error) {
+	claims, err := s.parseClaims(tokenStr)
+	if err != nil {
+		return 0, err
+	}
+
+	if tokenType(claims) != tokenTypeRefresh {
+		return 0, fmt.Errorf("not a refresh token")
+	}
+
+	fp, _ := claims["pwd"].(string)
+	if fp == "" || fp != passwordFingerprint(currentPasswordHash) {
+		return 0, fmt.Errorf("refresh token revoked by password change")
+	}
+
+	usrRaw, ok := claims["id"]
+	if !ok {
+		return 0, fmt.Errorf("missing user id claim in token")
+	}
+	return usrIDFromClaim(usrRaw)
+}
+
+// RefreshTokenUserId извлекает id пользователя из refresh-токена (после
+// проверки подписи/срока/типа), не сверяя отпечаток пароля — нужен, чтобы
+// сначала загрузить пользователя и его актуальный хеш.
+func (s *Service) RefreshTokenUserId(tokenStr string) (int64, error) {
+	claims, err := s.parseClaims(tokenStr)
+	if err != nil {
+		return 0, err
+	}
+	if tokenType(claims) != tokenTypeRefresh {
+		return 0, fmt.Errorf("not a refresh token")
+	}
+	usrRaw, ok := claims["id"]
+	if !ok {
+		return 0, fmt.Errorf("missing user id claim in token")
+	}
+	return usrIDFromClaim(usrRaw)
+}
+
+func (s *Service) signClaims(claims jwtv5.MapClaims) (string, error) {
+	if s.secret == "" {
+		return "", errs.InvalidConfig
 	}
 
 	token := jwtv5.NewWithClaims(jwtv5.SigningMethodHS256, claims)

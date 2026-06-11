@@ -27,6 +27,29 @@ export function bytesToBase64(bytes: Uint8Array): string {
   return btoa(binary)
 }
 
+/** Encode arbitrary text to base64 (UTF-8 safe, unlike bare `btoa`). */
+export function textToBase64(text: string): string {
+  return bytesToBase64(new TextEncoder().encode(text))
+}
+
+/** Decode a base64 string to UTF-8 text. Throws on invalid base64. */
+export function base64ToText(b64: string): string {
+  return new TextDecoder().decode(base64ToBytes(b64))
+}
+
+/** Heuristic: the value looks like a base64 payload (used to offer decoding). */
+export function isProbablyBase64(value: string): boolean {
+  const clean = value.trim()
+  if (clean.length < 8 || clean.length % 4 !== 0) return false
+  if (!/^[A-Za-z0-9+/]+={0,2}$/.test(clean)) return false
+  try {
+    atob(clean)
+    return true
+  } catch {
+    return false
+  }
+}
+
 /** Heuristic: looks like UTF-8 text (no NUL bytes, decodes cleanly). */
 export function isProbablyText(bytes: Uint8Array): boolean {
   const sample = bytes.subarray(0, 8192)
