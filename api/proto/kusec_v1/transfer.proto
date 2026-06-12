@@ -49,6 +49,8 @@ message TransferImportSecretSt {
   string description = 2;
   optional bool active = 3;
   repeated TransferImportItemSt items = 4;
+  // Тип k8s-секрета (пусто = Opaque).
+  string kube_type = 5;
 }
 
 message TransferImportItemSt {
@@ -101,6 +103,8 @@ message TransferTreeSecretSt {
   bool active = 4;
   google.protobuf.Timestamp updated_at = 5;
   repeated TransferTreeItemSt items = 6;
+  // Тип k8s-секрета (пусто = Opaque).
+  string kube_type = 7;
 }
 
 message TransferTreeItemSt {

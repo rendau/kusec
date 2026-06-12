@@ -15,6 +15,8 @@ type Main struct {
 	Active      bool
 	SlugName    string
 	Description string
+	// Тип k8s-секрета (пусто = Opaque), например kubernetes.io/basic-auth.
+	KubeType string
 
 	// Вычисляемое поле: не хранится в базе, заполняется в usecase.
 	KubeSecretName string
@@ -27,6 +29,7 @@ type Edit struct {
 	Active      *bool
 	SlugName    *string
 	Description *string
+	KubeType    *string
 }
 
 // ListReq — параметры выборки

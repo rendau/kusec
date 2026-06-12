@@ -176,6 +176,8 @@ export interface SecretMain {
   description: string
   /** Full name of the resulting k8s secret; computed by the backend. */
   kube_secret_name: string
+  /** K8s secret type (empty = Opaque), e.g. kubernetes.io/basic-auth. */
+  kube_type: string
 }
 
 /** `SecretListReq` — filters for the list endpoint. */
@@ -198,6 +200,8 @@ export interface SecretCreateReq {
   active?: boolean
   slug_name: string
   description: string
+  /** K8s secret type (empty = Opaque). */
+  kube_type?: string
 }
 
 /** `SecretCreateRep`. */
@@ -211,6 +215,8 @@ export interface SecretUpdateReq {
   active?: boolean
   slug_name?: string
   description?: string
+  /** K8s secret type (empty = Opaque). */
+  kube_type?: string
 }
 
 /**

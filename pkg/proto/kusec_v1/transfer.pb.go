@@ -153,11 +153,13 @@ func (x *TransferImportAppSt) GetSecrets() []*TransferImportSecretSt {
 }
 
 type TransferImportSecretSt struct {
-	state         protoimpl.MessageState  `protogen:"open.v1"`
-	SlugName      string                  `protobuf:"bytes,1,opt,name=slug_name,json=slugName,proto3" json:"slug_name,omitempty"`
-	Description   string                  `protobuf:"bytes,2,opt,name=description,proto3" json:"description,omitempty"`
-	Active        *bool                   `protobuf:"varint,3,opt,name=active,proto3,oneof" json:"active,omitempty"`
-	Items         []*TransferImportItemSt `protobuf:"bytes,4,rep,name=items,proto3" json:"items,omitempty"`
+	state       protoimpl.MessageState  `protogen:"open.v1"`
+	SlugName    string                  `protobuf:"bytes,1,opt,name=slug_name,json=slugName,proto3" json:"slug_name,omitempty"`
+	Description string                  `protobuf:"bytes,2,opt,name=description,proto3" json:"description,omitempty"`
+	Active      *bool                   `protobuf:"varint,3,opt,name=active,proto3,oneof" json:"active,omitempty"`
+	Items       []*TransferImportItemSt `protobuf:"bytes,4,rep,name=items,proto3" json:"items,omitempty"`
+	// Тип k8s-секрета (пусто = Opaque).
+	KubeType      string `protobuf:"bytes,5,opt,name=kube_type,json=kubeType,proto3" json:"kube_type,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -218,6 +220,13 @@ func (x *TransferImportSecretSt) GetItems() []*TransferImportItemSt {
 		return x.Items
 	}
 	return nil
+}
+
+func (x *TransferImportSecretSt) GetKubeType() string {
+	if x != nil {
+		return x.KubeType
+	}
+	return ""
 }
 
 type TransferImportItemSt struct {
@@ -569,13 +578,15 @@ func (x *TransferTreeAppSt) GetSecrets() []*TransferTreeSecretSt {
 }
 
 type TransferTreeSecretSt struct {
-	state         protoimpl.MessageState `protogen:"open.v1"`
-	Id            string                 `protobuf:"bytes,1,opt,name=id,proto3" json:"id,omitempty"`
-	SlugName      string                 `protobuf:"bytes,2,opt,name=slug_name,json=slugName,proto3" json:"slug_name,omitempty"`
-	Description   string                 `protobuf:"bytes,3,opt,name=description,proto3" json:"description,omitempty"`
-	Active        bool                   `protobuf:"varint,4,opt,name=active,proto3" json:"active,omitempty"`
-	UpdatedAt     *timestamppb.Timestamp `protobuf:"bytes,5,opt,name=updated_at,json=updatedAt,proto3" json:"updated_at,omitempty"`
-	Items         []*TransferTreeItemSt  `protobuf:"bytes,6,rep,name=items,proto3" json:"items,omitempty"`
+	state       protoimpl.MessageState `protogen:"open.v1"`
+	Id          string                 `protobuf:"bytes,1,opt,name=id,proto3" json:"id,omitempty"`
+	SlugName    string                 `protobuf:"bytes,2,opt,name=slug_name,json=slugName,proto3" json:"slug_name,omitempty"`
+	Description string                 `protobuf:"bytes,3,opt,name=description,proto3" json:"description,omitempty"`
+	Active      bool                   `protobuf:"varint,4,opt,name=active,proto3" json:"active,omitempty"`
+	UpdatedAt   *timestamppb.Timestamp `protobuf:"bytes,5,opt,name=updated_at,json=updatedAt,proto3" json:"updated_at,omitempty"`
+	Items       []*TransferTreeItemSt  `protobuf:"bytes,6,rep,name=items,proto3" json:"items,omitempty"`
+	// Тип k8s-секрета (пусто = Opaque).
+	KubeType      string `protobuf:"bytes,7,opt,name=kube_type,json=kubeType,proto3" json:"kube_type,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -650,6 +661,13 @@ func (x *TransferTreeSecretSt) GetItems() []*TransferTreeItemSt {
 		return x.Items
 	}
 	return nil
+}
+
+func (x *TransferTreeSecretSt) GetKubeType() string {
+	if x != nil {
+		return x.KubeType
+	}
+	return ""
 }
 
 type TransferTreeItemSt struct {
@@ -783,12 +801,13 @@ const file_kusec_v1_transfer_proto_rawDesc = "" +
 	"\vdescription\x18\x04 \x01(\tR\vdescription\x12\x1b\n" +
 	"\x06active\x18\x05 \x01(\bH\x00R\x06active\x88\x01\x01\x12:\n" +
 	"\asecrets\x18\x06 \x03(\v2 .kusec_v1.TransferImportSecretStR\asecretsB\t\n" +
-	"\a_active\"\xb5\x01\n" +
+	"\a_active\"\xd2\x01\n" +
 	"\x16TransferImportSecretSt\x12\x1b\n" +
 	"\tslug_name\x18\x01 \x01(\tR\bslugName\x12 \n" +
 	"\vdescription\x18\x02 \x01(\tR\vdescription\x12\x1b\n" +
 	"\x06active\x18\x03 \x01(\bH\x00R\x06active\x88\x01\x01\x124\n" +
-	"\x05items\x18\x04 \x03(\v2\x1e.kusec_v1.TransferImportItemStR\x05itemsB\t\n" +
+	"\x05items\x18\x04 \x03(\v2\x1e.kusec_v1.TransferImportItemStR\x05items\x12\x1b\n" +
+	"\tkube_type\x18\x05 \x01(\tR\bkubeTypeB\t\n" +
 	"\a_active\"\x87\x02\n" +
 	"\x14TransferImportItemSt\x12\x10\n" +
 	"\x03key\x18\x01 \x01(\tR\x03key\x12\x14\n" +
@@ -820,7 +839,7 @@ const file_kusec_v1_transfer_proto_rawDesc = "" +
 	"\x06active\x18\x06 \x01(\bR\x06active\x129\n" +
 	"\n" +
 	"updated_at\x18\a \x01(\v2\x1a.google.protobuf.TimestampR\tupdatedAt\x128\n" +
-	"\asecrets\x18\b \x03(\v2\x1e.kusec_v1.TransferTreeSecretStR\asecrets\"\xec\x01\n" +
+	"\asecrets\x18\b \x03(\v2\x1e.kusec_v1.TransferTreeSecretStR\asecrets\"\x89\x02\n" +
 	"\x14TransferTreeSecretSt\x12\x0e\n" +
 	"\x02id\x18\x01 \x01(\tR\x02id\x12\x1b\n" +
 	"\tslug_name\x18\x02 \x01(\tR\bslugName\x12 \n" +
@@ -828,7 +847,8 @@ const file_kusec_v1_transfer_proto_rawDesc = "" +
 	"\x06active\x18\x04 \x01(\bR\x06active\x129\n" +
 	"\n" +
 	"updated_at\x18\x05 \x01(\v2\x1a.google.protobuf.TimestampR\tupdatedAt\x122\n" +
-	"\x05items\x18\x06 \x03(\v2\x1c.kusec_v1.TransferTreeItemStR\x05items\"\xc9\x02\n" +
+	"\x05items\x18\x06 \x03(\v2\x1c.kusec_v1.TransferTreeItemStR\x05items\x12\x1b\n" +
+	"\tkube_type\x18\a \x01(\tR\bkubeType\"\xc9\x02\n" +
 	"\x12TransferTreeItemSt\x12\x0e\n" +
 	"\x02id\x18\x01 \x01(\tR\x02id\x12\x10\n" +
 	"\x03key\x18\x02 \x01(\tR\x03key\x12!\n" +

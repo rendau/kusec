@@ -17,7 +17,9 @@ type ImportSecret struct {
 	SlugName    string
 	Description string
 	Active      *bool
-	Items       []*ImportItem
+	// Тип k8s-секрета (пусто = Opaque).
+	KubeType string
+	Items    []*ImportItem
 }
 
 type ImportApp struct {
@@ -64,6 +66,7 @@ type TreeSecret struct {
 	SlugName    string
 	Description string
 	Active      bool
+	KubeType    string
 	UpdatedAt   time.Time
 	Items       []*TreeItem
 }

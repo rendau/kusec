@@ -176,10 +176,23 @@ func (s *Service) SyncSecrets(ctx context.Context) (*SyncResult, error) {
 			continue
 		}
 
+		// Тип k8s-секрета immutable: при его смене секрет пересоздаётся.
+		if current.Type != desiredSecretType(want) {
+			if err = client.CoreV1().Secrets(want.namespace).Delete(ctx, want.name, metav1.DeleteOptions{}); err != nil && !k8serrors.IsNotFound(err) {
+				result.Errors = append(result.Errors, fmt.Sprintf("%s: recreate (delete): %v", key, err))
+				continue
+			}
+			if _, err = client.CoreV1().Secrets(want.namespace).Create(ctx, buildSecret(want), metav1.CreateOptions{}); err != nil {
+				result.Errors = append(result.Errors, fmt.Sprintf("%s: recreate (create): %v", key, err))
+				continue
+			}
+			result.Updated = append(result.Updated, key)
+			continue
+		}
+
 		updated := current.DeepCopy()
 		updated.Data = want.data
 		updated.StringData = nil
-		updated.Type = corev1.SecretTypeOpaque
 		if updated.Annotations == nil {
 			updated.Annotations = map[string]string{}
 		}
@@ -262,6 +275,7 @@ func (s *Service) buildDesired(ctx context.Context, result *SyncResult) (map[str
 				name:      name,
 				appId:     app.Id,
 				secretId:  secret.Id,
+				kubeType:  secret.KubeType,
 				data:      data,
 			}
 		}
@@ -332,6 +346,14 @@ func (s *Service) ensureNamespace(
 	return nil
 }
 
+// desiredSecretType — тип k8s-секрета из записи базы; пусто = Opaque.
+func desiredSecretType(want *desiredSecret) corev1.SecretType {
+	if want.kubeType == "" {
+		return corev1.SecretTypeOpaque
+	}
+	return corev1.SecretType(want.kubeType)
+}
+
 func buildSecret(want *desiredSecret) *corev1.Secret {
 	return &corev1.Secret{
 		ObjectMeta: metav1.ObjectMeta{
@@ -345,13 +367,13 @@ func buildSecret(want *desiredSecret) *corev1.Secret {
 				secretIdAnnotation: want.secretId,
 			},
 		},
-		Type: corev1.SecretTypeOpaque,
+		Type: desiredSecretType(want),
 		Data: want.data,
 	}
 }
 
 func secretUpToDate(current *corev1.Secret, want *desiredSecret) bool {
-	if current.Type != corev1.SecretTypeOpaque {
+	if current.Type != desiredSecretType(want) {
 		return false
 	}
 	if current.Annotations[appIdAnnotation] != want.appId ||

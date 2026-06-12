@@ -22,6 +22,7 @@ func EncodeSecretMain(v *domainModel.Main, _ int) *proto.SecretMain {
 		SlugName:       v.SlugName,
 		Description:    v.Description,
 		KubeSecretName: v.KubeSecretName,
+		KubeType:       v.KubeType,
 	}
 }
 
@@ -48,6 +49,7 @@ func DecodeSecretCreateReq(v *proto.SecretCreateReq) *domainModel.Edit {
 		Active:      v.Active,
 		SlugName:    &v.SlugName,
 		Description: &v.Description,
+		KubeType:    &v.KubeType,
 	}
 }
 
@@ -60,5 +62,6 @@ func DecodeSecretUpdateReq(v *proto.SecretUpdateReq) *domainModel.Edit {
 		Active:      v.Active,
 		SlugName:    v.SlugName,
 		Description: v.Description,
+		KubeType:    v.KubeType,
 	}
 }

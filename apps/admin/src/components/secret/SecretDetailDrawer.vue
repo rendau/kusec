@@ -75,6 +75,9 @@ const { loading, item: secret } = useDrawerResource({
             </NTooltip>
             <NText v-else depth="3">—</NText>
           </NDescriptionsItem>
+          <NDescriptionsItem label="K8s type">
+            <NText code>{{ secret.kube_type || 'Opaque' }}</NText>
+          </NDescriptionsItem>
           <NDescriptionsItem label="Application">
             <NTag size="small" type="info">{{ nameOf(secret.app_id) }}</NTag>
           </NDescriptionsItem>

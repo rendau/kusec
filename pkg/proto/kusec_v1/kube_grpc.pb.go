@@ -29,7 +29,8 @@ const (
 // For semantics around ctx use and closing/ending streaming RPCs, please refer to https://pkg.go.dev/google.golang.org/grpc/?tab=doc#ClientConn.NewStream.
 //
 // Синхронизация секретов из базы в Kubernetes (только изнутри кластера).
-// Имя k8s-секрета: {app.slug_name}-{secret.slug_name}, namespace — из app.
+// Имя k8s-секрета: {KUBE_SECRET_NAME_PREFIX}{app.slug_name}-{secret.slug_name}
+// (префикс из env, по умолчанию "kusec-"), namespace — из app.
 // Управляемые секреты помечаются лейблом app.kubernetes.io/managed-by=kusec;
 // удаляются только они.
 type KubeClient interface {
@@ -70,7 +71,8 @@ func (c *kubeClient) ListNamespaces(ctx context.Context, in *emptypb.Empty, opts
 // for forward compatibility.
 //
 // Синхронизация секретов из базы в Kubernetes (только изнутри кластера).
-// Имя k8s-секрета: {app.slug_name}-{secret.slug_name}, namespace — из app.
+// Имя k8s-секрета: {KUBE_SECRET_NAME_PREFIX}{app.slug_name}-{secret.slug_name}
+// (префикс из env, по умолчанию "kusec-"), namespace — из app.
 // Управляемые секреты помечаются лейблом app.kubernetes.io/managed-by=kusec;
 // удаляются только они.
 type KubeServer interface {

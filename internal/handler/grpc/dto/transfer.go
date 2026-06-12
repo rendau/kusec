@@ -43,6 +43,7 @@ func DecodeTransferImportReq(v *proto.TransferImportReq) *usecaseModel.ImportReq
 				SlugName:    secret.SlugName,
 				Description: secret.Description,
 				Active:      secret.Active,
+				KubeType:    secret.KubeType,
 				Items:       items,
 			})
 		}
@@ -102,6 +103,7 @@ func EncodeTransferTreeApp(v *usecaseModel.TreeApp, _ int) *proto.TransferTreeAp
 			SlugName:    secret.SlugName,
 			Description: secret.Description,
 			Active:      secret.Active,
+			KubeType:    secret.KubeType,
 			UpdatedAt:   timestamppb.New(secret.UpdatedAt),
 			Items:       items,
 		})

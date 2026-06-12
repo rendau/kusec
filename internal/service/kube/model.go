@@ -18,5 +18,7 @@ type desiredSecret struct {
 	name      string
 	appId     string
 	secretId  string
-	data      map[string][]byte
+	// Тип k8s-секрета (пусто = Opaque).
+	kubeType string
+	data     map[string][]byte
 }

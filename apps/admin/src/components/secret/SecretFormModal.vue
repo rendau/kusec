@@ -39,6 +39,8 @@ interface FormModel {
   slug_name: string
   description: string
   active: boolean
+  /** K8s secret type; null/empty = Opaque (backend default). */
+  kube_type: string | null
 }
 
 const model = reactive<FormModel>({
@@ -46,7 +48,16 @@ const model = reactive<FormModel>({
   slug_name: '',
   description: '',
   active: true,
+  kube_type: null,
 })
+
+/** Well-known k8s secret types; custom values can be typed in (tag mode). */
+const kubeTypeOptions = [
+  'kubernetes.io/basic-auth',
+  'kubernetes.io/tls',
+  'kubernetes.io/dockerconfigjson',
+  'kubernetes.io/ssh-auth',
+].map((value) => ({ label: value, value }))
 
 const rules: FormRules = {
   app_id: [
@@ -70,6 +81,7 @@ const { formRef, submitting, isEdit, submit } = useEntityForm<SecretMain>({
     model.slug_name = secret?.slug_name ?? ''
     model.description = secret?.description ?? ''
     model.active = secret?.active ?? true
+    model.kube_type = secret?.kube_type || null
     // Make sure the selected app is present in the options list.
     if (model.app_id) await ensure(model.app_id)
   },
@@ -79,12 +91,14 @@ const { formRef, submitting, isEdit, submit } = useEntityForm<SecretMain>({
       slug_name: model.slug_name,
       description: model.description,
       active: model.active,
+      kube_type: model.kube_type ?? '',
     }),
   update: (secret) => {
     const update: SecretUpdateReq = {
       slug_name: model.slug_name,
       description: model.description,
       active: model.active,
+      kube_type: model.kube_type ?? '',
     }
     if (model.app_id) update.app_id = model.app_id
     return updateSecret(secret.id, update)
@@ -139,6 +153,16 @@ function close(): void {
           v-model:value="model.slug_name"
           placeholder="e.g. db-credentials"
           clearable
+        />
+      </NFormItem>
+      <NFormItem label="K8s type" path="kube_type">
+        <NSelect
+          v-model:value="model.kube_type"
+          :options="kubeTypeOptions"
+          tag
+          filterable
+          clearable
+          placeholder="Opaque (default)"
         />
       </NFormItem>
       <NFormItem label="Description" path="description">

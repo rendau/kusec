@@ -36,8 +36,10 @@ type SecretMain struct {
 	Description string                 `protobuf:"bytes,7,opt,name=description,proto3" json:"description,omitempty"`
 	// Полное имя итогового k8s-секрета; вычисляется бэкендом.
 	KubeSecretName string `protobuf:"bytes,8,opt,name=kube_secret_name,json=kubeSecretName,proto3" json:"kube_secret_name,omitempty"`
-	unknownFields  protoimpl.UnknownFields
-	sizeCache      protoimpl.SizeCache
+	// Тип k8s-секрета (пусто = Opaque), например kubernetes.io/basic-auth.
+	KubeType      string `protobuf:"bytes,9,opt,name=kube_type,json=kubeType,proto3" json:"kube_type,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
 }
 
 func (x *SecretMain) Reset() {
@@ -122,6 +124,13 @@ func (x *SecretMain) GetDescription() string {
 func (x *SecretMain) GetKubeSecretName() string {
 	if x != nil {
 		return x.KubeSecretName
+	}
+	return ""
+}
+
+func (x *SecretMain) GetKubeType() string {
+	if x != nil {
+		return x.KubeType
 	}
 	return ""
 }
@@ -291,11 +300,13 @@ func (x *SecretGetReq) GetId() string {
 }
 
 type SecretCreateReq struct {
-	state         protoimpl.MessageState `protogen:"open.v1"`
-	AppId         string                 `protobuf:"bytes,1,opt,name=app_id,json=appId,proto3" json:"app_id,omitempty"`
-	Active        *bool                  `protobuf:"varint,2,opt,name=active,proto3,oneof" json:"active,omitempty"`
-	SlugName      string                 `protobuf:"bytes,3,opt,name=slug_name,json=slugName,proto3" json:"slug_name,omitempty"`
-	Description   string                 `protobuf:"bytes,4,opt,name=description,proto3" json:"description,omitempty"`
+	state       protoimpl.MessageState `protogen:"open.v1"`
+	AppId       string                 `protobuf:"bytes,1,opt,name=app_id,json=appId,proto3" json:"app_id,omitempty"`
+	Active      *bool                  `protobuf:"varint,2,opt,name=active,proto3,oneof" json:"active,omitempty"`
+	SlugName    string                 `protobuf:"bytes,3,opt,name=slug_name,json=slugName,proto3" json:"slug_name,omitempty"`
+	Description string                 `protobuf:"bytes,4,opt,name=description,proto3" json:"description,omitempty"`
+	// Тип k8s-секрета (пусто = Opaque).
+	KubeType      string `protobuf:"bytes,5,opt,name=kube_type,json=kubeType,proto3" json:"kube_type,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -358,6 +369,13 @@ func (x *SecretCreateReq) GetDescription() string {
 	return ""
 }
 
+func (x *SecretCreateReq) GetKubeType() string {
+	if x != nil {
+		return x.KubeType
+	}
+	return ""
+}
+
 type SecretCreateRep struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
 	Id            string                 `protobuf:"bytes,1,opt,name=id,proto3" json:"id,omitempty"`
@@ -409,6 +427,7 @@ type SecretUpdateReq struct {
 	Active        *bool                  `protobuf:"varint,3,opt,name=active,proto3,oneof" json:"active,omitempty"`
 	SlugName      *string                `protobuf:"bytes,4,opt,name=slug_name,json=slugName,proto3,oneof" json:"slug_name,omitempty"`
 	Description   *string                `protobuf:"bytes,5,opt,name=description,proto3,oneof" json:"description,omitempty"`
+	KubeType      *string                `protobuf:"bytes,6,opt,name=kube_type,json=kubeType,proto3,oneof" json:"kube_type,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -478,11 +497,18 @@ func (x *SecretUpdateReq) GetDescription() string {
 	return ""
 }
 
+func (x *SecretUpdateReq) GetKubeType() string {
+	if x != nil && x.KubeType != nil {
+		return *x.KubeType
+	}
+	return ""
+}
+
 var File_kusec_v1_secret_proto protoreflect.FileDescriptor
 
 const file_kusec_v1_secret_proto_rawDesc = "" +
 	"\n" +
-	"\x15kusec_v1/secret.proto\x12\bkusec_v1\x1a\x1cgoogle/api/annotations.proto\x1a\x1bgoogle/protobuf/empty.proto\x1a\x1fgoogle/protobuf/timestamp.proto\x1a\x13common/common.proto\"\xaa\x02\n" +
+	"\x15kusec_v1/secret.proto\x12\bkusec_v1\x1a\x1cgoogle/api/annotations.proto\x1a\x1bgoogle/protobuf/empty.proto\x1a\x1fgoogle/protobuf/timestamp.proto\x1a\x13common/common.proto\"\xc7\x02\n" +
 	"\n" +
 	"SecretMain\x12\x0e\n" +
 	"\x02id\x18\x01 \x01(\tR\x02id\x129\n" +
@@ -494,7 +520,8 @@ const file_kusec_v1_secret_proto_rawDesc = "" +
 	"\x06active\x18\x05 \x01(\bR\x06active\x12\x1b\n" +
 	"\tslug_name\x18\x06 \x01(\tR\bslugName\x12 \n" +
 	"\vdescription\x18\a \x01(\tR\vdescription\x12(\n" +
-	"\x10kube_secret_name\x18\b \x01(\tR\x0ekubeSecretName\"\xbd\x01\n" +
+	"\x10kube_secret_name\x18\b \x01(\tR\x0ekubeSecretName\x12\x1b\n" +
+	"\tkube_type\x18\t \x01(\tR\bkubeType\"\xbd\x01\n" +
 	"\rSecretListReq\x125\n" +
 	"\vlist_params\x18\x01 \x01(\v2\x14.common.ListParamsStR\n" +
 	"listParams\x12\x1a\n" +
@@ -508,26 +535,30 @@ const file_kusec_v1_secret_proto_rawDesc = "" +
 	"\x0fpagination_info\x18\x01 \x01(\v2\x18.common.PaginationInfoStR\x0epaginationInfo\x12.\n" +
 	"\aresults\x18\x02 \x03(\v2\x14.kusec_v1.SecretMainR\aresults\"\x1e\n" +
 	"\fSecretGetReq\x12\x0e\n" +
-	"\x02id\x18\x01 \x01(\tR\x02id\"\x8f\x01\n" +
+	"\x02id\x18\x01 \x01(\tR\x02id\"\xac\x01\n" +
 	"\x0fSecretCreateReq\x12\x15\n" +
 	"\x06app_id\x18\x01 \x01(\tR\x05appId\x12\x1b\n" +
 	"\x06active\x18\x02 \x01(\bH\x00R\x06active\x88\x01\x01\x12\x1b\n" +
 	"\tslug_name\x18\x03 \x01(\tR\bslugName\x12 \n" +
-	"\vdescription\x18\x04 \x01(\tR\vdescriptionB\t\n" +
+	"\vdescription\x18\x04 \x01(\tR\vdescription\x12\x1b\n" +
+	"\tkube_type\x18\x05 \x01(\tR\bkubeTypeB\t\n" +
 	"\a_active\"!\n" +
 	"\x0fSecretCreateRep\x12\x0e\n" +
-	"\x02id\x18\x01 \x01(\tR\x02id\"\xd7\x01\n" +
+	"\x02id\x18\x01 \x01(\tR\x02id\"\x87\x02\n" +
 	"\x0fSecretUpdateReq\x12\x0e\n" +
 	"\x02id\x18\x01 \x01(\tR\x02id\x12\x1a\n" +
 	"\x06app_id\x18\x02 \x01(\tH\x00R\x05appId\x88\x01\x01\x12\x1b\n" +
 	"\x06active\x18\x03 \x01(\bH\x01R\x06active\x88\x01\x01\x12 \n" +
 	"\tslug_name\x18\x04 \x01(\tH\x02R\bslugName\x88\x01\x01\x12%\n" +
-	"\vdescription\x18\x05 \x01(\tH\x03R\vdescription\x88\x01\x01B\t\n" +
+	"\vdescription\x18\x05 \x01(\tH\x03R\vdescription\x88\x01\x01\x12 \n" +
+	"\tkube_type\x18\x06 \x01(\tH\x04R\bkubeType\x88\x01\x01B\t\n" +
 	"\a_app_idB\t\n" +
 	"\a_activeB\f\n" +
 	"\n" +
 	"_slug_nameB\x0e\n" +
-	"\f_description2\x98\x03\n" +
+	"\f_descriptionB\f\n" +
+	"\n" +
+	"_kube_type2\x98\x03\n" +
 	"\x06Secret\x12I\n" +
 	"\x04List\x12\x17.kusec_v1.SecretListReq\x1a\x17.kusec_v1.SecretListRep\"\x0f\x82\xd3\xe4\x93\x02\t\x12\a/secret\x12I\n" +
 	"\x03Get\x12\x16.kusec_v1.SecretGetReq\x1a\x14.kusec_v1.SecretMain\"\x14\x82\xd3\xe4\x93\x02\x0e\x12\f/secret/{id}\x12R\n" +

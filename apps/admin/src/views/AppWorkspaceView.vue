@@ -272,6 +272,14 @@ const columns = computed<DataTableColumns<SecretMain>>(() => [
         : h(NText, { depth: 3 }, { default: () => '—' }),
   },
   {
+    title: 'K8s type',
+    key: 'kube_type',
+    render: (row) =>
+      row.kube_type
+        ? h(NText, { code: true }, { default: () => row.kube_type })
+        : h(NText, { depth: 3 }, { default: () => 'Opaque' }),
+  },
+  {
     title: 'Description',
     key: 'description',
     render: (row) =>

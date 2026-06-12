@@ -1561,6 +1561,10 @@
         },
         "description": {
           "type": "string"
+        },
+        "kube_type": {
+          "type": "string",
+          "description": "Тип k8s-секрета (пусто = Opaque)."
         }
       }
     },
@@ -1608,6 +1612,10 @@
         "kube_secret_name": {
           "type": "string",
           "description": "Полное имя итогового k8s-секрета; вычисляется бэкендом."
+        },
+        "kube_type": {
+          "type": "string",
+          "description": "Тип k8s-секрета (пусто = Opaque), например kubernetes.io/basic-auth."
         }
       }
     },
@@ -1624,6 +1632,9 @@
           "type": "string"
         },
         "description": {
+          "type": "string"
+        },
+        "kube_type": {
           "type": "string"
         }
       }
@@ -1757,6 +1768,10 @@
             "type": "object",
             "$ref": "#/definitions/kusec_v1TransferImportItemSt"
           }
+        },
+        "kube_type": {
+          "type": "string",
+          "description": "Тип k8s-секрета (пусто = Opaque)."
         }
       }
     },
@@ -1869,6 +1884,10 @@
             "type": "object",
             "$ref": "#/definitions/kusec_v1TransferTreeItemSt"
           }
+        },
+        "kube_type": {
+          "type": "string",
+          "description": "Тип k8s-секрета (пусто = Opaque)."
         }
       }
     },

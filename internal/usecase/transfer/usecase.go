@@ -185,6 +185,7 @@ func (u *Usecase) upsertSecret(
 			AppId:       &appId,
 			SlugName:    &imp.SlugName,
 			Description: &imp.Description,
+			KubeType:    &imp.KubeType,
 			Active:      lo.ToPtr(imp.Active == nil || *imp.Active),
 		})
 		if err != nil {
@@ -198,6 +199,10 @@ func (u *Usecase) upsertSecret(
 	changed := false
 	if existing.Description != imp.Description {
 		edit.Description = &imp.Description
+		changed = true
+	}
+	if existing.KubeType != imp.KubeType {
+		edit.KubeType = &imp.KubeType
 		changed = true
 	}
 	if imp.Active != nil && existing.Active != *imp.Active {
@@ -394,6 +399,7 @@ func (u *Usecase) Tree(ctx context.Context) ([]*TreeApp, error) {
 				SlugName:    secret.SlugName,
 				Description: secret.Description,
 				Active:      secret.Active,
+				KubeType:    secret.KubeType,
 				UpdatedAt:   secret.UpdatedAt,
 				Items:       make([]*TreeItem, 0, len(items)),
 			}
