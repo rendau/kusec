@@ -13,13 +13,11 @@ jobs:
     steps:
       - uses: actions/checkout@v6
 
-      - run: go mod download
-
-      # - run: go test -v ./...
-
-      - run: make
-
-      - run: echo ${{ secrets.GITHUB_TOKEN }} | docker login ghcr.io -u $ --password-stdin
+      - uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
 
       - run: docker build -f deploy/docker/Dockerfile -t ghcr.io/$OWNER/$IMAGE .
 

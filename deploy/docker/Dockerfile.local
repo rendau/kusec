@@ -1,41 +1,28 @@
-# Локальная сборка целиком внутри Docker (Go и Node на хосте не нужны):
-# бэкенд + вшитая админка, которую бэк раздаёт с корневого пути
-# (см. internal/app/spa.go — статика ищется в ./admin-dist).
-# Запускать из корня репозитория (контекст — корень):
-#   docker build -f deploy/docker/Dockerfile.local -t kusec:local .
-#   (или `make docker-build`)
-
-# ── admin build ─────────────────────────────────────────
 FROM node:22-alpine AS admin-builder
 
 WORKDIR /src
 
 RUN npm install -g pnpm@11
 
-# Кэшируем install отдельным слоем.
 COPY apps/admin/package.json apps/admin/pnpm-lock.yaml apps/admin/pnpm-workspace.yaml ./
 RUN pnpm install --frozen-lockfile
 
-# API на том же origin под /api (бэк монтирует gateway со StripPrefix).
 ARG VITE_API_BASE_URL=/api
 ENV VITE_API_BASE_URL=${VITE_API_BASE_URL}
 
 COPY apps/admin/ .
 RUN pnpm build
 
-# ── backend build ───────────────────────────────────────
 FROM golang:1.26-alpine AS builder
 
 WORKDIR /src
 
-# Кэшируем зависимости отдельным слоем.
 COPY go.mod go.sum ./
 RUN go mod download
 
 COPY . .
 RUN CGO_ENABLED=0 go build -trimpath -ldflags="-s -w" -o /out/svc cmd/main.go
 
-# ── runtime ─────────────────────────────────────────────
 FROM alpine:3.21
 
 RUN apk add --no-cache --upgrade ca-certificates tzdata curl \
@@ -45,19 +32,13 @@ WORKDIR /app
 
 COPY --from=builder /out/svc ./svc
 COPY docs ./docs
-# Миграции применяются самим сервисом на старте (internal/app/migration.go),
-# путь ./migrations относительно рабочей директории.
 COPY migrations ./migrations
-# Собранная админка: бэк раздаёт её с "/" (SPA fallback на index.html).
 COPY --from=admin-builder /src/dist ./admin-dist
 
 USER app
 
-# Дефолтный HTTP_PORT=80 требует root для bind — под непривилегированным
-# пользователем поднимаем gateway на 8080 (переопределяется env-ом).
 ENV HTTP_PORT=8080
 
-# gRPC / HTTP-gateway+админка / системный (healthcheck, docs, metrics)
 EXPOSE 5050 8080 3003
 
 CMD ["./svc"]
