@@ -2,8 +2,10 @@ FROM node:22-alpine AS admin-builder
 
 WORKDIR /src/apps/admin
 
-COPY apps/admin/package.json apps/admin/pnpm-lock.yaml ./
-RUN corepack enable && pnpm install --frozen-lockfile
+RUN npm install -g pnpm@11
+
+COPY apps/admin/package.json apps/admin/pnpm-lock.yaml apps/admin/pnpm-workspace.yaml ./
+RUN pnpm install --frozen-lockfile
 
 COPY apps/admin ./
 RUN pnpm build

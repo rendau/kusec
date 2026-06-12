@@ -23,7 +23,7 @@ run-admin:
 
 # Локальный docker-образ (бэкенд + вшитая админка, сборка целиком внутри Docker).
 docker-build:
-	docker build -f deploy/docker/Dockerfile.local -t kusec:local .
+	docker build -f deploy/docker/Dockerfile -t kusec:local .
 
 lint:
 	golangci-lint run
