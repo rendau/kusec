@@ -8,7 +8,8 @@ import "google/protobuf/empty.proto";
 option go_package = "/kusec_v1";
 
 // Синхронизация секретов из базы в Kubernetes (только изнутри кластера).
-// Имя k8s-секрета: {app.slug_name}-{secret.slug_name}, namespace — из app.
+// Имя k8s-секрета: {KUBE_SECRET_NAME_PREFIX}{app.slug_name}-{secret.slug_name}
+// (префикс из env, по умолчанию "kusec-"), namespace — из app.
 // Управляемые секреты помечаются лейблом app.kubernetes.io/managed-by=kusec;
 // удаляются только они.
 service Kube {

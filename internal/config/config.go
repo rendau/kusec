@@ -19,6 +19,11 @@ var Conf = struct {
 	PgDsn string `env:"PG_DSN"`
 
 	JWTSecret string `env:"JWT_SECRET"`
+
+	// Префикс имён k8s-секретов, создаваемых kusec: исключает коллизии с
+	// уже существующими секретами чартов и даёт плавный переход — старый
+	// helm-секрет живёт до передеплоя чарта, kusec-секрет появляется рядом.
+	KubeSecretNamePrefix string `env:"KUBE_SECRET_NAME_PREFIX" envDefault:"kusec-"`
 }{}
 
 func init() {
