@@ -3,7 +3,7 @@ FROM node:22-alpine AS admin-builder
 WORKDIR /src/apps/admin
 
 COPY apps/admin/package.json apps/admin/pnpm-lock.yaml ./
-RUN svcpack enable && pnpm install --frozen-lockfile
+RUN corepack enable && pnpm install --frozen-lockfile
 
 COPY apps/admin ./
 RUN pnpm build
