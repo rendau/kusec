@@ -10,7 +10,6 @@ import (
 	"strings"
 	"sync"
 
-	"github.com/samber/lo"
 	corev1 "k8s.io/api/core/v1"
 	k8serrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -43,7 +42,7 @@ type Service struct {
 	mu sync.Mutex // один sync одновременно
 
 	clientMu sync.Mutex
-	client   kubernetes.Interface // ленивая инициализация
+	client   kubernetes.Interface
 }
 
 func New(appSvc AppServiceI, secretSvc SecretServiceI, itemSvc ItemServiceI) *Service {
@@ -66,7 +65,7 @@ func (s *Service) getClient() (kubernetes.Interface, error) {
 
 	cfg, err := rest.InClusterConfig()
 	if err != nil {
-		if err == rest.ErrNotInCluster {
+		if errors.Is(err, rest.ErrNotInCluster) {
 			return nil, errs.NotInCluster
 		}
 		return nil, fmt.Errorf("rest.InClusterConfig: %w", err)
@@ -140,7 +139,6 @@ func (s *Service) SyncSecrets(ctx context.Context) (*SyncResult, error) {
 		return nil, err
 	}
 
-	// Все управляемые секреты кластера (во всех namespace).
 	existingList, err := client.CoreV1().Secrets(metav1.NamespaceAll).List(ctx, metav1.ListOptions{
 		LabelSelector: managedBySelector,
 	})
@@ -216,7 +214,7 @@ func (s *Service) SyncSecrets(ctx context.Context) (*SyncResult, error) {
 // buildDesired собирает желаемое состояние из базы: только active-записи
 // (app, secret, item). Невалидные секреты пропускаются с ошибкой в result.
 func (s *Service) buildDesired(ctx context.Context, result *SyncResult) (map[string]*desiredSecret, error) {
-	apps, _, err := s.appSvc.List(ctx, &appModel.ListReq{Active: lo.ToPtr(true)})
+	apps, _, err := s.appSvc.List(ctx, &appModel.ListReq{Active: new(true)})
 	if err != nil {
 		return nil, fmt.Errorf("appSvc.List: %w", err)
 	}
@@ -231,15 +229,15 @@ func (s *Service) buildDesired(ctx context.Context, result *SyncResult) (map[str
 		}
 
 		secrets, _, err := s.secretSvc.List(ctx, &secretModel.ListReq{
-			AppId:  lo.ToPtr(app.Id),
-			Active: lo.ToPtr(true),
+			AppId:  new(app.Id),
+			Active: new(true),
 		})
 		if err != nil {
 			return nil, fmt.Errorf("secretSvc.List: %w", err)
 		}
 
 		for _, secret := range secrets {
-			name := app.SlugName + "-" + secret.SlugName
+			name := SecretName(app.SlugName, secret.SlugName)
 			key := app.Namespace + "/" + name
 
 			if errMsgs := validation.IsDNS1123Subdomain(name); len(errMsgs) > 0 {
@@ -279,8 +277,8 @@ func (s *Service) buildDesired(ctx context.Context, result *SyncResult) (map[str
 // содержимое не влияет.
 func (s *Service) buildSecretData(ctx context.Context, secretId string) (map[string][]byte, error) {
 	items, _, err := s.itemSvc.List(ctx, &itemModel.ListReq{
-		SecretId: lo.ToPtr(secretId),
-		Active:   lo.ToPtr(true),
+		SecretId: new(secretId),
+		Active:   new(true),
 	})
 	if err != nil {
 		return nil, fmt.Errorf("itemSvc.List: %w", err)
@@ -307,7 +305,6 @@ func (s *Service) buildSecretData(ctx context.Context, secretId string) (map[str
 	return data, nil
 }
 
-// ensureNamespace создаёт namespace, если его ещё нет (результат кэшируется).
 func (s *Service) ensureNamespace(
 	ctx context.Context,
 	client kubernetes.Interface,

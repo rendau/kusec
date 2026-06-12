@@ -44,8 +44,6 @@ func countParams() commonModel.ListParams {
 	return commonModel.ListParams{OnlyCount: true, WithTotalCount: true}
 }
 
-// Get собирает сводку дашборда: счётчики сущностей (всего/активных) и
-// последние обновлённые секреты с именем приложения и числом items.
 func (u *Usecase) Get(ctx context.Context) (*Summary, error) {
 	if !u.sessionSvc.CtxIsAuthorized(ctx) {
 		return nil, errs.NotAuthorized

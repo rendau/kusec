@@ -39,8 +39,6 @@ func (u *Usecase) ListNamespaces(ctx context.Context) ([]string, bool, error) {
 	return namespaces, inCluster, nil
 }
 
-// SyncSecrets запускает синхронизацию секретов в кластер. Операция меняет
-// состояние кластера, поэтому доступна только администраторам.
 func (u *Usecase) SyncSecrets(ctx context.Context) (*kubeService.SyncResult, error) {
 	if !u.sessionSvc.CtxIsAuthorized(ctx) {
 		return nil, errs.NotAuthorized

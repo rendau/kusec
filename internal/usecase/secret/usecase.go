@@ -4,21 +4,54 @@ import (
 	"context"
 	"fmt"
 
+	"github.com/samber/lo"
+
+	appModel "github.com/mechta-market/kusec/internal/domain/app/model"
 	"github.com/mechta-market/kusec/internal/domain/secret/model"
 	"github.com/mechta-market/kusec/internal/errs"
+	"github.com/mechta-market/kusec/internal/service/kube"
 	"github.com/mechta-market/kusec/internal/util"
 )
 
 type Usecase struct {
 	svc        ServiceI
+	appSvc     AppServiceI
 	sessionSvc SessionServiceI
 }
 
-func New(svc ServiceI, sessionSvc SessionServiceI) *Usecase {
+func New(svc ServiceI, appSvc AppServiceI, sessionSvc SessionServiceI) *Usecase {
 	return &Usecase{
 		svc:        svc,
+		appSvc:     appSvc,
 		sessionSvc: sessionSvc,
 	}
+}
+
+func (u *Usecase) fillKubeSecretName(ctx context.Context, items []*model.Main) error {
+	if len(items) == 0 {
+		return nil
+	}
+
+	appIds := lo.Uniq(lo.Map(items, func(item *model.Main, _ int) string {
+		return item.AppId
+	}))
+
+	apps, _, err := u.appSvc.List(ctx, &appModel.ListReq{Ids: appIds})
+	if err != nil {
+		return fmt.Errorf("appSvc.List: %w", err)
+	}
+
+	appSlugs := lo.SliceToMap(apps, func(app *appModel.Main) (string, string) {
+		return app.Id, app.SlugName
+	})
+
+	for _, item := range items {
+		if appSlug, ok := appSlugs[item.AppId]; ok {
+			item.KubeSecretName = kube.SecretName(appSlug, item.SlugName)
+		}
+	}
+
+	return nil
 }
 
 func (u *Usecase) validateEdit(obj *model.Edit, forCreate bool) error {
@@ -52,6 +85,9 @@ func (u *Usecase) List(ctx context.Context, pars *model.ListReq) ([]*model.Main,
 	if err != nil {
 		return nil, 0, fmt.Errorf("svc.List: %w", err)
 	}
+	if err = u.fillKubeSecretName(ctx, items); err != nil {
+		return nil, 0, fmt.Errorf("fillKubeSecretName: %w", err)
+	}
 	return items, tCount, nil
 }
 
@@ -62,6 +98,9 @@ func (u *Usecase) Get(ctx context.Context, id string) (*model.Main, error) {
 	result, _, err := u.svc.Get(ctx, id, true)
 	if err != nil {
 		return nil, fmt.Errorf("svc.Get: %w", err)
+	}
+	if err = u.fillKubeSecretName(ctx, []*model.Main{result}); err != nil {
+		return nil, fmt.Errorf("fillKubeSecretName: %w", err)
 	}
 	return result, nil
 }

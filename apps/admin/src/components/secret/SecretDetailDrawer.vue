@@ -7,10 +7,12 @@ import {
   NSpin,
   NTag,
   NText,
+  NTooltip,
 } from 'naive-ui'
 
 import { getSecret } from '@/api/secret'
 import { useAppOptions } from '@/composables/useAppOptions'
+import { useClipboard } from '@/composables/useClipboard'
 import { useDrawerResource } from '@/composables/useDrawerResource'
 import { formatDate } from '@/utils/format'
 
@@ -25,6 +27,7 @@ const emit = defineEmits<{
 }>()
 
 const { nameOf, ensure } = useAppOptions()
+const { copy } = useClipboard()
 
 const { loading, item: secret } = useDrawerResource({
   show: () => props.show,
@@ -56,6 +59,21 @@ const { loading, item: secret } = useDrawerResource({
           </NDescriptionsItem>
           <NDescriptionsItem label="Slug">
             {{ secret.slug_name }}
+          </NDescriptionsItem>
+          <NDescriptionsItem label="K8s secret">
+            <NTooltip v-if="secret.kube_secret_name">
+              <template #trigger>
+                <NText
+                  code
+                  style="cursor: pointer"
+                  @click="copy(secret!.kube_secret_name, 'K8s secret name copied')"
+                >
+                  {{ secret.kube_secret_name }}
+                </NText>
+              </template>
+              Copy
+            </NTooltip>
+            <NText v-else depth="3">—</NText>
           </NDescriptionsItem>
           <NDescriptionsItem label="Application">
             <NTag size="small" type="info">{{ nameOf(secret.app_id) }}</NTag>

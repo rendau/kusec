@@ -2,8 +2,6 @@ package transfer
 
 import "time"
 
-// ── Import ──────────────────────────────────────────────
-
 type ImportItem struct {
 	Key         string
 	Value       string
@@ -47,8 +45,6 @@ type ImportResult struct {
 	// Ошибки отдельных записей; импорт продолжается для остальных.
 	Errors []string
 }
-
-// ── Tree (export без значений) ──────────────────────────
 
 type TreeItem struct {
 	Id          string

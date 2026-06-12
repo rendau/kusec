@@ -14,13 +14,14 @@ func EncodeSecretMain(v *domainModel.Main, _ int) *proto.SecretMain {
 		return nil
 	}
 	return &proto.SecretMain{
-		Id:          v.Id,
-		CreatedAt:   timestamppb.New(v.CreatedAt),
-		UpdatedAt:   timestamppb.New(v.UpdatedAt),
-		AppId:       v.AppId,
-		Active:      v.Active,
-		SlugName:    v.SlugName,
-		Description: v.Description,
+		Id:             v.Id,
+		CreatedAt:      timestamppb.New(v.CreatedAt),
+		UpdatedAt:      timestamppb.New(v.UpdatedAt),
+		AppId:          v.AppId,
+		Active:         v.Active,
+		SlugName:       v.SlugName,
+		Description:    v.Description,
+		KubeSecretName: v.KubeSecretName,
 	}
 }
 

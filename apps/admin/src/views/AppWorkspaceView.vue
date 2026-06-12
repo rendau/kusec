@@ -35,6 +35,7 @@ import { apiErrorMessage } from '@/api/http'
 import { getApp } from '@/api/app'
 import { deleteSecret, listSecrets } from '@/api/secret'
 import type { AppMain, SecretMain } from '@/api/types'
+import { useClipboard } from '@/composables/useClipboard'
 import { itemsRevealCommandKey } from '@/constants/injection'
 import type { RevealCommand } from '@/constants/injection'
 import { useAppsStore } from '@/stores/apps'
@@ -48,6 +49,7 @@ import SecretItemsPanel from '@/components/secret/SecretItemsPanel.vue'
 const route = useRoute()
 const router = useRouter()
 const message = useMessage()
+const { copy } = useClipboard()
 
 const appsStore = useAppsStore()
 const { apps } = storeToRefs(appsStore)
@@ -243,6 +245,31 @@ const columns = computed<DataTableColumns<SecretMain>>(() => [
         },
         { default: () => row.slug_name },
       ),
+  },
+  {
+    title: 'K8s secret',
+    key: 'kube_secret_name',
+    render: (row) =>
+      row.kube_secret_name
+        ? h(
+            NTooltip,
+            {},
+            {
+              trigger: () =>
+                h(
+                  NText,
+                  {
+                    code: true,
+                    style: 'cursor: pointer',
+                    onClick: () =>
+                      copy(row.kube_secret_name, 'K8s secret name copied'),
+                  },
+                  { default: () => row.kube_secret_name },
+                ),
+              default: () => 'Copy',
+            },
+          )
+        : h(NText, { depth: 3 }, { default: () => '—' }),
   },
   {
     title: 'Description',

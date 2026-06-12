@@ -26,16 +26,18 @@ const (
 )
 
 type SecretMain struct {
-	state         protoimpl.MessageState `protogen:"open.v1"`
-	Id            string                 `protobuf:"bytes,1,opt,name=id,proto3" json:"id,omitempty"`
-	CreatedAt     *timestamppb.Timestamp `protobuf:"bytes,2,opt,name=created_at,json=createdAt,proto3" json:"created_at,omitempty"`
-	UpdatedAt     *timestamppb.Timestamp `protobuf:"bytes,3,opt,name=updated_at,json=updatedAt,proto3" json:"updated_at,omitempty"`
-	AppId         string                 `protobuf:"bytes,4,opt,name=app_id,json=appId,proto3" json:"app_id,omitempty"`
-	Active        bool                   `protobuf:"varint,5,opt,name=active,proto3" json:"active,omitempty"`
-	SlugName      string                 `protobuf:"bytes,6,opt,name=slug_name,json=slugName,proto3" json:"slug_name,omitempty"`
-	Description   string                 `protobuf:"bytes,7,opt,name=description,proto3" json:"description,omitempty"`
-	unknownFields protoimpl.UnknownFields
-	sizeCache     protoimpl.SizeCache
+	state       protoimpl.MessageState `protogen:"open.v1"`
+	Id          string                 `protobuf:"bytes,1,opt,name=id,proto3" json:"id,omitempty"`
+	CreatedAt   *timestamppb.Timestamp `protobuf:"bytes,2,opt,name=created_at,json=createdAt,proto3" json:"created_at,omitempty"`
+	UpdatedAt   *timestamppb.Timestamp `protobuf:"bytes,3,opt,name=updated_at,json=updatedAt,proto3" json:"updated_at,omitempty"`
+	AppId       string                 `protobuf:"bytes,4,opt,name=app_id,json=appId,proto3" json:"app_id,omitempty"`
+	Active      bool                   `protobuf:"varint,5,opt,name=active,proto3" json:"active,omitempty"`
+	SlugName    string                 `protobuf:"bytes,6,opt,name=slug_name,json=slugName,proto3" json:"slug_name,omitempty"`
+	Description string                 `protobuf:"bytes,7,opt,name=description,proto3" json:"description,omitempty"`
+	// Полное имя итогового k8s-секрета; вычисляется бэкендом.
+	KubeSecretName string `protobuf:"bytes,8,opt,name=kube_secret_name,json=kubeSecretName,proto3" json:"kube_secret_name,omitempty"`
+	unknownFields  protoimpl.UnknownFields
+	sizeCache      protoimpl.SizeCache
 }
 
 func (x *SecretMain) Reset() {
@@ -113,6 +115,13 @@ func (x *SecretMain) GetSlugName() string {
 func (x *SecretMain) GetDescription() string {
 	if x != nil {
 		return x.Description
+	}
+	return ""
+}
+
+func (x *SecretMain) GetKubeSecretName() string {
+	if x != nil {
+		return x.KubeSecretName
 	}
 	return ""
 }
@@ -473,7 +482,7 @@ var File_kusec_v1_secret_proto protoreflect.FileDescriptor
 
 const file_kusec_v1_secret_proto_rawDesc = "" +
 	"\n" +
-	"\x15kusec_v1/secret.proto\x12\bkusec_v1\x1a\x1cgoogle/api/annotations.proto\x1a\x1bgoogle/protobuf/empty.proto\x1a\x1fgoogle/protobuf/timestamp.proto\x1a\x13common/common.proto\"\x80\x02\n" +
+	"\x15kusec_v1/secret.proto\x12\bkusec_v1\x1a\x1cgoogle/api/annotations.proto\x1a\x1bgoogle/protobuf/empty.proto\x1a\x1fgoogle/protobuf/timestamp.proto\x1a\x13common/common.proto\"\xaa\x02\n" +
 	"\n" +
 	"SecretMain\x12\x0e\n" +
 	"\x02id\x18\x01 \x01(\tR\x02id\x129\n" +
@@ -484,7 +493,8 @@ const file_kusec_v1_secret_proto_rawDesc = "" +
 	"\x06app_id\x18\x04 \x01(\tR\x05appId\x12\x16\n" +
 	"\x06active\x18\x05 \x01(\bR\x06active\x12\x1b\n" +
 	"\tslug_name\x18\x06 \x01(\tR\bslugName\x12 \n" +
-	"\vdescription\x18\a \x01(\tR\vdescription\"\xbd\x01\n" +
+	"\vdescription\x18\a \x01(\tR\vdescription\x12(\n" +
+	"\x10kube_secret_name\x18\b \x01(\tR\x0ekubeSecretName\"\xbd\x01\n" +
 	"\rSecretListReq\x125\n" +
 	"\vlist_params\x18\x01 \x01(\v2\x14.common.ListParamsStR\n" +
 	"listParams\x12\x1a\n" +

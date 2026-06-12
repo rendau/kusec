@@ -98,7 +98,7 @@ func (a *App) Init() {
 
 	usrHandler := grpcHandler.NewUsr(usrUsc.New(usrSvc, sessionSvc))
 	appHandler := grpcHandler.NewApp(appUsc.New(appSvc, sessionSvc))
-	secretHandler := grpcHandler.NewSecret(secretUsc.New(secretSvc, sessionSvc))
+	secretHandler := grpcHandler.NewSecret(secretUsc.New(secretSvc, appSvc, sessionSvc))
 	itemHandler := grpcHandler.NewItem(itemUsc.New(itemSvc, sessionSvc))
 	dashboardHandler := grpcHandler.NewDashboard(
 		dashboardUsc.New(appSvc, secretSvc, itemSvc, usrSvc, sessionSvc),

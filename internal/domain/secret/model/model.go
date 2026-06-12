@@ -15,6 +15,9 @@ type Main struct {
 	Active      bool
 	SlugName    string
 	Description string
+
+	// Вычисляемое поле: не хранится в базе, заполняется в usecase.
+	KubeSecretName string
 }
 
 // Edit — мутация (все поля pointer-типы для partial update)

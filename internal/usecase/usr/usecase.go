@@ -23,7 +23,6 @@ func New(svc ServiceI, sessionSvc SessionServiceI) *Usecase {
 	}
 }
 
-// issueTokenPair выдаёт пару access + refresh для пользователя.
 func (u *Usecase) issueTokenPair(item *model.Main) (string, string, error) {
 	access, err := u.sessionSvc.CreateToken(item.Id, item.IsAdmin)
 	if err != nil {
@@ -38,7 +37,6 @@ func (u *Usecase) issueTokenPair(item *model.Main) (string, string, error) {
 	return access, refresh, nil
 }
 
-// Login проверяет логин/пароль и возвращает пару access + refresh токенов.
 func (u *Usecase) Login(ctx context.Context, username, password string) (string, string, error) {
 	username = strings.TrimSpace(username)
 
@@ -186,7 +184,6 @@ func (u *Usecase) Create(ctx context.Context, obj *model.Edit) (int64, error) {
 
 	session := u.sessionSvc.FromContext(ctx)
 	if session.IsAuthorized() {
-		// авторизованный — должен быть админом
 		if !session.IsAdmin() {
 			return 0, errs.NoPermission
 		}
@@ -254,7 +251,6 @@ func (u *Usecase) validateEdit(obj *model.Edit, forCreate bool) error {
 		return errs.InvalidRequest
 	}
 
-	// Name
 	if forCreate && obj.Name == nil {
 		return errs.NameRequired
 	}
@@ -265,7 +261,6 @@ func (u *Usecase) validateEdit(obj *model.Edit, forCreate bool) error {
 		}
 	}
 
-	// Username
 	if forCreate && obj.Username == nil {
 		return errs.UsernameRequired
 	}
@@ -276,7 +271,6 @@ func (u *Usecase) validateEdit(obj *model.Edit, forCreate bool) error {
 		}
 	}
 
-	// Password
 	if forCreate && obj.Password == nil {
 		return errs.PasswordRequired
 	}

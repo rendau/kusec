@@ -174,6 +174,8 @@ export interface SecretMain {
   active: boolean
   slug_name: string
   description: string
+  /** Full name of the resulting k8s secret; computed by the backend. */
+  kube_secret_name: string
 }
 
 /** `SecretListReq` — filters for the list endpoint. */

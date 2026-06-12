@@ -1604,6 +1604,10 @@
         },
         "description": {
           "type": "string"
+        },
+        "kube_secret_name": {
+          "type": "string",
+          "description": "Полное имя итогового k8s-секрета; вычисляется бэкендом."
         }
       }
     },
