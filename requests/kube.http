@@ -1,0 +1,45 @@
+### Kube
+
+# @name List Namespaces
+GET {{base-url}}/kube/namespace
+Accept: application/json
+Authorization: Bearer {{auth_token}}
+
+###
+
+# @name List Cluster Secrets
+GET {{base-url}}/kube/cluster-secret
+Accept: application/json
+Authorization: Bearer {{auth_token}}
+
+###
+
+# @name List Cluster Secrets (single namespace)
+GET {{base-url}}/kube/cluster-secret?namespace=default
+Accept: application/json
+Authorization: Bearer {{auth_token}}
+
+###
+
+# @name Import Cluster Secrets
+POST {{base-url}}/kube/import-secret
+Accept: application/json
+Content-Type: application/json
+Authorization: Bearer {{auth_token}}
+
+{
+  "app_id": "{{app_id}}",
+  "secrets": [
+    { "namespace": "default", "name": "app-credentials" }
+  ]
+}
+
+###
+
+# @name Sync Secrets To Cluster
+POST {{base-url}}/kube/sync-secret
+Accept: application/json
+Content-Type: application/json
+Authorization: Bearer {{auth_token}}
+
+{}

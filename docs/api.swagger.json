@@ -476,6 +476,71 @@
         ]
       }
     },
+    "/kube/cluster-secret": {
+      "get": {
+        "summary": "Список секретов кластера для выбора при импорте (только админ).\nnamespace в query пуст — берутся все namespace-ы без системных kube-*.",
+        "operationId": "Kube_ListClusterSecrets",
+        "responses": {
+          "200": {
+            "description": "A successful response.",
+            "schema": {
+              "$ref": "#/definitions/kusec_v1KubeListClusterSecretsRep"
+            }
+          },
+          "default": {
+            "description": "An unexpected error response.",
+            "schema": {
+              "$ref": "#/definitions/rpcStatus"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "namespace",
+            "description": "Namespace для выборки; пусто — все namespace-ы без системных kube-*.",
+            "in": "query",
+            "required": false,
+            "type": "string"
+          }
+        ],
+        "tags": [
+          "Kube"
+        ]
+      }
+    },
+    "/kube/import-secret": {
+      "post": {
+        "summary": "Импорт выбранных секретов кластера в указанное приложение (только админ).\nКаждый секрет становится записью secret в app_id с item-ами по ключам data.\nИсточник в кластере не меняется.",
+        "operationId": "Kube_ImportSecrets",
+        "responses": {
+          "200": {
+            "description": "A successful response.",
+            "schema": {
+              "$ref": "#/definitions/kusec_v1KubeImportSecretsRep"
+            }
+          },
+          "default": {
+            "description": "An unexpected error response.",
+            "schema": {
+              "$ref": "#/definitions/rpcStatus"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "body",
+            "in": "body",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/kusec_v1KubeImportSecretsReq"
+            }
+          }
+        ],
+        "tags": [
+          "Kube"
+        ]
+      }
+    },
     "/kube/namespace": {
       "get": {
         "operationId": "Kube_ListNamespaces",
@@ -1452,6 +1517,110 @@
         },
         "description": {
           "type": "string"
+        }
+      }
+    },
+    "kusec_v1KubeClusterSecretSt": {
+      "type": "object",
+      "properties": {
+        "namespace": {
+          "type": "string"
+        },
+        "name": {
+          "type": "string"
+        },
+        "type": {
+          "type": "string",
+          "description": "Тип k8s-секрета (пусто = Opaque)."
+        },
+        "keys": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "description": "Ключи data (отсортированы), значения не передаются."
+        },
+        "managed": {
+          "type": "boolean",
+          "description": "true — секрет уже под управлением kusec (лейбл managed-by=kusec)."
+        }
+      }
+    },
+    "kusec_v1KubeImportSecretRefSt": {
+      "type": "object",
+      "properties": {
+        "namespace": {
+          "type": "string"
+        },
+        "name": {
+          "type": "string"
+        }
+      }
+    },
+    "kusec_v1KubeImportSecretsRep": {
+      "type": "object",
+      "properties": {
+        "imported": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "description": "Импортированные секреты в формате \"namespace/name\"."
+        },
+        "skipped": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "description": "Пропущены — kusec-секрет с таким slug в приложении уже существует."
+        },
+        "errors": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "description": "Ошибки по отдельным секретам (импорт продолжается для остальных)."
+        },
+        "created_secrets": {
+          "type": "string",
+          "format": "int64",
+          "description": "Сколько новых записей создано суммарно."
+        },
+        "created_items": {
+          "type": "string",
+          "format": "int64"
+        }
+      }
+    },
+    "kusec_v1KubeImportSecretsReq": {
+      "type": "object",
+      "properties": {
+        "app_id": {
+          "type": "string",
+          "description": "Целевое приложение, в которое импортируются секреты."
+        },
+        "secrets": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "$ref": "#/definitions/kusec_v1KubeImportSecretRefSt"
+          }
+        }
+      }
+    },
+    "kusec_v1KubeListClusterSecretsRep": {
+      "type": "object",
+      "properties": {
+        "in_cluster": {
+          "type": "boolean",
+          "description": "false — сервис запущен вне кластера (secrets тогда пуст)."
+        },
+        "secrets": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "$ref": "#/definitions/kusec_v1KubeClusterSecretSt"
+          }
         }
       }
     },

@@ -36,6 +36,7 @@ import { apiErrorMessage } from '@/api/http'
 import { getApp } from '@/api/app'
 import { deleteSecret, listSecrets } from '@/api/secret'
 import type { AppMain, SecretMain } from '@/api/types'
+import { useBreakpoint } from '@/composables/useBreakpoint'
 import { useClipboard } from '@/composables/useClipboard'
 import { useKubeSync } from '@/composables/useKubeSync'
 import { itemsRevealCommandKey } from '@/constants/injection'
@@ -53,6 +54,11 @@ const route = useRoute()
 const router = useRouter()
 const message = useMessage()
 const { copy } = useClipboard()
+const { isMobile } = useBreakpoint()
+
+function isExpanded(id: string): boolean {
+  return expandedKeys.value.includes(id)
+}
 
 const appsStore = useAppsStore()
 const { apps } = storeToRefs(appsStore)
@@ -493,7 +499,113 @@ watch(apps, () => {
         </NSpace>
       </template>
 
+      <!-- Mobile: stacked cards instead of a horizontally scrolling table. -->
+      <div v-if="isMobile" class="secret-cards">
+        <NEmpty
+          v-if="!rows.length && !loading"
+          description="No secrets yet"
+          style="padding: 24px 0"
+        />
+        <NCard
+          v-for="row in rows"
+          :key="row.id"
+          size="small"
+          class="secret-card"
+          :segmented="{ content: true }"
+        >
+          <template #header>
+            <NButton
+              text
+              type="primary"
+              class="secret-card__title"
+              @click="toggleExpand(row)"
+            >
+              {{ row.slug_name }}
+            </NButton>
+          </template>
+          <template #header-extra>
+            <NTag :type="row.active ? 'success' : 'default'" size="small">
+              {{ row.active ? 'Active' : 'Inactive' }}
+            </NTag>
+          </template>
+
+          <NSpace vertical :size="6">
+            <div v-if="row.kube_secret_name" class="secret-card__field">
+              <NText depth="3" class="secret-card__label">K8s secret</NText>
+              <NText
+                code
+                class="secret-card__mono"
+                @click="copy(row.kube_secret_name, 'K8s secret name copied')"
+              >
+                {{ row.kube_secret_name }}
+              </NText>
+            </div>
+            <div class="secret-card__field">
+              <NText depth="3" class="secret-card__label">K8s type</NText>
+              <NText v-if="row.kube_type" code>{{ row.kube_type }}</NText>
+              <NText v-else :depth="3">Opaque</NText>
+            </div>
+            <NText v-if="row.description" depth="3" style="font-size: 13px">
+              {{ row.description }}
+            </NText>
+          </NSpace>
+
+          <template #action>
+            <NSpace justify="space-between" align="center">
+              <NButton size="small" tertiary @click="toggleExpand(row)">
+                <template #icon>
+                  <NIcon :component="isExpanded(row.id) ? ChevronUp : ChevronDown" />
+                </template>
+                {{ isExpanded(row.id) ? 'Hide items' : 'Items' }}
+              </NButton>
+              <NSpace :size="4" :wrap-item="false">
+                <NButton
+                  quaternary
+                  circle
+                  size="small"
+                  aria-label="Details"
+                  @click="openDetail(row)"
+                >
+                  <template #icon>
+                    <NIcon :component="InfoCircle" />
+                  </template>
+                </NButton>
+                <NButton
+                  quaternary
+                  circle
+                  size="small"
+                  aria-label="Edit secret"
+                  @click="openEdit(row)"
+                >
+                  <template #icon>
+                    <NIcon :component="Pencil" />
+                  </template>
+                </NButton>
+                <NPopconfirm @positive-click="removeSecret(row)">
+                  <template #trigger>
+                    <NButton
+                      quaternary
+                      circle
+                      size="small"
+                      type="error"
+                      aria-label="Delete secret"
+                    >
+                      <template #icon>
+                        <NIcon :component="Trash" />
+                      </template>
+                    </NButton>
+                  </template>
+                  Delete "{{ row.slug_name }}"? This also deletes its items.
+                </NPopconfirm>
+              </NSpace>
+            </NSpace>
+            <SecretItemsPanel v-if="isExpanded(row.id)" :secret-id="row.id" />
+          </template>
+        </NCard>
+      </div>
+
       <NDataTable
+        v-else
         :columns="columns"
         :data="rows"
         :loading="loading"
@@ -535,5 +647,33 @@ watch(apps, () => {
 
 .mono-tag {
   font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+}
+
+.secret-cards {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.secret-card__title {
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  font-weight: 600;
+}
+
+.secret-card__field {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.secret-card__label {
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.secret-card__mono {
+  cursor: pointer;
+  word-break: break-all;
 }
 </style>

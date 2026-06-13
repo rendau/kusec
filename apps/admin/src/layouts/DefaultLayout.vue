@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, h } from 'vue'
+import { computed, h, ref, watch } from 'vue'
 import type { Component as VueComponent } from 'vue'
 import { RouterLink, useRoute, useRouter } from 'vue-router'
 import {
@@ -17,18 +17,39 @@ import {
   useThemeVars,
 } from 'naive-ui'
 import type { DropdownOption, MenuOption } from 'naive-ui'
-import { CloudUpload } from '@vicons/tabler'
+import { CloudDownload, CloudUpload, Menu2 } from '@vicons/tabler'
 import { storeToRefs } from 'pinia'
 
 import { useAppStore } from '@/stores/app'
 import { useAuthStore } from '@/stores/auth'
 import { useKubeSync } from '@/composables/useKubeSync'
+import { useBreakpoint } from '@/composables/useBreakpoint'
 
 import AppNavSidebar from '@/components/app/AppNavSidebar.vue'
+import KubeImportModal from '@/components/kube/KubeImportModal.vue'
+import { useAppsStore } from '@/stores/apps'
 
 const appStore = useAppStore()
 const { sidebarCollapsed, sidebarWidth } = storeToRefs(appStore)
 const themeVars = useThemeVars()
+
+// On small screens the sidebar becomes an overlay drawer toggled from the
+// header, instead of an always-on resizable column.
+const { isMobile } = useBreakpoint()
+const mobileNavOpen = ref(false)
+
+// Desktop honours the stored collapse preference; mobile uses the drawer state.
+const siderCollapsed = computed(() =>
+  isMobile.value ? !mobileNavOpen.value : sidebarCollapsed.value,
+)
+
+function onSiderCollapsed(collapsed: boolean): void {
+  if (isMobile.value) {
+    mobileNavOpen.value = !collapsed
+  } else {
+    appStore.toggleSidebar()
+  }
+}
 
 // Drag the right edge of the sidebar to resize it.
 function startResize(event: MouseEvent): void {
@@ -61,7 +82,23 @@ const dialog = useDialog()
 // reachable from any page (per-app sync lives inside each app's workspace).
 const { syncing, confirmSync } = useKubeSync()
 
+// Importing cluster secrets creates applications, so it is admin-only.
+const appsStore = useAppsStore()
+const showImport = ref(false)
+
+async function onImported(): Promise<void> {
+  await appsStore.refresh()
+}
+
 const route = useRoute()
+
+// Auto-close the mobile drawer after navigating to another page/app.
+watch(
+  () => route.fullPath,
+  () => {
+    mobileNavOpen.value = false
+  },
+)
 
 // Primary nav lives in the header now; the sidebar is dedicated to applications.
 const navActiveKey = computed(() => {
@@ -87,14 +124,26 @@ const profileName = computed(
 )
 const profileRole = computed(() => (authStore.isAdmin ? 'admin' : 'user'))
 
-const userMenuOptions: DropdownOption[] = [
+const userMenuOptions = computed<DropdownOption[]>(() => [
+  // On mobile the header nav is hidden, so surface those links here.
+  ...(isMobile.value
+    ? [
+        { label: 'Dashboard', key: 'home' },
+        ...(authStore.isAdmin ? [{ label: 'Users', key: 'users' }] : []),
+        { type: 'divider', key: 'd0' } as DropdownOption,
+      ]
+    : []),
   { label: 'My profile', key: 'profile' },
   { type: 'divider', key: 'd1' },
   { label: 'Log out', key: 'logout' },
-]
+])
 
 function onUserMenuSelect(key: string | number): void {
-  if (key === 'profile') {
+  if (key === 'home') {
+    void router.push({ name: 'home' })
+  } else if (key === 'users') {
+    void router.push({ name: 'usr-list' })
+  } else if (key === 'profile') {
     void router.push({ name: 'profile' })
   } else if (key === 'logout') {
     confirmLogout()
@@ -119,6 +168,17 @@ function confirmLogout(): void {
   <NLayout position="absolute">
     <NLayoutHeader bordered class="app-header">
       <div class="app-header__left">
+        <NButton
+          quaternary
+          circle
+          class="app-header__burger"
+          aria-label="Toggle navigation"
+          @click="mobileNavOpen = !mobileNavOpen"
+        >
+          <template #icon>
+            <NIcon :component="Menu2" />
+          </template>
+        </NButton>
         <RouterLink to="/" class="app-header__brand">
           <img src="/favicon.svg" alt="" class="app-header__logo" />
           <span class="app-header__title">Kusec</span>
@@ -131,6 +191,21 @@ function confirmLogout(): void {
         />
       </div>
       <div class="app-header__right">
+        <NTooltip v-if="authStore.isAdmin">
+          <template #trigger>
+            <NButton
+              quaternary
+              circle
+              aria-label="Import secrets from cluster"
+              @click="showImport = true"
+            >
+              <template #icon>
+                <NIcon :component="CloudDownload" />
+              </template>
+            </NButton>
+          </template>
+          Import secrets from cluster
+        </NTooltip>
         <NTooltip>
           <template #trigger>
             <NButton
@@ -166,20 +241,27 @@ function confirmLogout(): void {
         bordered
         collapse-mode="width"
         :collapsed-width="0"
-        :width="sidebarWidth"
-        :collapsed="sidebarCollapsed"
-        show-trigger="arrow-circle"
-        @update:collapsed="appStore.toggleSidebar"
+        :width="isMobile ? 280 : sidebarWidth"
+        :collapsed="siderCollapsed"
+        :position="isMobile ? 'absolute' : 'static'"
+        :show-trigger="isMobile ? false : 'arrow-circle'"
+        :class="{ 'sider--overlay': isMobile }"
+        @update:collapsed="onSiderCollapsed"
       >
         <div class="sider-wrap">
           <AppNavSidebar />
           <div
-            v-if="!sidebarCollapsed"
+            v-if="!isMobile && !sidebarCollapsed"
             class="sider-resizer"
             @mousedown="startResize"
           />
         </div>
       </NLayoutSider>
+      <div
+        v-if="isMobile && mobileNavOpen"
+        class="sider-backdrop"
+        @click="mobileNavOpen = false"
+      />
       <NLayoutContent class="app-content">
         <RouterView v-slot="{ Component, route: current }">
           <Transition name="page" mode="out-in">
@@ -188,6 +270,8 @@ function confirmLogout(): void {
         </RouterView>
       </NLayoutContent>
     </NLayout>
+
+    <KubeImportModal v-model:show="showImport" @imported="onImported" />
   </NLayout>
 </template>
 
@@ -205,6 +289,11 @@ function confirmLogout(): void {
   align-items: center;
   gap: 24px;
   min-width: 0;
+}
+
+/* Hamburger toggles the overlay drawer; shown only on small screens. */
+.app-header__burger {
+  display: none;
 }
 
 .app-header__brand {
@@ -256,6 +345,46 @@ function confirmLogout(): void {
 
 .app-content {
   padding: 24px;
+}
+
+/* The mobile drawer floats above the content; the backdrop dims the rest. */
+.sider--overlay {
+  z-index: 20;
+}
+
+.sider-backdrop {
+  position: absolute;
+  inset: 0;
+  z-index: 15;
+  background: rgba(0, 0, 0, 0.45);
+}
+
+@media (max-width: 768px) {
+  .app-header {
+    padding: 0 12px;
+    gap: 8px;
+  }
+
+  .app-header__left {
+    gap: 8px;
+  }
+
+  .app-header__burger {
+    display: inline-flex;
+  }
+
+  /* The horizontal page nav moves into the sidebar drawer on mobile. */
+  .app-header__nav {
+    display: none;
+  }
+
+  .app-header__user-name {
+    display: none;
+  }
+
+  .app-content {
+    padding: 16px 12px;
+  }
 }
 
 .sider-wrap {

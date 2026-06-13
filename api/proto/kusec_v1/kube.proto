@@ -25,6 +25,24 @@ service Kube {
       get: "/kube/namespace"
     };
   }
+
+  // Список секретов кластера для выбора при импорте (только админ).
+  // namespace в query пуст — берутся все namespace-ы без системных kube-*.
+  rpc ListClusterSecrets(KubeListClusterSecretsReq) returns (KubeListClusterSecretsRep) {
+    option (google.api.http) = {
+      get: "/kube/cluster-secret"
+    };
+  }
+
+  // Импорт выбранных секретов кластера в указанное приложение (только админ).
+  // Каждый секрет становится записью secret в app_id с item-ами по ключам data.
+  // Источник в кластере не меняется.
+  rpc ImportSecrets(KubeImportSecretsReq) returns (KubeImportSecretsRep) {
+    option (google.api.http) = {
+      post: "/kube/import-secret"
+      body: "*"
+    };
+  }
 }
 
 // ── Messages ────────────────────────────────────────────
@@ -34,6 +52,51 @@ message KubeListNamespacesRep {
   bool in_cluster = 1;
   // Имена namespace-ов кластера без системных kube-*.
   repeated string namespaces = 2;
+}
+
+message KubeImportSecretRefSt {
+  string namespace = 1;
+  string name = 2;
+}
+
+message KubeListClusterSecretsReq {
+  // Namespace для выборки; пусто — все namespace-ы без системных kube-*.
+  string namespace = 1;
+}
+
+message KubeClusterSecretSt {
+  string namespace = 1;
+  string name = 2;
+  // Тип k8s-секрета (пусто = Opaque).
+  string type = 3;
+  // Ключи data (отсортированы), значения не передаются.
+  repeated string keys = 4;
+  // true — секрет уже под управлением kusec (лейбл managed-by=kusec).
+  bool managed = 5;
+}
+
+message KubeListClusterSecretsRep {
+  // false — сервис запущен вне кластера (secrets тогда пуст).
+  bool in_cluster = 1;
+  repeated KubeClusterSecretSt secrets = 2;
+}
+
+message KubeImportSecretsReq {
+  // Целевое приложение, в которое импортируются секреты.
+  string app_id = 1;
+  repeated KubeImportSecretRefSt secrets = 2;
+}
+
+message KubeImportSecretsRep {
+  // Импортированные секреты в формате "namespace/name".
+  repeated string imported = 1;
+  // Пропущены — kusec-секрет с таким slug в приложении уже существует.
+  repeated string skipped = 2;
+  // Ошибки по отдельным секретам (импорт продолжается для остальных).
+  repeated string errors = 3;
+  // Сколько новых записей создано суммарно.
+  int64 created_secrets = 4;
+  int64 created_items = 5;
 }
 
 message KubeSyncSecretsReq {

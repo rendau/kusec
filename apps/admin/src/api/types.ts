@@ -301,6 +301,53 @@ export interface KubeSyncSecretsRep {
   errors: string[]
 }
 
+/**
+ * `KubeClusterSecretSt` — one cluster secret offered for import. Values are
+ * never sent; only `keys` (sorted) are listed for preview.
+ */
+export interface KubeClusterSecretSt {
+  namespace: string
+  name: string
+  /** K8s secret type (empty = Opaque). */
+  type: string
+  keys: string[]
+  /** Already managed by kusec (label managed-by=kusec). */
+  managed: boolean
+}
+
+/**
+ * `KubeListClusterSecretsRep` — cluster secrets available for import.
+ * `in_cluster` is false when the service runs outside a cluster (empty list).
+ */
+export interface KubeListClusterSecretsRep {
+  in_cluster: boolean
+  secrets: KubeClusterSecretSt[]
+}
+
+/** `KubeImportSecretRefSt` — reference to a cluster secret to import. */
+export interface KubeImportSecretRefSt {
+  namespace: string
+  name: string
+}
+
+/** `KubeImportSecretsReq` — import the selected secrets into `app_id`. */
+export interface KubeImportSecretsReq {
+  app_id: string
+  secrets: KubeImportSecretRefSt[]
+}
+
+/**
+ * Cluster secret import result (`KubeImportSecretsRep`).
+ * `imported`/`skipped` lists are "namespace/name"; counters are int64 → string.
+ */
+export interface KubeImportSecretsRep {
+  imported: string[]
+  skipped: string[]
+  errors: string[]
+  created_secrets: number | string
+  created_items: number | string
+}
+
 /** Item entity (`ItemMain`). */
 export interface ItemMain {
   id: string

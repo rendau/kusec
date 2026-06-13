@@ -1,5 +1,12 @@
 import { apiFetch } from './http'
-import type { KubeListNamespacesRep, KubeSyncSecretsRep } from './types'
+import { buildListQuery } from './query'
+import type {
+  KubeImportSecretRefSt,
+  KubeImportSecretsRep,
+  KubeListClusterSecretsRep,
+  KubeListNamespacesRep,
+  KubeSyncSecretsRep,
+} from './types'
 
 /**
  * REST client for the kusec `Kube` service (see api/proto/kusec_v1/kube.proto).
@@ -21,4 +28,31 @@ export function syncKubeSecrets(appId?: string): Promise<KubeSyncSecretsRep> {
 
 export function listKubeNamespaces(): Promise<KubeListNamespacesRep> {
   return apiFetch<KubeListNamespacesRep>('/kube/namespace')
+}
+
+/**
+ * List cluster secrets available for import (admin only). Pass a `namespace`
+ * to scope the listing; omit it to list every non-system namespace. Values
+ * are never returned — only keys for preview.
+ */
+export function listClusterSecrets(
+  namespace?: string,
+): Promise<KubeListClusterSecretsRep> {
+  const query = buildListQuery(undefined, { namespace })
+  return apiFetch<KubeListClusterSecretsRep>(`/kube/cluster-secret${query}`)
+}
+
+/**
+ * Import the selected cluster secrets into application `appId` (admin only).
+ * Each secret becomes a kusec secret (slug = its cluster name) with one item
+ * per data key. The cluster source is left intact.
+ */
+export function importClusterSecrets(
+  appId: string,
+  secrets: KubeImportSecretRefSt[],
+): Promise<KubeImportSecretsRep> {
+  return apiFetch<KubeImportSecretsRep>('/kube/import-secret', {
+    method: 'POST',
+    body: JSON.stringify({ app_id: appId, secrets }),
+  })
 }

@@ -4,13 +4,16 @@ import {
   NButton,
   NCard,
   NDataTable,
+  NEmpty,
   NFlex,
   NIcon,
   NInput,
+  NPagination,
   NPopconfirm,
   NSelect,
   NSpace,
   NTag,
+  NText,
   NTooltip,
   useMessage,
 } from 'naive-ui'
@@ -20,6 +23,7 @@ import { InfoCircle, Pencil, Plus, Trash } from '@vicons/tabler'
 import { apiErrorMessage } from '@/api/http'
 import { deleteUser, listUsers } from '@/api/usr'
 import type { UsrListReq, UsrMain } from '@/api/types'
+import { useBreakpoint } from '@/composables/useBreakpoint'
 import { useAuthStore } from '@/stores/auth'
 
 import UsrDetailDrawer from '@/components/usr/UsrDetailDrawer.vue'
@@ -29,6 +33,12 @@ const SEARCH_DEBOUNCE_MS = 350
 
 const message = useMessage()
 const authStore = useAuthStore()
+const { isMobile } = useBreakpoint()
+
+function accessLabel(row: UsrMain): string {
+  const count = row.is_admin ? 0 : (row.app_ids?.length ?? 0)
+  return count === 0 ? 'All apps' : `${count} app${count === 1 ? '' : 's'}`
+}
 
 const currentUserId = computed(() =>
   authStore.profile ? String(authStore.profile.id) : null,
@@ -325,7 +335,106 @@ onMounted(fetchUsers)
         />
       </NFlex>
 
+      <!-- Mobile: stacked cards + standalone pager (no horizontal scroll). -->
+      <template v-if="isMobile">
+        <NEmpty
+          v-if="!rows.length && !loading"
+          description="No users found"
+          style="padding: 24px 0"
+        />
+        <div class="usr-cards">
+          <NCard
+            v-for="row in rows"
+            :key="row.id"
+            size="small"
+            class="usr-card"
+          >
+            <div class="usr-card__top">
+              <NButton text type="primary" @click="openDetail(row)">
+                {{ row.name || '—' }}
+              </NButton>
+              <NTag :type="row.active ? 'success' : 'default'" size="small">
+                {{ row.active ? 'Active' : 'Inactive' }}
+              </NTag>
+            </div>
+            <NText depth="3" style="font-size: 13px">{{ row.username }}</NText>
+            <NSpace :size="6" style="margin-top: 8px">
+              <NTag :type="row.is_admin ? 'success' : 'default'" size="small">
+                {{ row.is_admin ? 'Administrator' : 'User' }}
+              </NTag>
+              <NTag :type="accessLabel(row) === 'All apps' ? 'default' : 'info'" size="small">
+                {{ accessLabel(row) }}
+              </NTag>
+            </NSpace>
+            <template #action>
+              <NSpace justify="end" :size="4" :wrap-item="false">
+                <NButton
+                  quaternary
+                  circle
+                  size="small"
+                  aria-label="Details"
+                  @click="openDetail(row)"
+                >
+                  <template #icon>
+                    <NIcon :component="InfoCircle" />
+                  </template>
+                </NButton>
+                <NButton
+                  quaternary
+                  circle
+                  size="small"
+                  aria-label="Edit user"
+                  @click="openEdit(row)"
+                >
+                  <template #icon>
+                    <NIcon :component="Pencil" />
+                  </template>
+                </NButton>
+                <NButton
+                  v-if="isSelf(row)"
+                  quaternary
+                  circle
+                  size="small"
+                  type="error"
+                  disabled
+                  aria-label="You cannot delete yourself"
+                >
+                  <template #icon>
+                    <NIcon :component="Trash" />
+                  </template>
+                </NButton>
+                <NPopconfirm v-else @positive-click="removeUser(row)">
+                  <template #trigger>
+                    <NButton
+                      quaternary
+                      circle
+                      size="small"
+                      type="error"
+                      aria-label="Delete user"
+                    >
+                      <template #icon>
+                        <NIcon :component="Trash" />
+                      </template>
+                    </NButton>
+                  </template>
+                  Delete "{{ row.username }}"?
+                </NPopconfirm>
+              </NSpace>
+            </template>
+          </NCard>
+        </div>
+        <NFlex justify="center" style="margin-top: 16px">
+          <NPagination
+            :page="pagination.page"
+            :page-size="pagination.pageSize"
+            :item-count="pagination.itemCount"
+            @update:page="onPageChange"
+          />
+        </NFlex>
+      </template>
+
       <NDataTable
+        v-else
         remote
         :columns="columns"
         :data="rows"
@@ -341,3 +450,19 @@ onMounted(fetchUsers)
     <UsrFormModal v-model:show="showForm" :user="editing" @saved="fetchUsers" />
   </NSpace>
 </template>
+
+<style scoped>
+.usr-cards {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.usr-card__top {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  margin-bottom: 4px;
+}
+</style>

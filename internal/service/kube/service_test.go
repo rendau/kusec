@@ -18,26 +18,41 @@ import (
 
 type appSvcStub struct {
 	listFn func(_ context.Context, req *appModel.ListReq) ([]*appModel.Main, int64, error)
+	getFn  func(_ context.Context, id string, errNE bool) (*appModel.Main, bool, error)
 }
 
 func (s appSvcStub) List(ctx context.Context, req *appModel.ListReq) ([]*appModel.Main, int64, error) {
 	return s.listFn(ctx, req)
 }
 
+func (s appSvcStub) Get(ctx context.Context, id string, errNE bool) (*appModel.Main, bool, error) {
+	return s.getFn(ctx, id, errNE)
+}
+
 type secretSvcStub struct {
-	listFn func(_ context.Context, req *secretModel.ListReq) ([]*secretModel.Main, int64, error)
+	listFn   func(_ context.Context, req *secretModel.ListReq) ([]*secretModel.Main, int64, error)
+	createFn func(_ context.Context, obj *secretModel.Edit) (string, error)
 }
 
 func (s secretSvcStub) List(ctx context.Context, req *secretModel.ListReq) ([]*secretModel.Main, int64, error) {
 	return s.listFn(ctx, req)
 }
 
+func (s secretSvcStub) Create(ctx context.Context, obj *secretModel.Edit) (string, error) {
+	return s.createFn(ctx, obj)
+}
+
 type itemSvcStub struct {
-	listFn func(_ context.Context, req *itemModel.ListReq) ([]*itemModel.Main, int64, error)
+	listFn   func(_ context.Context, req *itemModel.ListReq) ([]*itemModel.Main, int64, error)
+	createFn func(_ context.Context, obj *itemModel.Edit) (string, error)
 }
 
 func (s itemSvcStub) List(ctx context.Context, req *itemModel.ListReq) ([]*itemModel.Main, int64, error) {
 	return s.listFn(ctx, req)
+}
+
+func (s itemSvcStub) Create(ctx context.Context, obj *itemModel.Edit) (string, error) {
+	return s.createFn(ctx, obj)
 }
 
 func TestBuildSecretData_OK(t *testing.T) {

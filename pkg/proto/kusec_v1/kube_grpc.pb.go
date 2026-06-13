@@ -20,8 +20,10 @@ import (
 const _ = grpc.SupportPackageIsVersion9
 
 const (
-	Kube_SyncSecrets_FullMethodName    = "/kusec_v1.Kube/SyncSecrets"
-	Kube_ListNamespaces_FullMethodName = "/kusec_v1.Kube/ListNamespaces"
+	Kube_SyncSecrets_FullMethodName        = "/kusec_v1.Kube/SyncSecrets"
+	Kube_ListNamespaces_FullMethodName     = "/kusec_v1.Kube/ListNamespaces"
+	Kube_ListClusterSecrets_FullMethodName = "/kusec_v1.Kube/ListClusterSecrets"
+	Kube_ImportSecrets_FullMethodName      = "/kusec_v1.Kube/ImportSecrets"
 )
 
 // KubeClient is the client API for Kube service.
@@ -36,6 +38,13 @@ const (
 type KubeClient interface {
 	SyncSecrets(ctx context.Context, in *KubeSyncSecretsReq, opts ...grpc.CallOption) (*KubeSyncSecretsRep, error)
 	ListNamespaces(ctx context.Context, in *emptypb.Empty, opts ...grpc.CallOption) (*KubeListNamespacesRep, error)
+	// Список секретов кластера для выбора при импорте (только админ).
+	// namespace в query пуст — берутся все namespace-ы без системных kube-*.
+	ListClusterSecrets(ctx context.Context, in *KubeListClusterSecretsReq, opts ...grpc.CallOption) (*KubeListClusterSecretsRep, error)
+	// Импорт выбранных секретов кластера в указанное приложение (только админ).
+	// Каждый секрет становится записью secret в app_id с item-ами по ключам data.
+	// Источник в кластере не меняется.
+	ImportSecrets(ctx context.Context, in *KubeImportSecretsReq, opts ...grpc.CallOption) (*KubeImportSecretsRep, error)
 }
 
 type kubeClient struct {
@@ -66,6 +75,26 @@ func (c *kubeClient) ListNamespaces(ctx context.Context, in *emptypb.Empty, opts
 	return out, nil
 }
 
+func (c *kubeClient) ListClusterSecrets(ctx context.Context, in *KubeListClusterSecretsReq, opts ...grpc.CallOption) (*KubeListClusterSecretsRep, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(KubeListClusterSecretsRep)
+	err := c.cc.Invoke(ctx, Kube_ListClusterSecrets_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *kubeClient) ImportSecrets(ctx context.Context, in *KubeImportSecretsReq, opts ...grpc.CallOption) (*KubeImportSecretsRep, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(KubeImportSecretsRep)
+	err := c.cc.Invoke(ctx, Kube_ImportSecrets_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
 // KubeServer is the server API for Kube service.
 // All implementations must embed UnimplementedKubeServer
 // for forward compatibility.
@@ -78,6 +107,13 @@ func (c *kubeClient) ListNamespaces(ctx context.Context, in *emptypb.Empty, opts
 type KubeServer interface {
 	SyncSecrets(context.Context, *KubeSyncSecretsReq) (*KubeSyncSecretsRep, error)
 	ListNamespaces(context.Context, *emptypb.Empty) (*KubeListNamespacesRep, error)
+	// Список секретов кластера для выбора при импорте (только админ).
+	// namespace в query пуст — берутся все namespace-ы без системных kube-*.
+	ListClusterSecrets(context.Context, *KubeListClusterSecretsReq) (*KubeListClusterSecretsRep, error)
+	// Импорт выбранных секретов кластера в указанное приложение (только админ).
+	// Каждый секрет становится записью secret в app_id с item-ами по ключам data.
+	// Источник в кластере не меняется.
+	ImportSecrets(context.Context, *KubeImportSecretsReq) (*KubeImportSecretsRep, error)
 	mustEmbedUnimplementedKubeServer()
 }
 
@@ -93,6 +129,12 @@ func (UnimplementedKubeServer) SyncSecrets(context.Context, *KubeSyncSecretsReq)
 }
 func (UnimplementedKubeServer) ListNamespaces(context.Context, *emptypb.Empty) (*KubeListNamespacesRep, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method ListNamespaces not implemented")
+}
+func (UnimplementedKubeServer) ListClusterSecrets(context.Context, *KubeListClusterSecretsReq) (*KubeListClusterSecretsRep, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method ListClusterSecrets not implemented")
+}
+func (UnimplementedKubeServer) ImportSecrets(context.Context, *KubeImportSecretsReq) (*KubeImportSecretsRep, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method ImportSecrets not implemented")
 }
 func (UnimplementedKubeServer) mustEmbedUnimplementedKubeServer() {}
 func (UnimplementedKubeServer) testEmbeddedByValue()              {}
@@ -151,6 +193,42 @@ func _Kube_ListNamespaces_Handler(srv interface{}, ctx context.Context, dec func
 	return interceptor(ctx, in, info, handler)
 }
 
+func _Kube_ListClusterSecrets_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(KubeListClusterSecretsReq)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(KubeServer).ListClusterSecrets(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: Kube_ListClusterSecrets_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(KubeServer).ListClusterSecrets(ctx, req.(*KubeListClusterSecretsReq))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _Kube_ImportSecrets_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(KubeImportSecretsReq)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(KubeServer).ImportSecrets(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: Kube_ImportSecrets_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(KubeServer).ImportSecrets(ctx, req.(*KubeImportSecretsReq))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
 // Kube_ServiceDesc is the grpc.ServiceDesc for Kube service.
 // It's only intended for direct use with grpc.RegisterService,
 // and not to be introspected or modified (even as a copy)
@@ -165,6 +243,14 @@ var Kube_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "ListNamespaces",
 			Handler:    _Kube_ListNamespaces_Handler,
+		},
+		{
+			MethodName: "ListClusterSecrets",
+			Handler:    _Kube_ListClusterSecrets_Handler,
+		},
+		{
+			MethodName: "ImportSecrets",
+			Handler:    _Kube_ImportSecrets_Handler,
 		},
 	},
 	Streams:  []grpc.StreamDesc{},

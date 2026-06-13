@@ -28,6 +28,7 @@ import { apiErrorMessage } from '@/api/http'
 import { deleteItem, listItems } from '@/api/item'
 import type { ItemMain } from '@/api/types'
 import { itemsRevealCommandKey } from '@/constants/injection'
+import { useBreakpoint } from '@/composables/useBreakpoint'
 import { useClipboard } from '@/composables/useClipboard'
 
 import ItemBulkPasteModal from '@/components/item/ItemBulkPasteModal.vue'
@@ -50,6 +51,7 @@ const props = defineProps<{
 
 const message = useMessage()
 const { copy } = useClipboard()
+const { isMobile } = useBreakpoint()
 
 const rows = ref<ItemMain[]>([])
 const loading = ref(false)
@@ -188,7 +190,7 @@ onMounted(fetchItems)
         <NText depth="3">No items</NText>
       </div>
 
-      <div v-else class="items">
+      <div v-else-if="!isMobile" class="items">
         <div class="items__head">Key</div>
         <div class="items__head">Value</div>
         <div class="items__head">Status</div>
@@ -337,6 +339,124 @@ onMounted(fetchItems)
           </Transition>
         </template>
       </div>
+
+      <!-- Mobile: stacked item cards (no horizontal scroll). -->
+      <div v-else class="items-m">
+        <div v-for="row in rows" :key="row.id" class="item-m">
+          <div class="item-m__top">
+            <NButton
+              text
+              type="primary"
+              class="items__key-btn item-m__key"
+              @click="openDetail(row)"
+            >
+              {{ row.key }}
+            </NButton>
+            <NTag :type="row.active ? 'success' : 'default'" size="tiny">
+              {{ row.active ? 'Active' : 'Inactive' }}
+            </NTag>
+          </div>
+
+          <div class="item-m__actions">
+            <template v-if="isFileRow(row)">
+              <NText depth="3" class="items__file-name">
+                {{ row.file_name || 'file' }}
+              </NText>
+              <NTag size="tiny" :bordered="false">{{ fileSize(row) }}</NTag>
+              <NButton
+                quaternary
+                circle
+                size="tiny"
+                aria-label="Download file"
+                @click="downloadFile(row)"
+              >
+                <template #icon>
+                  <NIcon :component="Download" />
+                </template>
+              </NButton>
+            </template>
+            <template v-else>
+              <NButton
+                quaternary
+                circle
+                size="tiny"
+                :aria-label="isOpen(row.id) ? 'Hide value' : 'Show value'"
+                @click="toggleReveal(row.id)"
+              >
+                <template #icon>
+                  <NIcon :component="isOpen(row.id) ? EyeOff : Eye" />
+                </template>
+              </NButton>
+              <NButton
+                quaternary
+                circle
+                size="tiny"
+                aria-label="Copy value"
+                @click="copy(row.value)"
+              >
+                <template #icon>
+                  <NIcon :component="Copy" />
+                </template>
+              </NButton>
+              <NButton
+                v-if="isProbablyBase64(row.value)"
+                quaternary
+                circle
+                size="tiny"
+                aria-label="Copy decoded value"
+                @click="copyDecoded(row.value)"
+              >
+                <template #icon>
+                  <NIcon :component="Binary" />
+                </template>
+              </NButton>
+            </template>
+
+            <span class="item-m__spacer" />
+
+            <NButton
+              quaternary
+              circle
+              size="tiny"
+              aria-label="Edit item"
+              @click="openEdit(row)"
+            >
+              <template #icon>
+                <NIcon :component="Pencil" />
+              </template>
+            </NButton>
+            <NPopconfirm @positive-click="removeItem(row)">
+              <template #trigger>
+                <NButton
+                  quaternary
+                  circle
+                  size="tiny"
+                  type="error"
+                  aria-label="Delete item"
+                >
+                  <template #icon>
+                    <NIcon :component="Trash" />
+                  </template>
+                </NButton>
+              </template>
+              Delete "{{ row.key }}"?
+            </NPopconfirm>
+          </div>
+
+          <Transition name="value">
+            <div v-if="!isFileRow(row) && isOpen(row.id)" class="item-m__value">
+              <ValueFormatChip :format="row.value_format" />
+              <ValueEditor
+                :value="row.value"
+                :format="normalizeValueFormat(row.value_format)"
+                readonly
+                min-height="0"
+                max-height="320px"
+              />
+            </div>
+          </Transition>
+        </div>
+      </div>
     </NSpin>
 
     <ItemDetailDrawer v-model:show="showDetail" :item-id="detailId" />
@@ -386,6 +506,51 @@ onMounted(fetchItems)
   column-gap: 12px;
   row-gap: 4px;
   align-items: center;
+}
+
+/* Mobile: each item is a stacked card — no horizontal scroll. */
+.items-m {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.item-m {
+  padding: 8px 4px;
+  border-bottom: 1px solid rgba(128, 128, 128, 0.18);
+}
+
+.item-m:last-child {
+  border-bottom: none;
+}
+
+.item-m__top {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.item-m__key {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.item-m__actions {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  margin-top: 6px;
+}
+
+.item-m__spacer {
+  flex: 1;
+}
+
+.item-m__value {
+  position: relative;
+  margin: 8px 0 2px;
 }
 
 .items__head {
