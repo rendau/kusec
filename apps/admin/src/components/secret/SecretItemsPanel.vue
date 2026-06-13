@@ -532,6 +532,13 @@ onMounted(fetchItems)
 }
 
 .item-m__key {
+  flex: 1;
+  min-width: 0;
+}
+
+/* Truncate long keys instead of overflowing the card (full key in details). */
+.item-m__key :deep(.n-button__content) {
+  display: block;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;

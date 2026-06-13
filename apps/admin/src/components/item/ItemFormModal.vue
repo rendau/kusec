@@ -388,6 +388,8 @@ function downloadFile(): void {
   justify-content: space-between;
   gap: 8px;
   margin-bottom: 8px;
+  /* Let the action buttons drop below the format switch on narrow screens. */
+  flex-wrap: wrap;
 }
 
 .value-file {

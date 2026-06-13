@@ -25,6 +25,43 @@ body,
 }
 
 /*
+ * Mobile: stack a card / page-header title above its action area instead of
+ * letting the actions squeeze a (single-word) title down to a sliver. Add the
+ * `stack-header` class to the NCard (or the card wrapping an NPageHeader).
+ * naive-ui lays the title (`__main`, flex:1 min-width:0) and `__extra` in one
+ * flex row; forcing the title to a full-width basis drops the actions below it.
+ */
+@media (max-width: 768px) {
+  .stack-header .n-card-header {
+    flex-wrap: wrap;
+    row-gap: 8px;
+  }
+
+  .stack-header .n-card-header__main {
+    flex: 1 1 100%;
+  }
+
+  .stack-header .n-card-header__extra {
+    margin-left: 0;
+  }
+
+  .stack-header .n-page-header {
+    flex-wrap: wrap;
+    row-gap: 10px;
+  }
+
+  .stack-header .n-page-header__main {
+    flex: 1 1 100%;
+    min-width: 0;
+  }
+
+  .stack-header .n-page-header__extra {
+    flex: 1 1 100%;
+    margin-left: 0;
+  }
+}
+
+/*
  * Route transitions. Defined globally because the transition classes are
  * applied to the routed component's root element, which a parent's scoped
  * styles would not match.

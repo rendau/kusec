@@ -238,6 +238,7 @@ async function submit(): Promise<void> {
   align-items: flex-start;
   justify-content: space-between;
   gap: 12px;
+  flex-wrap: wrap;
 }
 
 .paste-input :deep(textarea) {

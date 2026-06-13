@@ -132,7 +132,7 @@ onMounted(() => {
       </NGridItem>
     </NGrid>
 
-    <NCard title="Recently updated secrets">
+    <NCard title="Recently updated secrets" class="stack-header">
       <template #header-extra>
         <NButton
           v-if="authStore.isAdmin"

@@ -86,7 +86,7 @@ function decodeBase64(): void {
 <template>
   <NDrawer
     :show="show"
-    :width="560"
+    width="min(560px, 100vw)"
     placement="right"
     @update:show="emit('update:show', $event)"
   >
@@ -177,6 +177,8 @@ function decodeBase64(): void {
   display: flex;
   align-items: center;
   justify-content: space-between;
+  gap: 8px;
+  flex-wrap: wrap;
   margin-bottom: 8px;
 }
 

@@ -43,7 +43,7 @@ watch(user, (value) => {
 <template>
   <NDrawer
     :show="show"
-    :width="420"
+    width="min(420px, 100vw)"
     placement="right"
     @update:show="emit('update:show', $event)"
   >

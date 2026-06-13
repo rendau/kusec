@@ -303,7 +303,7 @@ onMounted(fetchUsers)
 
 <template>
   <NSpace vertical :size="16">
-    <NCard title="Users">
+    <NCard title="Users" class="stack-header">
       <template #header-extra>
         <NButton type="primary" @click="openCreate">
           <template #icon>

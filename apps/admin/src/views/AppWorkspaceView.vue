@@ -395,7 +395,7 @@ watch(apps, () => {
   </div>
 
   <NSpace v-else vertical :size="16">
-    <NCard>
+    <NCard class="stack-header">
       <NPageHeader>
         <template #header>
           <NBreadcrumb>
@@ -469,7 +469,7 @@ watch(apps, () => {
       </NPageHeader>
     </NCard>
 
-    <NCard title="Secrets">
+    <NCard title="Secrets" class="stack-header">
       <template #header-extra>
         <NSpace :size="8" align="center">
           <NButton v-if="rows.length" size="small" tertiary @click="toggleExpandAll">
@@ -510,7 +510,7 @@ watch(apps, () => {
           v-for="row in rows"
           :key="row.id"
           size="small"
-          class="secret-card"
+          class="secret-card stack-header"
           :segmented="{ content: true }"
         >
           <template #header>
@@ -658,6 +658,14 @@ watch(apps, () => {
 .secret-card__title {
   font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
   font-weight: 600;
+  max-width: 100%;
+}
+
+/* Let a long slug wrap instead of overflowing the card (no horizontal scroll). */
+.secret-card__title :deep(.n-button__content) {
+  white-space: normal;
+  word-break: break-word;
+  text-align: left;
 }
 
 .secret-card__field {
