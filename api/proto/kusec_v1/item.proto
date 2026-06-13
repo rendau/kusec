@@ -67,6 +67,8 @@ message ItemListReq {
   optional string secret_id = 2;
   optional bool active = 3;
   optional string search = 4;
+  // Выборка по нескольким секретам за один запрос (без пагинации).
+  repeated string secret_ids = 5;
 }
 
 message ItemListRep {

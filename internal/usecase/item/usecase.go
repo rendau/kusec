@@ -5,6 +5,7 @@ import (
 	"fmt"
 
 	"github.com/mechta-market/kusec/internal/domain/item/model"
+	secretModel "github.com/mechta-market/kusec/internal/domain/secret/model"
 	"github.com/mechta-market/kusec/internal/errs"
 	"github.com/mechta-market/kusec/internal/util"
 )
@@ -39,6 +40,33 @@ func (u *Usecase) requireSecretAccess(ctx context.Context, secretId string) erro
 	return nil
 }
 
+// requireSecretsAccess проверяет доступ ко всем секретам одним запросом:
+// каждый запрошенный id должен существовать и принадлежать доступному app.
+func (u *Usecase) requireSecretsAccess(ctx context.Context, secretIds []string) error {
+	session := u.sessionSvc.FromContext(ctx)
+	if _, all := session.AccessibleAppIds(); all {
+		return nil
+	}
+
+	secrets, _, err := u.secretSvc.List(ctx, &secretModel.ListReq{Ids: secretIds})
+	if err != nil {
+		return fmt.Errorf("secretSvc.List: %w", err)
+	}
+
+	appBySecret := make(map[string]string, len(secrets))
+	for _, secret := range secrets {
+		appBySecret[secret.Id] = secret.AppId
+	}
+
+	for _, id := range secretIds {
+		appId, ok := appBySecret[id]
+		if !ok || !session.HasAppAccess(appId) {
+			return errs.NoPermission
+		}
+	}
+	return nil
+}
+
 func (u *Usecase) validateEdit(obj *model.Edit, forCreate bool) error {
 	if forCreate {
 		if obj.SecretId == nil || *obj.SecretId == "" {
@@ -61,18 +89,28 @@ func (u *Usecase) List(ctx context.Context, pars *model.ListReq) ([]*model.Main,
 	if !u.sessionSvc.CtxIsAuthorized(ctx) {
 		return nil, 0, errs.NotAuthorized
 	}
-	if pars.SecretId == nil {
+	// Запрос считается узким (без обязательной пагинации), если ограничен
+	// одним секретом или набором секретов.
+	scopedBySecret := pars.SecretId != nil || len(pars.SecretIds) > 0
+	if !scopedBySecret {
 		if err := util.RequirePageSize(pars.ListParams, 0); err != nil {
 			return nil, 0, err
 		}
 	}
 
 	if _, all := u.sessionSvc.FromContext(ctx).AccessibleAppIds(); !all {
-		if pars.SecretId == nil {
+		if !scopedBySecret {
 			return nil, 0, errs.NoPermission
 		}
-		if err := u.requireSecretAccess(ctx, *pars.SecretId); err != nil {
-			return nil, 0, err
+		if pars.SecretId != nil {
+			if err := u.requireSecretAccess(ctx, *pars.SecretId); err != nil {
+				return nil, 0, err
+			}
+		}
+		if len(pars.SecretIds) > 0 {
+			if err := u.requireSecretsAccess(ctx, pars.SecretIds); err != nil {
+				return nil, 0, err
+			}
 		}
 	}
 

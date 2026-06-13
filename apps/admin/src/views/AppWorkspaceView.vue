@@ -41,6 +41,7 @@ import { useClipboard } from '@/composables/useClipboard'
 import { useKubeSync } from '@/composables/useKubeSync'
 import { itemsRevealCommandKey } from '@/constants/injection'
 import type { RevealCommand } from '@/constants/injection'
+import { createSecretItemsStore, secretItemsKey } from '@/composables/useSecretItems'
 import { useAppsStore } from '@/stores/apps'
 import { useAuthStore } from '@/stores/auth'
 
@@ -94,6 +95,11 @@ const showAll = ref(false)
 const revealCommand = ref<RevealCommand>({ action: 'hide', seq: 0 })
 provide(itemsRevealCommandKey, revealCommand)
 
+// Shared items cache for all panels: lets us load several secrets' items in a
+// single request instead of one request per expanded panel.
+const itemsStore = createSecretItemsStore()
+provide(secretItemsKey, itemsStore)
+
 const allExpanded = computed(
   () => rows.value.length > 0 && expandedKeys.value.length === rows.value.length,
 )
@@ -112,7 +118,10 @@ function toggleExpandAll(): void {
     expandedKeys.value = []
     broadcastReveal(false)
   } else {
-    expandedKeys.value = rows.value.map((r) => r.id)
+    const ids = rows.value.map((r) => r.id)
+    // One batch request for all secrets instead of one per opened panel.
+    void itemsStore.prefetch(ids)
+    expandedKeys.value = ids
   }
 }
 
@@ -354,11 +363,15 @@ watch(
   appId,
   async () => {
     expandedKeys.value = []
+    itemsStore.reset()
     await ensureApp()
     await fetchSecrets()
-    // Few secrets → expand them all by default for quicker overview.
+    // Few secrets → expand them all by default for quicker overview. Their
+    // items are fetched in a single batch request (not one per panel).
     if (rows.value.length && rows.value.length <= AUTO_EXPAND_MAX) {
-      expandedKeys.value = rows.value.map((r) => r.id)
+      const ids = rows.value.map((r) => r.id)
+      void itemsStore.prefetch(ids)
+      expandedKeys.value = ids
     }
   },
   { immediate: true },

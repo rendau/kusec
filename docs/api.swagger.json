@@ -343,6 +343,17 @@
             "in": "query",
             "required": false,
             "type": "string"
+          },
+          {
+            "name": "secret_ids",
+            "description": "Выборка по нескольким секретам за один запрос (без пагинации).",
+            "in": "query",
+            "required": false,
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "collectionFormat": "multi"
           }
         ],
         "tags": [

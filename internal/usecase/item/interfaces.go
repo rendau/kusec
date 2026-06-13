@@ -18,6 +18,7 @@ type ServiceI interface {
 
 type SecretServiceI interface {
 	Get(ctx context.Context, id string, errNE bool) (*secretModel.Main, bool, error)
+	List(ctx context.Context, pars *secretModel.ListReq) ([]*secretModel.Main, int64, error)
 }
 
 type SessionServiceI interface {

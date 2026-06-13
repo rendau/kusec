@@ -19,6 +19,9 @@ func (r *Repo) getConditions(pars *model.ListReq) (map[string]any, map[string][]
 		return conditions, conditionExps
 	}
 
+	if len(pars.Ids) > 0 {
+		conditions["id"] = pars.Ids
+	}
 	if pars.AppId != nil {
 		conditions["app_id"] = *pars.AppId
 	}

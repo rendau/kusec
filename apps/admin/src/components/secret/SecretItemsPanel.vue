@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { inject, onMounted, ref, watch } from 'vue'
+import { computed, inject, onMounted, ref, watch } from 'vue'
 import {
   NButton,
   NFlex,
@@ -25,11 +25,12 @@ import {
 } from '@vicons/tabler'
 
 import { apiErrorMessage } from '@/api/http'
-import { deleteItem, listItems } from '@/api/item'
+import { deleteItem } from '@/api/item'
 import type { ItemMain } from '@/api/types'
 import { itemsRevealCommandKey } from '@/constants/injection'
 import { useBreakpoint } from '@/composables/useBreakpoint'
 import { useClipboard } from '@/composables/useClipboard'
+import { createSecretItemsStore, secretItemsKey } from '@/composables/useSecretItems'
 
 import ItemBulkPasteModal from '@/components/item/ItemBulkPasteModal.vue'
 import ItemDetailDrawer from '@/components/item/ItemDetailDrawer.vue'
@@ -53,8 +54,20 @@ const message = useMessage()
 const { copy } = useClipboard()
 const { isMobile } = useBreakpoint()
 
-const rows = ref<ItemMain[]>([])
-const loading = ref(false)
+// Shared cache from the workspace (batches the items request across panels);
+// falls back to a private store when the panel is used standalone.
+const store = inject(secretItemsKey, null) ?? createSecretItemsStore()
+
+const rows = computed<ItemMain[]>(() => store.itemsBySecret.value[props.secretId] ?? [])
+const loading = computed(
+  () =>
+    store.itemsBySecret.value[props.secretId] === undefined &&
+    !!store.loadingBySecret.value[props.secretId],
+)
+
+function refresh(): Promise<void> {
+  return store.reload(props.secretId)
+}
 
 function isFileRow(row: ItemMain): boolean {
   return row.encoding === 'base64'
@@ -101,6 +114,9 @@ function applyRevealCommand(): void {
 }
 
 watch(() => revealCommand.value.seq, applyRevealCommand)
+// Items arrive asynchronously from the shared store — apply the current
+// reveal state once they load (or reload).
+watch(rows, applyRevealCommand)
 
 const detailId = ref<string | null>(null)
 const showDetail = ref(false)
@@ -109,20 +125,6 @@ const editing = ref<ItemMain | null>(null)
 const showForm = ref(false)
 
 const showPaste = ref(false)
-
-async function fetchItems(): Promise<void> {
-  loading.value = true
-  try {
-    // Scoped by secret_id → backend returns all items, no pagination needed.
-    const rep = await listItems({ secret_id: props.secretId })
-    rows.value = rep.results ?? []
-    applyRevealCommand()
-  } catch (error) {
-    message.error(apiErrorMessage(error, 'Failed to load items'))
-  } finally {
-    loading.value = false
-  }
-}
 
 /** Decode a base64 value and copy the result (offered for base64-looking values). */
 async function copyDecoded(value: string): Promise<void> {
@@ -152,13 +154,17 @@ async function removeItem(row: ItemMain): Promise<void> {
   try {
     await deleteItem(row.id)
     message.success('Item deleted')
-    await fetchItems()
+    await refresh()
   } catch (error) {
     message.error(apiErrorMessage(error, 'Failed to delete item'))
   }
 }
 
-onMounted(fetchItems)
+// Load this secret's items if the shared store hasn't already (manual expand);
+// a no-op when the workspace prefetched them in a batch request.
+onMounted(() => {
+  void store.ensure(props.secretId)
+})
 </script>
 
 <template>
@@ -464,14 +470,14 @@ onMounted(fetchItems)
       v-model:show="showPaste"
       :secret-id="secretId"
       :items="rows"
-      @saved="fetchItems"
+      @saved="refresh"
     />
     <ItemFormModal
       v-model:show="showForm"
       :item="editing"
       :default-secret-id="secretId"
       lock-secret
-      @saved="fetchItems"
+      @saved="refresh"
     />
   </div>
 </template>

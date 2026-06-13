@@ -9,7 +9,10 @@ import type { ListParams } from './types'
  */
 export function buildListQuery(
   listParams: ListParams | undefined,
-  filters: Record<string, string | number | boolean | null | undefined> = {},
+  filters: Record<
+    string,
+    string | number | boolean | string[] | null | undefined
+  > = {},
 ): string {
   const params = new URLSearchParams()
 
@@ -27,6 +30,11 @@ export function buildListQuery(
 
   for (const [key, value] of Object.entries(filters)) {
     if (value == null || value === '') continue
+    // Repeated query params (e.g. `secret_ids=a&secret_ids=b`) for list fields.
+    if (Array.isArray(value)) {
+      for (const v of value) params.append(key, String(v))
+      continue
+    }
     params.set(key, String(value))
   }
 

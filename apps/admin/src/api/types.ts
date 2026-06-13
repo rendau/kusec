@@ -372,6 +372,8 @@ export interface ItemMain {
 export interface ItemListReq {
   list_params?: ListParams
   secret_id?: string
+  /** Fetch items for several secrets in one request (no pagination). */
+  secret_ids?: string[]
   active?: boolean
   search?: string
 }
