@@ -20,19 +20,16 @@ import (
 const _ = grpc.SupportPackageIsVersion9
 
 const (
-	Transfer_Import_FullMethodName = "/kusec_v1.Transfer/Import"
-	Transfer_Tree_FullMethodName   = "/kusec_v1.Transfer/Tree"
+	Transfer_Tree_FullMethodName = "/kusec_v1.Transfer/Tree"
 )
 
 // TransferClient is the client API for Transfer service.
 //
 // For semantics around ctx use and closing/ending streaming RPCs, please refer to https://pkg.go.dev/google.golang.org/grpc/?tab=doc#ClientConn.NewStream.
 //
-// Массовый перенос данных: импорт дерева app → secret → item (upsert по
-// натуральным ключам) и выгрузка всего дерева без значений item-ов
+// Выгрузка всего дерева app → secret → item без значений item-ов
 // (безопасно отдавать внешним инструментам, например ИИ-агенту для анализа).
 type TransferClient interface {
-	Import(ctx context.Context, in *TransferImportReq, opts ...grpc.CallOption) (*TransferImportRep, error)
 	Tree(ctx context.Context, in *emptypb.Empty, opts ...grpc.CallOption) (*TransferTreeRep, error)
 }
 
@@ -42,16 +39,6 @@ type transferClient struct {
 
 func NewTransferClient(cc grpc.ClientConnInterface) TransferClient {
 	return &transferClient{cc}
-}
-
-func (c *transferClient) Import(ctx context.Context, in *TransferImportReq, opts ...grpc.CallOption) (*TransferImportRep, error) {
-	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
-	out := new(TransferImportRep)
-	err := c.cc.Invoke(ctx, Transfer_Import_FullMethodName, in, out, cOpts...)
-	if err != nil {
-		return nil, err
-	}
-	return out, nil
 }
 
 func (c *transferClient) Tree(ctx context.Context, in *emptypb.Empty, opts ...grpc.CallOption) (*TransferTreeRep, error) {
@@ -68,11 +55,9 @@ func (c *transferClient) Tree(ctx context.Context, in *emptypb.Empty, opts ...gr
 // All implementations must embed UnimplementedTransferServer
 // for forward compatibility.
 //
-// Массовый перенос данных: импорт дерева app → secret → item (upsert по
-// натуральным ключам) и выгрузка всего дерева без значений item-ов
+// Выгрузка всего дерева app → secret → item без значений item-ов
 // (безопасно отдавать внешним инструментам, например ИИ-агенту для анализа).
 type TransferServer interface {
-	Import(context.Context, *TransferImportReq) (*TransferImportRep, error)
 	Tree(context.Context, *emptypb.Empty) (*TransferTreeRep, error)
 	mustEmbedUnimplementedTransferServer()
 }
@@ -84,9 +69,6 @@ type TransferServer interface {
 // pointer dereference when methods are called.
 type UnimplementedTransferServer struct{}
 
-func (UnimplementedTransferServer) Import(context.Context, *TransferImportReq) (*TransferImportRep, error) {
-	return nil, status.Errorf(codes.Unimplemented, "method Import not implemented")
-}
 func (UnimplementedTransferServer) Tree(context.Context, *emptypb.Empty) (*TransferTreeRep, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method Tree not implemented")
 }
@@ -109,24 +91,6 @@ func RegisterTransferServer(s grpc.ServiceRegistrar, srv TransferServer) {
 		t.testEmbeddedByValue()
 	}
 	s.RegisterService(&Transfer_ServiceDesc, srv)
-}
-
-func _Transfer_Import_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
-	in := new(TransferImportReq)
-	if err := dec(in); err != nil {
-		return nil, err
-	}
-	if interceptor == nil {
-		return srv.(TransferServer).Import(ctx, in)
-	}
-	info := &grpc.UnaryServerInfo{
-		Server:     srv,
-		FullMethod: Transfer_Import_FullMethodName,
-	}
-	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(TransferServer).Import(ctx, req.(*TransferImportReq))
-	}
-	return interceptor(ctx, in, info, handler)
 }
 
 func _Transfer_Tree_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
@@ -154,10 +118,6 @@ var Transfer_ServiceDesc = grpc.ServiceDesc{
 	ServiceName: "kusec_v1.Transfer",
 	HandlerType: (*TransferServer)(nil),
 	Methods: []grpc.MethodDesc{
-		{
-			MethodName: "Import",
-			Handler:    _Transfer_Import_Handler,
-		},
 		{
 			MethodName: "Tree",
 			Handler:    _Transfer_Tree_Handler,

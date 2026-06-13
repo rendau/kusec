@@ -2,52 +2,6 @@ package transfer
 
 import "time"
 
-type ImportItem struct {
-	Key         string
-	Value       string
-	ValueFormat string
-	Encoding    string
-	FileName    string
-	ContentType string
-	Description string
-	Active      *bool
-}
-
-type ImportSecret struct {
-	SlugName    string
-	Description string
-	Active      *bool
-	// Тип k8s-секрета (пусто = Opaque).
-	KubeType string
-	Items    []*ImportItem
-}
-
-type ImportApp struct {
-	Namespace   string
-	Name        string
-	SlugName    string
-	Description string
-	Active      *bool
-	Secrets     []*ImportSecret
-}
-
-type ImportReq struct {
-	Apps []*ImportApp
-}
-
-type ImportResult struct {
-	AppsCreated    int64
-	AppsUpdated    int64
-	SecretsCreated int64
-	SecretsUpdated int64
-	ItemsCreated   int64
-	ItemsUpdated   int64
-	Unchanged      int64
-
-	// Ошибки отдельных записей; импорт продолжается для остальных.
-	Errors []string
-}
-
 type TreeItem struct {
 	Id          string
 	Key         string

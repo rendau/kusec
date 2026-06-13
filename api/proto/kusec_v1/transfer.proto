@@ -8,75 +8,14 @@ import "google/protobuf/timestamp.proto";
 
 option go_package = "/kusec_v1";
 
-// Массовый перенос данных: импорт дерева app → secret → item (upsert по
-// натуральным ключам) и выгрузка всего дерева без значений item-ов
+// Выгрузка всего дерева app → secret → item без значений item-ов
 // (безопасно отдавать внешним инструментам, например ИИ-агенту для анализа).
 service Transfer {
-  rpc Import(TransferImportReq) returns (TransferImportRep) {
-    option (google.api.http) = {
-      post: "/transfer/import"
-      body: "*"
-    };
-  }
-
   rpc Tree(google.protobuf.Empty) returns (TransferTreeRep) {
     option (google.api.http) = {
       get: "/transfer/tree"
     };
   }
-}
-
-// ── Import ──────────────────────────────────────────────
-// Upsert по натуральным ключам: app — (namespace, slug_name),
-// secret — slug_name внутри app, item — key внутри secret.
-// Записи, отсутствующие в запросе, не удаляются.
-
-message TransferImportReq {
-  repeated TransferImportAppSt apps = 1;
-}
-
-message TransferImportAppSt {
-  string namespace = 1;
-  string name = 2;
-  string slug_name = 3;
-  string description = 4;
-  optional bool active = 5;
-  repeated TransferImportSecretSt secrets = 6;
-}
-
-message TransferImportSecretSt {
-  string slug_name = 1;
-  string description = 2;
-  optional bool active = 3;
-  repeated TransferImportItemSt items = 4;
-  // Тип k8s-секрета (пусто = Opaque).
-  string kube_type = 5;
-}
-
-message TransferImportItemSt {
-  string key = 1;
-  string value = 2;
-  // "text" | "yaml" | "json" (по умолчанию text).
-  string value_format = 3;
-  // "plain" | "base64" (по умолчанию plain).
-  string encoding = 4;
-  string file_name = 5;
-  string content_type = 6;
-  string description = 7;
-  optional bool active = 8;
-}
-
-message TransferImportRep {
-  int64 apps_created = 1;
-  int64 apps_updated = 2;
-  int64 secrets_created = 3;
-  int64 secrets_updated = 4;
-  int64 items_created = 5;
-  int64 items_updated = 6;
-  // Записи без изменений (upsert-noop).
-  int64 unchanged = 7;
-  // Ошибки отдельных записей (импорт продолжается для остальных).
-  repeated string errors = 8;
 }
 
 // ── Tree (export без значений) ──────────────────────────

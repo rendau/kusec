@@ -24,415 +24,6 @@ const (
 	_ = protoimpl.EnforceVersion(protoimpl.MaxVersion - 20)
 )
 
-type TransferImportReq struct {
-	state         protoimpl.MessageState `protogen:"open.v1"`
-	Apps          []*TransferImportAppSt `protobuf:"bytes,1,rep,name=apps,proto3" json:"apps,omitempty"`
-	unknownFields protoimpl.UnknownFields
-	sizeCache     protoimpl.SizeCache
-}
-
-func (x *TransferImportReq) Reset() {
-	*x = TransferImportReq{}
-	mi := &file_kusec_v1_transfer_proto_msgTypes[0]
-	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
-	ms.StoreMessageInfo(mi)
-}
-
-func (x *TransferImportReq) String() string {
-	return protoimpl.X.MessageStringOf(x)
-}
-
-func (*TransferImportReq) ProtoMessage() {}
-
-func (x *TransferImportReq) ProtoReflect() protoreflect.Message {
-	mi := &file_kusec_v1_transfer_proto_msgTypes[0]
-	if x != nil {
-		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
-		if ms.LoadMessageInfo() == nil {
-			ms.StoreMessageInfo(mi)
-		}
-		return ms
-	}
-	return mi.MessageOf(x)
-}
-
-// Deprecated: Use TransferImportReq.ProtoReflect.Descriptor instead.
-func (*TransferImportReq) Descriptor() ([]byte, []int) {
-	return file_kusec_v1_transfer_proto_rawDescGZIP(), []int{0}
-}
-
-func (x *TransferImportReq) GetApps() []*TransferImportAppSt {
-	if x != nil {
-		return x.Apps
-	}
-	return nil
-}
-
-type TransferImportAppSt struct {
-	state         protoimpl.MessageState    `protogen:"open.v1"`
-	Namespace     string                    `protobuf:"bytes,1,opt,name=namespace,proto3" json:"namespace,omitempty"`
-	Name          string                    `protobuf:"bytes,2,opt,name=name,proto3" json:"name,omitempty"`
-	SlugName      string                    `protobuf:"bytes,3,opt,name=slug_name,json=slugName,proto3" json:"slug_name,omitempty"`
-	Description   string                    `protobuf:"bytes,4,opt,name=description,proto3" json:"description,omitempty"`
-	Active        *bool                     `protobuf:"varint,5,opt,name=active,proto3,oneof" json:"active,omitempty"`
-	Secrets       []*TransferImportSecretSt `protobuf:"bytes,6,rep,name=secrets,proto3" json:"secrets,omitempty"`
-	unknownFields protoimpl.UnknownFields
-	sizeCache     protoimpl.SizeCache
-}
-
-func (x *TransferImportAppSt) Reset() {
-	*x = TransferImportAppSt{}
-	mi := &file_kusec_v1_transfer_proto_msgTypes[1]
-	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
-	ms.StoreMessageInfo(mi)
-}
-
-func (x *TransferImportAppSt) String() string {
-	return protoimpl.X.MessageStringOf(x)
-}
-
-func (*TransferImportAppSt) ProtoMessage() {}
-
-func (x *TransferImportAppSt) ProtoReflect() protoreflect.Message {
-	mi := &file_kusec_v1_transfer_proto_msgTypes[1]
-	if x != nil {
-		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
-		if ms.LoadMessageInfo() == nil {
-			ms.StoreMessageInfo(mi)
-		}
-		return ms
-	}
-	return mi.MessageOf(x)
-}
-
-// Deprecated: Use TransferImportAppSt.ProtoReflect.Descriptor instead.
-func (*TransferImportAppSt) Descriptor() ([]byte, []int) {
-	return file_kusec_v1_transfer_proto_rawDescGZIP(), []int{1}
-}
-
-func (x *TransferImportAppSt) GetNamespace() string {
-	if x != nil {
-		return x.Namespace
-	}
-	return ""
-}
-
-func (x *TransferImportAppSt) GetName() string {
-	if x != nil {
-		return x.Name
-	}
-	return ""
-}
-
-func (x *TransferImportAppSt) GetSlugName() string {
-	if x != nil {
-		return x.SlugName
-	}
-	return ""
-}
-
-func (x *TransferImportAppSt) GetDescription() string {
-	if x != nil {
-		return x.Description
-	}
-	return ""
-}
-
-func (x *TransferImportAppSt) GetActive() bool {
-	if x != nil && x.Active != nil {
-		return *x.Active
-	}
-	return false
-}
-
-func (x *TransferImportAppSt) GetSecrets() []*TransferImportSecretSt {
-	if x != nil {
-		return x.Secrets
-	}
-	return nil
-}
-
-type TransferImportSecretSt struct {
-	state       protoimpl.MessageState  `protogen:"open.v1"`
-	SlugName    string                  `protobuf:"bytes,1,opt,name=slug_name,json=slugName,proto3" json:"slug_name,omitempty"`
-	Description string                  `protobuf:"bytes,2,opt,name=description,proto3" json:"description,omitempty"`
-	Active      *bool                   `protobuf:"varint,3,opt,name=active,proto3,oneof" json:"active,omitempty"`
-	Items       []*TransferImportItemSt `protobuf:"bytes,4,rep,name=items,proto3" json:"items,omitempty"`
-	// Тип k8s-секрета (пусто = Opaque).
-	KubeType      string `protobuf:"bytes,5,opt,name=kube_type,json=kubeType,proto3" json:"kube_type,omitempty"`
-	unknownFields protoimpl.UnknownFields
-	sizeCache     protoimpl.SizeCache
-}
-
-func (x *TransferImportSecretSt) Reset() {
-	*x = TransferImportSecretSt{}
-	mi := &file_kusec_v1_transfer_proto_msgTypes[2]
-	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
-	ms.StoreMessageInfo(mi)
-}
-
-func (x *TransferImportSecretSt) String() string {
-	return protoimpl.X.MessageStringOf(x)
-}
-
-func (*TransferImportSecretSt) ProtoMessage() {}
-
-func (x *TransferImportSecretSt) ProtoReflect() protoreflect.Message {
-	mi := &file_kusec_v1_transfer_proto_msgTypes[2]
-	if x != nil {
-		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
-		if ms.LoadMessageInfo() == nil {
-			ms.StoreMessageInfo(mi)
-		}
-		return ms
-	}
-	return mi.MessageOf(x)
-}
-
-// Deprecated: Use TransferImportSecretSt.ProtoReflect.Descriptor instead.
-func (*TransferImportSecretSt) Descriptor() ([]byte, []int) {
-	return file_kusec_v1_transfer_proto_rawDescGZIP(), []int{2}
-}
-
-func (x *TransferImportSecretSt) GetSlugName() string {
-	if x != nil {
-		return x.SlugName
-	}
-	return ""
-}
-
-func (x *TransferImportSecretSt) GetDescription() string {
-	if x != nil {
-		return x.Description
-	}
-	return ""
-}
-
-func (x *TransferImportSecretSt) GetActive() bool {
-	if x != nil && x.Active != nil {
-		return *x.Active
-	}
-	return false
-}
-
-func (x *TransferImportSecretSt) GetItems() []*TransferImportItemSt {
-	if x != nil {
-		return x.Items
-	}
-	return nil
-}
-
-func (x *TransferImportSecretSt) GetKubeType() string {
-	if x != nil {
-		return x.KubeType
-	}
-	return ""
-}
-
-type TransferImportItemSt struct {
-	state protoimpl.MessageState `protogen:"open.v1"`
-	Key   string                 `protobuf:"bytes,1,opt,name=key,proto3" json:"key,omitempty"`
-	Value string                 `protobuf:"bytes,2,opt,name=value,proto3" json:"value,omitempty"`
-	// "text" | "yaml" | "json" (по умолчанию text).
-	ValueFormat string `protobuf:"bytes,3,opt,name=value_format,json=valueFormat,proto3" json:"value_format,omitempty"`
-	// "plain" | "base64" (по умолчанию plain).
-	Encoding      string `protobuf:"bytes,4,opt,name=encoding,proto3" json:"encoding,omitempty"`
-	FileName      string `protobuf:"bytes,5,opt,name=file_name,json=fileName,proto3" json:"file_name,omitempty"`
-	ContentType   string `protobuf:"bytes,6,opt,name=content_type,json=contentType,proto3" json:"content_type,omitempty"`
-	Description   string `protobuf:"bytes,7,opt,name=description,proto3" json:"description,omitempty"`
-	Active        *bool  `protobuf:"varint,8,opt,name=active,proto3,oneof" json:"active,omitempty"`
-	unknownFields protoimpl.UnknownFields
-	sizeCache     protoimpl.SizeCache
-}
-
-func (x *TransferImportItemSt) Reset() {
-	*x = TransferImportItemSt{}
-	mi := &file_kusec_v1_transfer_proto_msgTypes[3]
-	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
-	ms.StoreMessageInfo(mi)
-}
-
-func (x *TransferImportItemSt) String() string {
-	return protoimpl.X.MessageStringOf(x)
-}
-
-func (*TransferImportItemSt) ProtoMessage() {}
-
-func (x *TransferImportItemSt) ProtoReflect() protoreflect.Message {
-	mi := &file_kusec_v1_transfer_proto_msgTypes[3]
-	if x != nil {
-		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
-		if ms.LoadMessageInfo() == nil {
-			ms.StoreMessageInfo(mi)
-		}
-		return ms
-	}
-	return mi.MessageOf(x)
-}
-
-// Deprecated: Use TransferImportItemSt.ProtoReflect.Descriptor instead.
-func (*TransferImportItemSt) Descriptor() ([]byte, []int) {
-	return file_kusec_v1_transfer_proto_rawDescGZIP(), []int{3}
-}
-
-func (x *TransferImportItemSt) GetKey() string {
-	if x != nil {
-		return x.Key
-	}
-	return ""
-}
-
-func (x *TransferImportItemSt) GetValue() string {
-	if x != nil {
-		return x.Value
-	}
-	return ""
-}
-
-func (x *TransferImportItemSt) GetValueFormat() string {
-	if x != nil {
-		return x.ValueFormat
-	}
-	return ""
-}
-
-func (x *TransferImportItemSt) GetEncoding() string {
-	if x != nil {
-		return x.Encoding
-	}
-	return ""
-}
-
-func (x *TransferImportItemSt) GetFileName() string {
-	if x != nil {
-		return x.FileName
-	}
-	return ""
-}
-
-func (x *TransferImportItemSt) GetContentType() string {
-	if x != nil {
-		return x.ContentType
-	}
-	return ""
-}
-
-func (x *TransferImportItemSt) GetDescription() string {
-	if x != nil {
-		return x.Description
-	}
-	return ""
-}
-
-func (x *TransferImportItemSt) GetActive() bool {
-	if x != nil && x.Active != nil {
-		return *x.Active
-	}
-	return false
-}
-
-type TransferImportRep struct {
-	state          protoimpl.MessageState `protogen:"open.v1"`
-	AppsCreated    int64                  `protobuf:"varint,1,opt,name=apps_created,json=appsCreated,proto3" json:"apps_created,omitempty"`
-	AppsUpdated    int64                  `protobuf:"varint,2,opt,name=apps_updated,json=appsUpdated,proto3" json:"apps_updated,omitempty"`
-	SecretsCreated int64                  `protobuf:"varint,3,opt,name=secrets_created,json=secretsCreated,proto3" json:"secrets_created,omitempty"`
-	SecretsUpdated int64                  `protobuf:"varint,4,opt,name=secrets_updated,json=secretsUpdated,proto3" json:"secrets_updated,omitempty"`
-	ItemsCreated   int64                  `protobuf:"varint,5,opt,name=items_created,json=itemsCreated,proto3" json:"items_created,omitempty"`
-	ItemsUpdated   int64                  `protobuf:"varint,6,opt,name=items_updated,json=itemsUpdated,proto3" json:"items_updated,omitempty"`
-	// Записи без изменений (upsert-noop).
-	Unchanged int64 `protobuf:"varint,7,opt,name=unchanged,proto3" json:"unchanged,omitempty"`
-	// Ошибки отдельных записей (импорт продолжается для остальных).
-	Errors        []string `protobuf:"bytes,8,rep,name=errors,proto3" json:"errors,omitempty"`
-	unknownFields protoimpl.UnknownFields
-	sizeCache     protoimpl.SizeCache
-}
-
-func (x *TransferImportRep) Reset() {
-	*x = TransferImportRep{}
-	mi := &file_kusec_v1_transfer_proto_msgTypes[4]
-	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
-	ms.StoreMessageInfo(mi)
-}
-
-func (x *TransferImportRep) String() string {
-	return protoimpl.X.MessageStringOf(x)
-}
-
-func (*TransferImportRep) ProtoMessage() {}
-
-func (x *TransferImportRep) ProtoReflect() protoreflect.Message {
-	mi := &file_kusec_v1_transfer_proto_msgTypes[4]
-	if x != nil {
-		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
-		if ms.LoadMessageInfo() == nil {
-			ms.StoreMessageInfo(mi)
-		}
-		return ms
-	}
-	return mi.MessageOf(x)
-}
-
-// Deprecated: Use TransferImportRep.ProtoReflect.Descriptor instead.
-func (*TransferImportRep) Descriptor() ([]byte, []int) {
-	return file_kusec_v1_transfer_proto_rawDescGZIP(), []int{4}
-}
-
-func (x *TransferImportRep) GetAppsCreated() int64 {
-	if x != nil {
-		return x.AppsCreated
-	}
-	return 0
-}
-
-func (x *TransferImportRep) GetAppsUpdated() int64 {
-	if x != nil {
-		return x.AppsUpdated
-	}
-	return 0
-}
-
-func (x *TransferImportRep) GetSecretsCreated() int64 {
-	if x != nil {
-		return x.SecretsCreated
-	}
-	return 0
-}
-
-func (x *TransferImportRep) GetSecretsUpdated() int64 {
-	if x != nil {
-		return x.SecretsUpdated
-	}
-	return 0
-}
-
-func (x *TransferImportRep) GetItemsCreated() int64 {
-	if x != nil {
-		return x.ItemsCreated
-	}
-	return 0
-}
-
-func (x *TransferImportRep) GetItemsUpdated() int64 {
-	if x != nil {
-		return x.ItemsUpdated
-	}
-	return 0
-}
-
-func (x *TransferImportRep) GetUnchanged() int64 {
-	if x != nil {
-		return x.Unchanged
-	}
-	return 0
-}
-
-func (x *TransferImportRep) GetErrors() []string {
-	if x != nil {
-		return x.Errors
-	}
-	return nil
-}
-
 type TransferTreeRep struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
 	Apps          []*TransferTreeAppSt   `protobuf:"bytes,1,rep,name=apps,proto3" json:"apps,omitempty"`
@@ -442,7 +33,7 @@ type TransferTreeRep struct {
 
 func (x *TransferTreeRep) Reset() {
 	*x = TransferTreeRep{}
-	mi := &file_kusec_v1_transfer_proto_msgTypes[5]
+	mi := &file_kusec_v1_transfer_proto_msgTypes[0]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -454,7 +45,7 @@ func (x *TransferTreeRep) String() string {
 func (*TransferTreeRep) ProtoMessage() {}
 
 func (x *TransferTreeRep) ProtoReflect() protoreflect.Message {
-	mi := &file_kusec_v1_transfer_proto_msgTypes[5]
+	mi := &file_kusec_v1_transfer_proto_msgTypes[0]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -467,7 +58,7 @@ func (x *TransferTreeRep) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use TransferTreeRep.ProtoReflect.Descriptor instead.
 func (*TransferTreeRep) Descriptor() ([]byte, []int) {
-	return file_kusec_v1_transfer_proto_rawDescGZIP(), []int{5}
+	return file_kusec_v1_transfer_proto_rawDescGZIP(), []int{0}
 }
 
 func (x *TransferTreeRep) GetApps() []*TransferTreeAppSt {
@@ -493,7 +84,7 @@ type TransferTreeAppSt struct {
 
 func (x *TransferTreeAppSt) Reset() {
 	*x = TransferTreeAppSt{}
-	mi := &file_kusec_v1_transfer_proto_msgTypes[6]
+	mi := &file_kusec_v1_transfer_proto_msgTypes[1]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -505,7 +96,7 @@ func (x *TransferTreeAppSt) String() string {
 func (*TransferTreeAppSt) ProtoMessage() {}
 
 func (x *TransferTreeAppSt) ProtoReflect() protoreflect.Message {
-	mi := &file_kusec_v1_transfer_proto_msgTypes[6]
+	mi := &file_kusec_v1_transfer_proto_msgTypes[1]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -518,7 +109,7 @@ func (x *TransferTreeAppSt) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use TransferTreeAppSt.ProtoReflect.Descriptor instead.
 func (*TransferTreeAppSt) Descriptor() ([]byte, []int) {
-	return file_kusec_v1_transfer_proto_rawDescGZIP(), []int{6}
+	return file_kusec_v1_transfer_proto_rawDescGZIP(), []int{1}
 }
 
 func (x *TransferTreeAppSt) GetId() string {
@@ -593,7 +184,7 @@ type TransferTreeSecretSt struct {
 
 func (x *TransferTreeSecretSt) Reset() {
 	*x = TransferTreeSecretSt{}
-	mi := &file_kusec_v1_transfer_proto_msgTypes[7]
+	mi := &file_kusec_v1_transfer_proto_msgTypes[2]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -605,7 +196,7 @@ func (x *TransferTreeSecretSt) String() string {
 func (*TransferTreeSecretSt) ProtoMessage() {}
 
 func (x *TransferTreeSecretSt) ProtoReflect() protoreflect.Message {
-	mi := &file_kusec_v1_transfer_proto_msgTypes[7]
+	mi := &file_kusec_v1_transfer_proto_msgTypes[2]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -618,7 +209,7 @@ func (x *TransferTreeSecretSt) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use TransferTreeSecretSt.ProtoReflect.Descriptor instead.
 func (*TransferTreeSecretSt) Descriptor() ([]byte, []int) {
-	return file_kusec_v1_transfer_proto_rawDescGZIP(), []int{7}
+	return file_kusec_v1_transfer_proto_rawDescGZIP(), []int{2}
 }
 
 func (x *TransferTreeSecretSt) GetId() string {
@@ -689,7 +280,7 @@ type TransferTreeItemSt struct {
 
 func (x *TransferTreeItemSt) Reset() {
 	*x = TransferTreeItemSt{}
-	mi := &file_kusec_v1_transfer_proto_msgTypes[8]
+	mi := &file_kusec_v1_transfer_proto_msgTypes[3]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -701,7 +292,7 @@ func (x *TransferTreeItemSt) String() string {
 func (*TransferTreeItemSt) ProtoMessage() {}
 
 func (x *TransferTreeItemSt) ProtoReflect() protoreflect.Message {
-	mi := &file_kusec_v1_transfer_proto_msgTypes[8]
+	mi := &file_kusec_v1_transfer_proto_msgTypes[3]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -714,7 +305,7 @@ func (x *TransferTreeItemSt) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use TransferTreeItemSt.ProtoReflect.Descriptor instead.
 func (*TransferTreeItemSt) Descriptor() ([]byte, []int) {
-	return file_kusec_v1_transfer_proto_rawDescGZIP(), []int{8}
+	return file_kusec_v1_transfer_proto_rawDescGZIP(), []int{3}
 }
 
 func (x *TransferTreeItemSt) GetId() string {
@@ -791,43 +382,7 @@ var File_kusec_v1_transfer_proto protoreflect.FileDescriptor
 
 const file_kusec_v1_transfer_proto_rawDesc = "" +
 	"\n" +
-	"\x17kusec_v1/transfer.proto\x12\bkusec_v1\x1a\x1cgoogle/api/annotations.proto\x1a\x1bgoogle/protobuf/empty.proto\x1a\x1fgoogle/protobuf/timestamp.proto\"F\n" +
-	"\x11TransferImportReq\x121\n" +
-	"\x04apps\x18\x01 \x03(\v2\x1d.kusec_v1.TransferImportAppStR\x04apps\"\xea\x01\n" +
-	"\x13TransferImportAppSt\x12\x1c\n" +
-	"\tnamespace\x18\x01 \x01(\tR\tnamespace\x12\x12\n" +
-	"\x04name\x18\x02 \x01(\tR\x04name\x12\x1b\n" +
-	"\tslug_name\x18\x03 \x01(\tR\bslugName\x12 \n" +
-	"\vdescription\x18\x04 \x01(\tR\vdescription\x12\x1b\n" +
-	"\x06active\x18\x05 \x01(\bH\x00R\x06active\x88\x01\x01\x12:\n" +
-	"\asecrets\x18\x06 \x03(\v2 .kusec_v1.TransferImportSecretStR\asecretsB\t\n" +
-	"\a_active\"\xd2\x01\n" +
-	"\x16TransferImportSecretSt\x12\x1b\n" +
-	"\tslug_name\x18\x01 \x01(\tR\bslugName\x12 \n" +
-	"\vdescription\x18\x02 \x01(\tR\vdescription\x12\x1b\n" +
-	"\x06active\x18\x03 \x01(\bH\x00R\x06active\x88\x01\x01\x124\n" +
-	"\x05items\x18\x04 \x03(\v2\x1e.kusec_v1.TransferImportItemStR\x05items\x12\x1b\n" +
-	"\tkube_type\x18\x05 \x01(\tR\bkubeTypeB\t\n" +
-	"\a_active\"\x87\x02\n" +
-	"\x14TransferImportItemSt\x12\x10\n" +
-	"\x03key\x18\x01 \x01(\tR\x03key\x12\x14\n" +
-	"\x05value\x18\x02 \x01(\tR\x05value\x12!\n" +
-	"\fvalue_format\x18\x03 \x01(\tR\vvalueFormat\x12\x1a\n" +
-	"\bencoding\x18\x04 \x01(\tR\bencoding\x12\x1b\n" +
-	"\tfile_name\x18\x05 \x01(\tR\bfileName\x12!\n" +
-	"\fcontent_type\x18\x06 \x01(\tR\vcontentType\x12 \n" +
-	"\vdescription\x18\a \x01(\tR\vdescription\x12\x1b\n" +
-	"\x06active\x18\b \x01(\bH\x00R\x06active\x88\x01\x01B\t\n" +
-	"\a_active\"\xab\x02\n" +
-	"\x11TransferImportRep\x12!\n" +
-	"\fapps_created\x18\x01 \x01(\x03R\vappsCreated\x12!\n" +
-	"\fapps_updated\x18\x02 \x01(\x03R\vappsUpdated\x12'\n" +
-	"\x0fsecrets_created\x18\x03 \x01(\x03R\x0esecretsCreated\x12'\n" +
-	"\x0fsecrets_updated\x18\x04 \x01(\x03R\x0esecretsUpdated\x12#\n" +
-	"\ritems_created\x18\x05 \x01(\x03R\fitemsCreated\x12#\n" +
-	"\ritems_updated\x18\x06 \x01(\x03R\fitemsUpdated\x12\x1c\n" +
-	"\tunchanged\x18\a \x01(\x03R\tunchanged\x12\x16\n" +
-	"\x06errors\x18\b \x03(\tR\x06errors\"B\n" +
+	"\x17kusec_v1/transfer.proto\x12\bkusec_v1\x1a\x1cgoogle/api/annotations.proto\x1a\x1bgoogle/protobuf/empty.proto\x1a\x1fgoogle/protobuf/timestamp.proto\"B\n" +
 	"\x0fTransferTreeRep\x12/\n" +
 	"\x04apps\x18\x01 \x03(\v2\x1b.kusec_v1.TransferTreeAppStR\x04apps\"\xa1\x02\n" +
 	"\x11TransferTreeAppSt\x12\x0e\n" +
@@ -862,9 +417,8 @@ const file_kusec_v1_transfer_proto_rawDesc = "" +
 	"updated_at\x18\t \x01(\v2\x1a.google.protobuf.TimestampR\tupdatedAt\x12\x1d\n" +
 	"\n" +
 	"value_size\x18\n" +
-	" \x01(\x03R\tvalueSize2\xbe\x01\n" +
-	"\bTransfer\x12_\n" +
-	"\x06Import\x12\x1b.kusec_v1.TransferImportReq\x1a\x1b.kusec_v1.TransferImportRep\"\x1b\x82\xd3\xe4\x93\x02\x15:\x01*\"\x10/transfer/import\x12Q\n" +
+	" \x01(\x03R\tvalueSize2]\n" +
+	"\bTransfer\x12Q\n" +
 	"\x04Tree\x12\x16.google.protobuf.Empty\x1a\x19.kusec_v1.TransferTreeRep\"\x16\x82\xd3\xe4\x93\x02\x10\x12\x0e/transfer/treeB\vZ\t/kusec_v1b\x06proto3"
 
 var (
@@ -879,39 +433,29 @@ func file_kusec_v1_transfer_proto_rawDescGZIP() []byte {
 	return file_kusec_v1_transfer_proto_rawDescData
 }
 
-var file_kusec_v1_transfer_proto_msgTypes = make([]protoimpl.MessageInfo, 9)
+var file_kusec_v1_transfer_proto_msgTypes = make([]protoimpl.MessageInfo, 4)
 var file_kusec_v1_transfer_proto_goTypes = []any{
-	(*TransferImportReq)(nil),      // 0: kusec_v1.TransferImportReq
-	(*TransferImportAppSt)(nil),    // 1: kusec_v1.TransferImportAppSt
-	(*TransferImportSecretSt)(nil), // 2: kusec_v1.TransferImportSecretSt
-	(*TransferImportItemSt)(nil),   // 3: kusec_v1.TransferImportItemSt
-	(*TransferImportRep)(nil),      // 4: kusec_v1.TransferImportRep
-	(*TransferTreeRep)(nil),        // 5: kusec_v1.TransferTreeRep
-	(*TransferTreeAppSt)(nil),      // 6: kusec_v1.TransferTreeAppSt
-	(*TransferTreeSecretSt)(nil),   // 7: kusec_v1.TransferTreeSecretSt
-	(*TransferTreeItemSt)(nil),     // 8: kusec_v1.TransferTreeItemSt
-	(*timestamppb.Timestamp)(nil),  // 9: google.protobuf.Timestamp
-	(*emptypb.Empty)(nil),          // 10: google.protobuf.Empty
+	(*TransferTreeRep)(nil),       // 0: kusec_v1.TransferTreeRep
+	(*TransferTreeAppSt)(nil),     // 1: kusec_v1.TransferTreeAppSt
+	(*TransferTreeSecretSt)(nil),  // 2: kusec_v1.TransferTreeSecretSt
+	(*TransferTreeItemSt)(nil),    // 3: kusec_v1.TransferTreeItemSt
+	(*timestamppb.Timestamp)(nil), // 4: google.protobuf.Timestamp
+	(*emptypb.Empty)(nil),         // 5: google.protobuf.Empty
 }
 var file_kusec_v1_transfer_proto_depIdxs = []int32{
-	1,  // 0: kusec_v1.TransferImportReq.apps:type_name -> kusec_v1.TransferImportAppSt
-	2,  // 1: kusec_v1.TransferImportAppSt.secrets:type_name -> kusec_v1.TransferImportSecretSt
-	3,  // 2: kusec_v1.TransferImportSecretSt.items:type_name -> kusec_v1.TransferImportItemSt
-	6,  // 3: kusec_v1.TransferTreeRep.apps:type_name -> kusec_v1.TransferTreeAppSt
-	9,  // 4: kusec_v1.TransferTreeAppSt.updated_at:type_name -> google.protobuf.Timestamp
-	7,  // 5: kusec_v1.TransferTreeAppSt.secrets:type_name -> kusec_v1.TransferTreeSecretSt
-	9,  // 6: kusec_v1.TransferTreeSecretSt.updated_at:type_name -> google.protobuf.Timestamp
-	8,  // 7: kusec_v1.TransferTreeSecretSt.items:type_name -> kusec_v1.TransferTreeItemSt
-	9,  // 8: kusec_v1.TransferTreeItemSt.updated_at:type_name -> google.protobuf.Timestamp
-	0,  // 9: kusec_v1.Transfer.Import:input_type -> kusec_v1.TransferImportReq
-	10, // 10: kusec_v1.Transfer.Tree:input_type -> google.protobuf.Empty
-	4,  // 11: kusec_v1.Transfer.Import:output_type -> kusec_v1.TransferImportRep
-	5,  // 12: kusec_v1.Transfer.Tree:output_type -> kusec_v1.TransferTreeRep
-	11, // [11:13] is the sub-list for method output_type
-	9,  // [9:11] is the sub-list for method input_type
-	9,  // [9:9] is the sub-list for extension type_name
-	9,  // [9:9] is the sub-list for extension extendee
-	0,  // [0:9] is the sub-list for field type_name
+	1, // 0: kusec_v1.TransferTreeRep.apps:type_name -> kusec_v1.TransferTreeAppSt
+	4, // 1: kusec_v1.TransferTreeAppSt.updated_at:type_name -> google.protobuf.Timestamp
+	2, // 2: kusec_v1.TransferTreeAppSt.secrets:type_name -> kusec_v1.TransferTreeSecretSt
+	4, // 3: kusec_v1.TransferTreeSecretSt.updated_at:type_name -> google.protobuf.Timestamp
+	3, // 4: kusec_v1.TransferTreeSecretSt.items:type_name -> kusec_v1.TransferTreeItemSt
+	4, // 5: kusec_v1.TransferTreeItemSt.updated_at:type_name -> google.protobuf.Timestamp
+	5, // 6: kusec_v1.Transfer.Tree:input_type -> google.protobuf.Empty
+	0, // 7: kusec_v1.Transfer.Tree:output_type -> kusec_v1.TransferTreeRep
+	7, // [7:8] is the sub-list for method output_type
+	6, // [6:7] is the sub-list for method input_type
+	6, // [6:6] is the sub-list for extension type_name
+	6, // [6:6] is the sub-list for extension extendee
+	0, // [0:6] is the sub-list for field type_name
 }
 
 func init() { file_kusec_v1_transfer_proto_init() }
@@ -919,16 +463,13 @@ func file_kusec_v1_transfer_proto_init() {
 	if File_kusec_v1_transfer_proto != nil {
 		return
 	}
-	file_kusec_v1_transfer_proto_msgTypes[1].OneofWrappers = []any{}
-	file_kusec_v1_transfer_proto_msgTypes[2].OneofWrappers = []any{}
-	file_kusec_v1_transfer_proto_msgTypes[3].OneofWrappers = []any{}
 	type x struct{}
 	out := protoimpl.TypeBuilder{
 		File: protoimpl.DescBuilder{
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_kusec_v1_transfer_proto_rawDesc), len(file_kusec_v1_transfer_proto_rawDesc)),
 			NumEnums:      0,
-			NumMessages:   9,
+			NumMessages:   4,
 			NumExtensions: 0,
 			NumServices:   1,
 		},
