@@ -4,6 +4,8 @@ import (
 	"context"
 	"fmt"
 
+	"github.com/samber/lo"
+
 	"github.com/mechta-market/kusec/internal/domain/app/model"
 	"github.com/mechta-market/kusec/internal/errs"
 )
@@ -18,6 +20,10 @@ func New(svc ServiceI, sessionSvc SessionServiceI) *Usecase {
 		svc:        svc,
 		sessionSvc: sessionSvc,
 	}
+}
+
+func (u *Usecase) accessibleAppIds(ctx context.Context) ([]string, bool) {
+	return u.sessionSvc.FromContext(ctx).AccessibleAppIds()
 }
 
 func (u *Usecase) validateEdit(obj *model.Edit, forCreate bool) error {
@@ -42,6 +48,19 @@ func (u *Usecase) List(ctx context.Context, pars *model.ListReq) ([]*model.Main,
 	if !u.sessionSvc.CtxIsAuthorized(ctx) {
 		return nil, 0, errs.NotAuthorized
 	}
+
+	appIds, all := u.accessibleAppIds(ctx)
+	if !all {
+		if len(pars.Ids) == 0 {
+			pars.Ids = appIds
+		} else {
+			pars.Ids = lo.Intersect(pars.Ids, appIds)
+		}
+		if len(pars.Ids) == 0 {
+			return []*model.Main{}, 0, nil
+		}
+	}
+
 	items, tCount, err := u.svc.List(ctx, pars)
 	if err != nil {
 		return nil, 0, fmt.Errorf("svc.List: %w", err)
@@ -53,6 +72,12 @@ func (u *Usecase) Get(ctx context.Context, id string) (*model.Main, error) {
 	if !u.sessionSvc.CtxIsAuthorized(ctx) {
 		return nil, errs.NotAuthorized
 	}
+
+	appIds, all := u.accessibleAppIds(ctx)
+	if !all && !lo.Contains(appIds, id) {
+		return nil, errs.NoPermission
+	}
+
 	result, _, err := u.svc.Get(ctx, id, true)
 	if err != nil {
 		return nil, fmt.Errorf("svc.Get: %w", err)

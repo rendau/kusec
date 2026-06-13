@@ -37,6 +37,7 @@ type ListReq struct {
 	commonModel.ListParams
 
 	AppId  *string
+	AppIds []string
 	Active *bool
 	Search *string
 }

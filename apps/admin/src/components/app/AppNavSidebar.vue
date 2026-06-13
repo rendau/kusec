@@ -16,6 +16,7 @@ import { storeToRefs } from 'pinia'
 
 import type { AppMain } from '@/api/types'
 import { useAppsStore } from '@/stores/apps'
+import { useAuthStore } from '@/stores/auth'
 
 import AppFormModal from '@/components/app/AppFormModal.vue'
 
@@ -25,6 +26,9 @@ const themeVars = useThemeVars()
 
 const appsStore = useAppsStore()
 const { apps, loading } = storeToRefs(appsStore)
+
+// Only admins may create/modify applications (backend: app usecase is admin-only).
+const { isAdmin } = storeToRefs(useAuthStore())
 
 const search = ref('')
 
@@ -67,7 +71,7 @@ onMounted(() => {
   <div class="app-nav">
     <div class="app-nav__head">
       <span class="app-nav__title">Applications</span>
-      <NButton size="tiny" type="primary" @click="openCreate">
+      <NButton v-if="isAdmin" size="tiny" type="primary" @click="openCreate">
         <template #icon>
           <NIcon :component="Plus" />
         </template>

@@ -13,7 +13,7 @@ option go_package = "/kusec_v1";
 // Управляемые секреты помечаются лейблом app.kubernetes.io/managed-by=kusec;
 // удаляются только они.
 service Kube {
-  rpc SyncSecrets(google.protobuf.Empty) returns (KubeSyncSecretsRep) {
+  rpc SyncSecrets(KubeSyncSecretsReq) returns (KubeSyncSecretsRep) {
     option (google.api.http) = {
       post: "/kube/sync-secret"
       body: "*"
@@ -34,6 +34,10 @@ message KubeListNamespacesRep {
   bool in_cluster = 1;
   // Имена namespace-ов кластера без системных kube-*.
   repeated string namespaces = 2;
+}
+
+message KubeSyncSecretsReq {
+  string app_id = 1;
 }
 
 message KubeSyncSecretsRep {

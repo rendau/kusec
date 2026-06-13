@@ -22,6 +22,9 @@ func (r *Repo) getConditions(pars *model.ListReq) (map[string]any, map[string][]
 	if pars.AppId != nil {
 		conditions["app_id"] = *pars.AppId
 	}
+	if len(pars.AppIds) > 0 {
+		conditions["app_id"] = pars.AppIds
+	}
 	if pars.Active != nil {
 		conditions["active"] = *pars.Active
 	}

@@ -11,14 +11,32 @@ import (
 
 type Usecase struct {
 	svc        ServiceI
+	secretSvc  SecretServiceI
 	sessionSvc SessionServiceI
 }
 
-func New(svc ServiceI, sessionSvc SessionServiceI) *Usecase {
+func New(svc ServiceI, secretSvc SecretServiceI, sessionSvc SessionServiceI) *Usecase {
 	return &Usecase{
 		svc:        svc,
+		secretSvc:  secretSvc,
 		sessionSvc: sessionSvc,
 	}
+}
+
+func (u *Usecase) requireSecretAccess(ctx context.Context, secretId string) error {
+	session := u.sessionSvc.FromContext(ctx)
+	if _, all := session.AccessibleAppIds(); all {
+		return nil
+	}
+
+	secret, _, err := u.secretSvc.Get(ctx, secretId, true)
+	if err != nil {
+		return fmt.Errorf("secretSvc.Get: %w", err)
+	}
+	if !session.HasAppAccess(secret.AppId) {
+		return errs.NoPermission
+	}
+	return nil
 }
 
 func (u *Usecase) validateEdit(obj *model.Edit, forCreate bool) error {
@@ -48,6 +66,16 @@ func (u *Usecase) List(ctx context.Context, pars *model.ListReq) ([]*model.Main,
 			return nil, 0, err
 		}
 	}
+
+	if _, all := u.sessionSvc.FromContext(ctx).AccessibleAppIds(); !all {
+		if pars.SecretId == nil {
+			return nil, 0, errs.NoPermission
+		}
+		if err := u.requireSecretAccess(ctx, *pars.SecretId); err != nil {
+			return nil, 0, err
+		}
+	}
+
 	items, tCount, err := u.svc.List(ctx, pars)
 	if err != nil {
 		return nil, 0, fmt.Errorf("svc.List: %w", err)
@@ -63,14 +91,20 @@ func (u *Usecase) Get(ctx context.Context, id string) (*model.Main, error) {
 	if err != nil {
 		return nil, fmt.Errorf("svc.Get: %w", err)
 	}
+	if err = u.requireSecretAccess(ctx, result.SecretId); err != nil {
+		return nil, err
+	}
 	return result, nil
 }
 
 func (u *Usecase) Create(ctx context.Context, obj *model.Edit) (string, error) {
-	if !u.sessionSvc.CtxIsAdmin(ctx) {
-		return "", errs.NoPermission
+	if !u.sessionSvc.CtxIsAuthorized(ctx) {
+		return "", errs.NotAuthorized
 	}
 	if err := u.validateEdit(obj, true); err != nil {
+		return "", err
+	}
+	if err := u.requireSecretAccess(ctx, *obj.SecretId); err != nil {
 		return "", err
 	}
 	newId, err := u.svc.Create(ctx, obj)
@@ -81,8 +115,8 @@ func (u *Usecase) Create(ctx context.Context, obj *model.Edit) (string, error) {
 }
 
 func (u *Usecase) Update(ctx context.Context, id string, obj *model.Edit) error {
-	if !u.sessionSvc.CtxIsAdmin(ctx) {
-		return errs.NoPermission
+	if !u.sessionSvc.CtxIsAuthorized(ctx) {
+		return errs.NotAuthorized
 	}
 	if id == "" {
 		return errs.IdRequired
@@ -90,20 +124,43 @@ func (u *Usecase) Update(ctx context.Context, id string, obj *model.Edit) error 
 	if err := u.validateEdit(obj, false); err != nil {
 		return err
 	}
-	if err := u.svc.Update(ctx, id, obj); err != nil {
+
+	current, _, err := u.svc.Get(ctx, id, true)
+	if err != nil {
+		return fmt.Errorf("svc.Get: %w", err)
+	}
+	if err = u.requireSecretAccess(ctx, current.SecretId); err != nil {
+		return err
+	}
+	if obj.SecretId != nil && *obj.SecretId != current.SecretId {
+		if err = u.requireSecretAccess(ctx, *obj.SecretId); err != nil {
+			return err
+		}
+	}
+
+	if err = u.svc.Update(ctx, id, obj); err != nil {
 		return fmt.Errorf("svc.Update: %w", err)
 	}
 	return nil
 }
 
 func (u *Usecase) Delete(ctx context.Context, id string) error {
-	if !u.sessionSvc.CtxIsAdmin(ctx) {
-		return errs.NoPermission
+	if !u.sessionSvc.CtxIsAuthorized(ctx) {
+		return errs.NotAuthorized
 	}
 	if id == "" {
 		return errs.IdRequired
 	}
-	if err := u.svc.Delete(ctx, id); err != nil {
+
+	current, _, err := u.svc.Get(ctx, id, true)
+	if err != nil {
+		return fmt.Errorf("svc.Get: %w", err)
+	}
+	if err = u.requireSecretAccess(ctx, current.SecretId); err != nil {
+		return err
+	}
+
+	if err = u.svc.Delete(ctx, id); err != nil {
 		return fmt.Errorf("svc.Delete: %w", err)
 	}
 	return nil

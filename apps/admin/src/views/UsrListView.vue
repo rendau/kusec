@@ -237,6 +237,22 @@ const columns: DataTableColumns<UsrMain> = [
       ),
   },
   {
+    title: 'Access',
+    key: 'app_ids',
+    width: 130,
+    // Admins and users with no scope reach all apps; otherwise it's limited.
+    render: (row) => {
+      const count = row.is_admin ? 0 : (row.app_ids?.length ?? 0)
+      return count === 0
+        ? h(NTag, { size: 'small' }, { default: () => 'All apps' })
+        : h(
+            NTag,
+            { type: 'info', size: 'small' },
+            { default: () => `${count} app${count === 1 ? '' : 's'}` },
+          )
+    },
+  },
+  {
     title: 'Actions',
     key: 'actions',
     width: 140,

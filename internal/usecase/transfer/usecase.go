@@ -42,7 +42,14 @@ func (u *Usecase) Tree(ctx context.Context) ([]*TreeApp, error) {
 		return nil, errs.NotAuthorized
 	}
 
-	apps, _, err := u.appSvc.List(ctx, &appModel.ListReq{})
+	accessibleAppIds, all := u.sessionSvc.FromContext(ctx).AccessibleAppIds()
+
+	listReq := &appModel.ListReq{}
+	if !all {
+		listReq.Ids = accessibleAppIds
+	}
+
+	apps, _, err := u.appSvc.List(ctx, listReq)
 	if err != nil {
 		return nil, fmt.Errorf("appSvc.List: %w", err)
 	}

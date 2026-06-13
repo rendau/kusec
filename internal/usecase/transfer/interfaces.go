@@ -6,6 +6,7 @@ import (
 	appModel "github.com/mechta-market/kusec/internal/domain/app/model"
 	itemModel "github.com/mechta-market/kusec/internal/domain/item/model"
 	secretModel "github.com/mechta-market/kusec/internal/domain/secret/model"
+	sessionModel "github.com/mechta-market/kusec/internal/domain/session/model"
 )
 
 type AppServiceI interface {
@@ -21,6 +22,7 @@ type ItemServiceI interface {
 }
 
 type SessionServiceI interface {
+	FromContext(ctx context.Context) *sessionModel.Session
 	CtxIsAuthorized(ctx context.Context) bool
 	CtxIsAdmin(ctx context.Context) bool
 }

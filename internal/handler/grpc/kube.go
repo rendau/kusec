@@ -30,8 +30,13 @@ func (h *Kube) ListNamespaces(ctx context.Context, _ *emptypb.Empty) (*proto.Kub
 	}, nil
 }
 
-func (h *Kube) SyncSecrets(ctx context.Context, _ *emptypb.Empty) (*proto.KubeSyncSecretsRep, error) {
-	result, err := h.usecase.SyncSecrets(ctx)
+func (h *Kube) SyncSecrets(ctx context.Context, req *proto.KubeSyncSecretsReq) (*proto.KubeSyncSecretsRep, error) {
+	var appId *string
+	if req != nil && req.AppId != "" {
+		appId = &req.AppId
+	}
+
+	result, err := h.usecase.SyncSecrets(ctx, appId)
 	if err != nil {
 		return nil, err
 	}

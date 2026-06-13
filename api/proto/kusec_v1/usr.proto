@@ -83,6 +83,7 @@ message UsrMain {
   bool is_admin = 3;
   string name = 4;
   string username = 5;
+  repeated string app_ids = 6;
 }
 
 // List
@@ -113,6 +114,7 @@ message UsrCreateReq {
   string name = 3;
   string username = 4;
   string password = 5;
+  repeated string app_ids = 6;
 }
 
 // Create response
@@ -130,6 +132,7 @@ message UsrUpdateReq {
   optional string name = 4;
   optional string username = 5;
   optional string password = 6;
+  repeated string app_ids = 7;
 }
 
 // Auth

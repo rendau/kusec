@@ -40,7 +40,8 @@ type Edit struct {
 type ListReq struct {
 	commonModel.ListParams
 
-	SecretId *string
-	Active   *bool
-	Search   *string
+	SecretId  *string
+	SecretIds []string
+	Active    *bool
+	Search    *string
 }

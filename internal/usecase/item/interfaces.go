@@ -4,6 +4,8 @@ import (
 	"context"
 
 	"github.com/mechta-market/kusec/internal/domain/item/model"
+	secretModel "github.com/mechta-market/kusec/internal/domain/secret/model"
+	sessionModel "github.com/mechta-market/kusec/internal/domain/session/model"
 )
 
 type ServiceI interface {
@@ -14,7 +16,12 @@ type ServiceI interface {
 	Delete(ctx context.Context, id string) error
 }
 
+type SecretServiceI interface {
+	Get(ctx context.Context, id string, errNE bool) (*secretModel.Main, bool, error)
+}
+
 type SessionServiceI interface {
+	FromContext(ctx context.Context) *sessionModel.Session
 	CtxIsAuthorized(ctx context.Context) bool
 	CtxIsAdmin(ctx context.Context) bool
 }

@@ -1,15 +1,18 @@
 <script setup lang="ts">
+import { watch } from 'vue'
 import {
   NDescriptions,
   NDescriptionsItem,
   NDrawer,
   NDrawerContent,
+  NSpace,
   NSpin,
   NTag,
   NText,
 } from 'naive-ui'
 
 import { getUser } from '@/api/usr'
+import { useAppOptions } from '@/composables/useAppOptions'
 import { useDrawerResource } from '@/composables/useDrawerResource'
 
 const props = defineProps<{
@@ -22,11 +25,18 @@ const emit = defineEmits<{
   'update:show': [value: boolean]
 }>()
 
+const { ensure, nameOf } = useAppOptions()
+
 const { loading, item: user } = useDrawerResource({
   show: () => props.show,
   id: () => props.userId,
   fetch: getUser,
   onError: () => emit('update:show', false),
+})
+
+// Resolve app names for the access list whenever a user is loaded.
+watch(user, (value) => {
+  for (const id of value?.app_ids ?? []) void ensure(id)
 })
 </script>
 
@@ -64,6 +74,16 @@ const { loading, item: user } = useDrawerResource({
             <NTag :type="user.active ? 'success' : 'default'" size="small">
               {{ user.active ? 'Active' : 'Inactive' }}
             </NTag>
+          </NDescriptionsItem>
+          <NDescriptionsItem label="Application access">
+            <NText v-if="user.is_admin || !user.app_ids?.length" :depth="3">
+              All applications
+            </NText>
+            <NSpace v-else :size="4">
+              <NTag v-for="id in user.app_ids" :key="id" size="small">
+                {{ nameOf(id) }}
+              </NTag>
+            </NSpace>
           </NDescriptionsItem>
         </NDescriptions>
         <div v-else style="min-height: 120px" />

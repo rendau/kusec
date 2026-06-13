@@ -23,6 +23,7 @@ import { storeToRefs } from 'pinia'
 import {
   ChevronDown,
   ChevronUp,
+  CloudUpload,
   Eye,
   EyeOff,
   InfoCircle,
@@ -36,9 +37,11 @@ import { getApp } from '@/api/app'
 import { deleteSecret, listSecrets } from '@/api/secret'
 import type { AppMain, SecretMain } from '@/api/types'
 import { useClipboard } from '@/composables/useClipboard'
+import { useKubeSync } from '@/composables/useKubeSync'
 import { itemsRevealCommandKey } from '@/constants/injection'
 import type { RevealCommand } from '@/constants/injection'
 import { useAppsStore } from '@/stores/apps'
+import { useAuthStore } from '@/stores/auth'
 
 import AppDeleteModal from '@/components/app/AppDeleteModal.vue'
 import AppFormModal from '@/components/app/AppFormModal.vue'
@@ -53,6 +56,13 @@ const { copy } = useClipboard()
 
 const appsStore = useAppsStore()
 const { apps } = storeToRefs(appsStore)
+
+// Creating/editing/deleting applications is admin-only on the backend; regular
+// users still browse apps and manage secrets/items within their access scope.
+const { isAdmin } = storeToRefs(useAuthStore())
+
+// Syncing this app's secrets to the cluster is allowed for anyone with access.
+const { syncing, confirmSync } = useKubeSync()
 
 const appId = computed(() =>
   typeof route.params.id === 'string' ? route.params.id : null,
@@ -356,11 +366,17 @@ watch(apps, () => {
 
 <template>
   <div v-if="!appId" class="workspace-empty">
-    <NEmpty description="Select an application from the sidebar, or create one.">
+    <NEmpty
+      :description="
+        isAdmin
+          ? 'Select an application from the sidebar, or create one.'
+          : 'Select an application from the sidebar.'
+      "
+    >
       <template #extra>
         <NSpace vertical :size="12" align="center">
           <NText depth="3">Applications hold secrets, and secrets hold items.</NText>
-          <NButton type="primary" @click="showAppForm = true">
+          <NButton v-if="isAdmin" type="primary" @click="showAppForm = true">
             <template #icon>
               <NIcon :component="Plus" />
             </template>
@@ -391,18 +407,35 @@ watch(apps, () => {
 
         <template #extra>
           <NSpace v-if="app" :size="8">
-            <NButton size="small" @click="openAppEdit">
+            <NButton
+              size="small"
+              :loading="syncing"
+              @click="confirmSync({ appId: app.id, appName: app.name })"
+            >
               <template #icon>
-                <NIcon :component="Pencil" />
+                <NIcon :component="CloudUpload" />
               </template>
-              Edit
+              Sync to Kubernetes
             </NButton>
-            <NButton size="small" type="error" secondary @click="showAppDelete = true">
-              <template #icon>
-                <NIcon :component="Trash" />
-              </template>
-              Delete
-            </NButton>
+            <template v-if="isAdmin">
+              <NButton size="small" @click="openAppEdit">
+                <template #icon>
+                  <NIcon :component="Pencil" />
+                </template>
+                Edit
+              </NButton>
+              <NButton
+                size="small"
+                type="error"
+                secondary
+                @click="showAppDelete = true"
+              >
+                <template #icon>
+                  <NIcon :component="Trash" />
+                </template>
+                Delete
+              </NButton>
+            </template>
           </NSpace>
         </template>
 

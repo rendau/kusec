@@ -3,21 +3,26 @@ import { computed, h } from 'vue'
 import type { Component as VueComponent } from 'vue'
 import { RouterLink, useRoute, useRouter } from 'vue-router'
 import {
+  NButton,
   NDropdown,
+  NIcon,
   NLayout,
   NLayoutHeader,
   NLayoutSider,
   NLayoutContent,
   NMenu,
   NTag,
+  NTooltip,
   useDialog,
   useThemeVars,
 } from 'naive-ui'
 import type { DropdownOption, MenuOption } from 'naive-ui'
+import { CloudUpload } from '@vicons/tabler'
 import { storeToRefs } from 'pinia'
 
 import { useAppStore } from '@/stores/app'
 import { useAuthStore } from '@/stores/auth'
+import { useKubeSync } from '@/composables/useKubeSync'
 
 import AppNavSidebar from '@/components/app/AppNavSidebar.vue'
 
@@ -51,6 +56,10 @@ function startResize(event: MouseEvent): void {
 const authStore = useAuthStore()
 const router = useRouter()
 const dialog = useDialog()
+
+// Global "sync all accessible apps" action — lives in the header so it stays
+// reachable from any page (per-app sync lives inside each app's workspace).
+const { syncing, confirmSync } = useKubeSync()
 
 const route = useRoute()
 
@@ -121,14 +130,36 @@ function confirmLogout(): void {
           class="app-header__nav"
         />
       </div>
-      <NDropdown trigger="click" :options="userMenuOptions" @select="onUserMenuSelect">
-        <button class="app-header__user" type="button">
-          <span class="app-header__user-name">{{ profileName }}</span>
-          <NTag size="small" :type="authStore.isAdmin ? 'success' : 'default'">
-            {{ profileRole }}
-          </NTag>
-        </button>
-      </NDropdown>
+      <div class="app-header__right">
+        <NTooltip>
+          <template #trigger>
+            <NButton
+              quaternary
+              circle
+              :loading="syncing"
+              aria-label="Sync all to Kubernetes"
+              @click="confirmSync()"
+            >
+              <template #icon>
+                <NIcon :component="CloudUpload" />
+              </template>
+            </NButton>
+          </template>
+          Sync all to Kubernetes
+        </NTooltip>
+        <NDropdown
+          trigger="click"
+          :options="userMenuOptions"
+          @select="onUserMenuSelect"
+        >
+          <button class="app-header__user" type="button">
+            <span class="app-header__user-name">{{ profileName }}</span>
+            <NTag size="small" :type="authStore.isAdmin ? 'success' : 'default'">
+              {{ profileRole }}
+            </NTag>
+          </button>
+        </NDropdown>
+      </div>
     </NLayoutHeader>
     <NLayout has-sider position="absolute" style="top: 56px">
       <NLayoutSider
@@ -198,6 +229,12 @@ function confirmLogout(): void {
 
 .app-header__nav {
   background: transparent;
+}
+
+.app-header__right {
+  display: flex;
+  align-items: center;
+  gap: 8px;
 }
 
 .app-header__user {

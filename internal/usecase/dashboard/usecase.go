@@ -49,35 +49,57 @@ func (u *Usecase) Get(ctx context.Context) (*Summary, error) {
 		return nil, errs.NotAuthorized
 	}
 
-	summary := &Summary{}
-	var err error
+	appScope, all := u.sessionSvc.FromContext(ctx).AccessibleAppIds()
 
-	if summary.App, err = u.appCount(ctx); err != nil {
+	var err error
+	var secretScope []string
+	if !all {
+		secretScope, err = u.accessibleSecretIds(ctx, appScope)
+		if err != nil {
+			return nil, err
+		}
+	}
+
+	summary := &Summary{}
+
+	if summary.App, err = u.appCount(ctx, appScope); err != nil {
 		return nil, err
 	}
-	if summary.Secret, err = u.secretCount(ctx); err != nil {
+	if summary.Secret, err = u.secretCount(ctx, appScope); err != nil {
 		return nil, err
 	}
-	if summary.Item, err = u.itemCount(ctx); err != nil {
+	if summary.Item, err = u.itemCount(ctx, !all, secretScope); err != nil {
 		return nil, err
 	}
 	if summary.Usr, err = u.usrCount(ctx); err != nil {
 		return nil, err
 	}
-	if summary.RecentSecrets, err = u.recentSecrets(ctx); err != nil {
+	if summary.RecentSecrets, err = u.recentSecrets(ctx, appScope); err != nil {
 		return nil, err
 	}
 
 	return summary, nil
 }
 
-func (u *Usecase) appCount(ctx context.Context) (Count, error) {
-	_, total, err := u.appSvc.List(ctx, &appModel.ListReq{ListParams: countParams()})
+func (u *Usecase) accessibleSecretIds(ctx context.Context, appScope []string) ([]string, error) {
+	if len(appScope) == 0 {
+		return nil, nil
+	}
+	secrets, _, err := u.secretSvc.List(ctx, &secretModel.ListReq{AppIds: appScope})
+	if err != nil {
+		return nil, fmt.Errorf("secretSvc.List(ids): %w", err)
+	}
+	return lo.Map(secrets, func(s *secretModel.Main, _ int) string { return s.Id }), nil
+}
+
+func (u *Usecase) appCount(ctx context.Context, appScope []string) (Count, error) {
+	_, total, err := u.appSvc.List(ctx, &appModel.ListReq{ListParams: countParams(), Ids: appScope})
 	if err != nil {
 		return Count{}, fmt.Errorf("appSvc.List: %w", err)
 	}
 	_, active, err := u.appSvc.List(ctx, &appModel.ListReq{
 		ListParams: countParams(),
+		Ids:        appScope,
 		Active:     lo.ToPtr(true),
 	})
 	if err != nil {
@@ -86,13 +108,14 @@ func (u *Usecase) appCount(ctx context.Context) (Count, error) {
 	return Count{Total: total, Active: active}, nil
 }
 
-func (u *Usecase) secretCount(ctx context.Context) (Count, error) {
-	_, total, err := u.secretSvc.List(ctx, &secretModel.ListReq{ListParams: countParams()})
+func (u *Usecase) secretCount(ctx context.Context, appScope []string) (Count, error) {
+	_, total, err := u.secretSvc.List(ctx, &secretModel.ListReq{ListParams: countParams(), AppIds: appScope})
 	if err != nil {
 		return Count{}, fmt.Errorf("secretSvc.List: %w", err)
 	}
 	_, active, err := u.secretSvc.List(ctx, &secretModel.ListReq{
 		ListParams: countParams(),
+		AppIds:     appScope,
 		Active:     lo.ToPtr(true),
 	})
 	if err != nil {
@@ -101,13 +124,17 @@ func (u *Usecase) secretCount(ctx context.Context) (Count, error) {
 	return Count{Total: total, Active: active}, nil
 }
 
-func (u *Usecase) itemCount(ctx context.Context) (Count, error) {
-	_, total, err := u.itemSvc.List(ctx, &itemModel.ListReq{ListParams: countParams()})
+func (u *Usecase) itemCount(ctx context.Context, scoped bool, secretScope []string) (Count, error) {
+	if scoped && len(secretScope) == 0 {
+		return Count{}, nil
+	}
+	_, total, err := u.itemSvc.List(ctx, &itemModel.ListReq{ListParams: countParams(), SecretIds: secretScope})
 	if err != nil {
 		return Count{}, fmt.Errorf("itemSvc.List: %w", err)
 	}
 	_, active, err := u.itemSvc.List(ctx, &itemModel.ListReq{
 		ListParams: countParams(),
+		SecretIds:  secretScope,
 		Active:     lo.ToPtr(true),
 	})
 	if err != nil {
@@ -131,13 +158,14 @@ func (u *Usecase) usrCount(ctx context.Context) (Count, error) {
 	return Count{Total: total, Active: active}, nil
 }
 
-func (u *Usecase) recentSecrets(ctx context.Context) ([]*RecentSecret, error) {
+func (u *Usecase) recentSecrets(ctx context.Context, appScope []string) ([]*RecentSecret, error) {
 	secrets, _, err := u.secretSvc.List(ctx, &secretModel.ListReq{
 		ListParams: commonModel.ListParams{
 			Page:     0,
 			PageSize: recentSecretsLimit,
 			Sort:     []string{"-updated_at"},
 		},
+		AppIds: appScope,
 	})
 	if err != nil {
 		return nil, fmt.Errorf("secretSvc.List(recent): %w", err)

@@ -134,18 +134,23 @@ func (s *Service) FromToken(tokenStr string) (*sessionModel.Session, error) {
 	}
 
 	return &sessionModel.Session{
-		Id:    usrId,
-		Admin: isAdmin,
+		Id:     usrId,
+		Admin:  isAdmin,
+		AppIds: stringSliceFromClaim(claims["app_ids"]),
 	}, nil
 }
 
 // CreateToken подписывает короткоживущий access-токен с данными пользователя.
-func (s *Service) CreateToken(usrId int64, isAdmin bool) (string, error) {
+func (s *Service) CreateToken(usrId int64, isAdmin bool, appIds []string) (string, error) {
 	now := time.Now().UTC()
+	if appIds == nil {
+		appIds = []string{}
+	}
 	return s.signClaims(jwtv5.MapClaims{
 		"typ":      tokenTypeAccess,
 		"id":       usrId,
 		"is_admin": isAdmin,
+		"app_ids":  appIds,
 		"iat":      now.Unix(),
 		"exp":      now.Add(accessTokenTTL).Unix(),
 	})
@@ -249,6 +254,20 @@ func boolFromClaim(v any) (bool, error) {
 	default:
 		return false, fmt.Errorf("invalid bool claim")
 	}
+}
+
+func stringSliceFromClaim(v any) []string {
+	raw, ok := v.([]any)
+	if !ok {
+		return nil
+	}
+	result := make([]string, 0, len(raw))
+	for _, item := range raw {
+		if str, ok := item.(string); ok {
+			result = append(result, str)
+		}
+	}
+	return result
 }
 
 func usrIDFromClaim(v any) (int64, error) {

@@ -12,6 +12,8 @@ type Main struct {
 	Name     string
 	Username string
 	Password string // хеш пароля; наружу (в proto) не отдаётся — usecase обнуляет перед ответом
+
+	AppIds []string
 }
 
 // Edit — мутация (все поля pointer-типы для partial update)
@@ -21,6 +23,8 @@ type Edit struct {
 	Name     *string
 	Username *string
 	Password *string
+
+	AppIds []string
 }
 
 // ListReq — параметры выборки

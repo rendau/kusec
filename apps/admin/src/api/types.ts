@@ -17,6 +17,11 @@ export interface UsrMain {
   is_admin: boolean
   name: string
   username: string
+  /**
+   * App ids the user may access. An empty list means *all* applications
+   * (the backend treats no scope as full access); admins always have all.
+   */
+  app_ids?: string[]
 }
 
 /** `UsrLoginRep` — the issued token pair (short-lived access + refresh). */
@@ -42,6 +47,8 @@ export interface UsrCreateReq {
   name: string
   username: string
   password: string
+  /** App access scope; empty/omitted grants access to all applications. */
+  app_ids?: string[]
 }
 
 /** `UsrCreateRep`. */
@@ -80,6 +87,8 @@ export interface UsrUpdateReq {
   name?: string
   username?: string
   password?: string
+  /** App access scope; empty list grants access to all applications. */
+  app_ids?: string[]
 }
 
 /**
@@ -270,6 +279,14 @@ export interface KubeListNamespacesRep {
   /** false — the service runs outside a cluster (namespaces is empty). */
   in_cluster: boolean
   namespaces: string[]
+}
+
+/**
+ * `KubeSyncSecretsReq` — sync scope. An empty/omitted `app_id` syncs every
+ * application the caller can access; a set `app_id` syncs just that one.
+ */
+export interface KubeSyncSecretsReq {
+  app_id?: string
 }
 
 /**

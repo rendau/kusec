@@ -18,6 +18,7 @@ func EncodeUsrMain(v *domainModel.Main, _ int) *proto.UsrMain {
 		IsAdmin:  v.IsAdmin,
 		Name:     v.Name,
 		Username: v.Username,
+		AppIds:   v.AppIds,
 	}
 }
 
@@ -45,6 +46,7 @@ func DecodeUsrCreateReq(v *proto.UsrCreateReq) *domainModel.Edit {
 		Name:     &v.Name,
 		Username: &v.Username,
 		Password: &v.Password,
+		AppIds:   v.AppIds,
 	}
 }
 
@@ -58,6 +60,7 @@ func DecodeUsrUpdateReq(v *proto.UsrUpdateReq) *domainModel.Edit {
 		Name:     v.Name,
 		Username: v.Username,
 		Password: v.Password,
+		AppIds:   v.AppIds,
 	}
 }
 

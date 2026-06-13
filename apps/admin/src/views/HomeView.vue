@@ -14,16 +14,13 @@ import {
   NTag,
   NText,
   NThing,
-  useDialog,
   useMessage,
-  useNotification,
 } from 'naive-ui'
-import { Apps, CloudUpload, Key, Lock, Plus, Users } from '@vicons/tabler'
+import { Apps, Key, Lock, Plus, Users } from '@vicons/tabler'
 import type { Component } from 'vue'
 
-import { ApiError, apiErrorMessage } from '@/api/http'
+import { apiErrorMessage } from '@/api/http'
 import { getDashboard } from '@/api/dashboard'
-import { syncKubeSecrets } from '@/api/kube'
 import type { DashboardRecentSecret, DashboardRep } from '@/api/types'
 import { useAppsStore } from '@/stores/apps'
 import { useAuthStore } from '@/stores/auth'
@@ -33,8 +30,6 @@ import AppFormModal from '@/components/app/AppFormModal.vue'
 
 const router = useRouter()
 const message = useMessage()
-const dialog = useDialog()
-const notification = useNotification()
 const appsStore = useAppsStore()
 const authStore = useAuthStore()
 
@@ -108,65 +103,6 @@ async function onAppSaved(createdId?: string): Promise<void> {
   await loadDashboard()
 }
 
-// ── Sync to Kubernetes ─────────────────────────────────
-
-const syncing = ref(false)
-
-const SYNC_ERROR_HINTS: Record<string, string> = {
-  not_in_cluster: 'The service is not running inside a Kubernetes cluster',
-  sync_in_progress: 'A sync is already in progress, try again in a moment',
-  no_permission: 'Only administrators can sync secrets',
-}
-
-function confirmKubeSync(): void {
-  dialog.warning({
-    title: 'Sync secrets to Kubernetes',
-    content:
-      'Active applications, secrets and items will be applied to the cluster: ' +
-      'missing secrets are created, changed ones updated, and kusec-managed ' +
-      'secrets without active records are deleted. Continue?',
-    positiveText: 'Sync',
-    negativeText: 'Cancel',
-    onPositiveClick: () => {
-      void runKubeSync()
-    },
-  })
-}
-
-async function runKubeSync(): Promise<void> {
-  syncing.value = true
-  try {
-    const rep = await syncKubeSecrets()
-    const summary = [
-      `created ${rep.created?.length ?? 0}`,
-      `updated ${rep.updated?.length ?? 0}`,
-      `deleted ${rep.deleted?.length ?? 0}`,
-      `unchanged ${toCount(rep.unchanged) ?? 0}`,
-    ].join(' · ')
-
-    if (rep.errors?.length) {
-      notification.warning({
-        title: 'Kubernetes sync finished with errors',
-        content: `${summary}\n\n${rep.errors.join('\n')}`,
-        // Ошибки требуют внимания — закрывается вручную.
-        duration: 0,
-      })
-    } else {
-      notification.success({
-        title: 'Kubernetes sync finished',
-        content: summary,
-        duration: 6000,
-      })
-    }
-  } catch (error) {
-    const hint =
-      error instanceof ApiError ? SYNC_ERROR_HINTS[error.code] : undefined
-    message.error(hint ?? apiErrorMessage(error, 'Kubernetes sync failed'))
-  } finally {
-    syncing.value = false
-  }
-}
-
 onMounted(() => {
   void loadDashboard()
 })
@@ -198,31 +134,27 @@ onMounted(() => {
 
     <NCard title="Recently updated secrets">
       <template #header-extra>
-        <NSpace :size="8">
-          <NButton
-            v-if="authStore.isAdmin"
-            size="small"
-            :loading="syncing"
-            @click="confirmKubeSync"
-          >
-            <template #icon>
-              <NIcon :component="CloudUpload" />
-            </template>
-            Sync to Kubernetes
-          </NButton>
-          <NButton size="small" type="primary" @click="showAppForm = true">
-            <template #icon>
-              <NIcon :component="Plus" />
-            </template>
-            New application
-          </NButton>
-        </NSpace>
+        <NButton
+          v-if="authStore.isAdmin"
+          size="small"
+          type="primary"
+          @click="showAppForm = true"
+        >
+          <template #icon>
+            <NIcon :component="Plus" />
+          </template>
+          New application
+        </NButton>
       </template>
 
       <NSpin :show="loading">
         <NEmpty
           v-if="!loading && recentSecrets.length === 0"
-          description="No secrets yet — create an application and add one."
+          :description="
+            authStore.isAdmin
+              ? 'No secrets yet — create an application and add one.'
+              : 'No secrets yet.'
+          "
         />
         <NSpace v-else vertical :size="0">
           <button

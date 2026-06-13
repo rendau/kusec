@@ -6,6 +6,7 @@ import (
 	appModel "github.com/mechta-market/kusec/internal/domain/app/model"
 	itemModel "github.com/mechta-market/kusec/internal/domain/item/model"
 	secretModel "github.com/mechta-market/kusec/internal/domain/secret/model"
+	sessionModel "github.com/mechta-market/kusec/internal/domain/session/model"
 	usrModel "github.com/mechta-market/kusec/internal/domain/usr/model"
 )
 
@@ -27,5 +28,6 @@ type UsrServiceI interface {
 }
 
 type SessionServiceI interface {
+	FromContext(ctx context.Context) *sessionModel.Session
 	CtxIsAuthorized(ctx context.Context) bool
 }

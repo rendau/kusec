@@ -27,6 +27,17 @@ func New(svc ServiceI, appSvc AppServiceI, sessionSvc SessionServiceI) *Usecase 
 	}
 }
 
+func (u *Usecase) accessibleAppIds(ctx context.Context) ([]string, bool) {
+	return u.sessionSvc.FromContext(ctx).AccessibleAppIds()
+}
+
+func (u *Usecase) requireAppAccess(ctx context.Context, appId string) error {
+	if !u.sessionSvc.FromContext(ctx).HasAppAccess(appId) {
+		return errs.NoPermission
+	}
+	return nil
+}
+
 func (u *Usecase) fillKubeSecretName(ctx context.Context, items []*model.Main) error {
 	if len(items) == 0 {
 		return nil
@@ -81,6 +92,18 @@ func (u *Usecase) List(ctx context.Context, pars *model.ListReq) ([]*model.Main,
 			return nil, 0, err
 		}
 	}
+
+	appIds, all := u.accessibleAppIds(ctx)
+	if !all {
+		if pars.AppId != nil {
+			if !lo.Contains(appIds, *pars.AppId) {
+				return nil, 0, errs.NoPermission
+			}
+		} else {
+			pars.AppIds = appIds
+		}
+	}
+
 	items, tCount, err := u.svc.List(ctx, pars)
 	if err != nil {
 		return nil, 0, fmt.Errorf("svc.List: %w", err)
@@ -99,6 +122,9 @@ func (u *Usecase) Get(ctx context.Context, id string) (*model.Main, error) {
 	if err != nil {
 		return nil, fmt.Errorf("svc.Get: %w", err)
 	}
+	if err = u.requireAppAccess(ctx, result.AppId); err != nil {
+		return nil, err
+	}
 	if err = u.fillKubeSecretName(ctx, []*model.Main{result}); err != nil {
 		return nil, fmt.Errorf("fillKubeSecretName: %w", err)
 	}
@@ -106,10 +132,13 @@ func (u *Usecase) Get(ctx context.Context, id string) (*model.Main, error) {
 }
 
 func (u *Usecase) Create(ctx context.Context, obj *model.Edit) (string, error) {
-	if !u.sessionSvc.CtxIsAdmin(ctx) {
-		return "", errs.NoPermission
+	if !u.sessionSvc.CtxIsAuthorized(ctx) {
+		return "", errs.NotAuthorized
 	}
 	if err := u.validateEdit(obj, true); err != nil {
+		return "", err
+	}
+	if err := u.requireAppAccess(ctx, *obj.AppId); err != nil {
 		return "", err
 	}
 	newId, err := u.svc.Create(ctx, obj)
@@ -120,8 +149,8 @@ func (u *Usecase) Create(ctx context.Context, obj *model.Edit) (string, error) {
 }
 
 func (u *Usecase) Update(ctx context.Context, id string, obj *model.Edit) error {
-	if !u.sessionSvc.CtxIsAdmin(ctx) {
-		return errs.NoPermission
+	if !u.sessionSvc.CtxIsAuthorized(ctx) {
+		return errs.NotAuthorized
 	}
 	if id == "" {
 		return errs.IdRequired
@@ -129,20 +158,43 @@ func (u *Usecase) Update(ctx context.Context, id string, obj *model.Edit) error 
 	if err := u.validateEdit(obj, false); err != nil {
 		return err
 	}
-	if err := u.svc.Update(ctx, id, obj); err != nil {
+
+	current, _, err := u.svc.Get(ctx, id, true)
+	if err != nil {
+		return fmt.Errorf("svc.Get: %w", err)
+	}
+	if err = u.requireAppAccess(ctx, current.AppId); err != nil {
+		return err
+	}
+	if obj.AppId != nil && *obj.AppId != current.AppId {
+		if err = u.requireAppAccess(ctx, *obj.AppId); err != nil {
+			return err
+		}
+	}
+
+	if err = u.svc.Update(ctx, id, obj); err != nil {
 		return fmt.Errorf("svc.Update: %w", err)
 	}
 	return nil
 }
 
 func (u *Usecase) Delete(ctx context.Context, id string) error {
-	if !u.sessionSvc.CtxIsAdmin(ctx) {
-		return errs.NoPermission
+	if !u.sessionSvc.CtxIsAuthorized(ctx) {
+		return errs.NotAuthorized
 	}
 	if id == "" {
 		return errs.IdRequired
 	}
-	if err := u.svc.Delete(ctx, id); err != nil {
+
+	current, _, err := u.svc.Get(ctx, id, true)
+	if err != nil {
+		return fmt.Errorf("svc.Get: %w", err)
+	}
+	if err = u.requireAppAccess(ctx, current.AppId); err != nil {
+		return err
+	}
+
+	if err = u.svc.Delete(ctx, id); err != nil {
 		return fmt.Errorf("svc.Delete: %w", err)
 	}
 	return nil

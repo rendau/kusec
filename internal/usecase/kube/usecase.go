@@ -39,15 +39,25 @@ func (u *Usecase) ListNamespaces(ctx context.Context) ([]string, bool, error) {
 	return namespaces, inCluster, nil
 }
 
-func (u *Usecase) SyncSecrets(ctx context.Context) (*kubeService.SyncResult, error) {
+func (u *Usecase) SyncSecrets(ctx context.Context, appId *string) (*kubeService.SyncResult, error) {
 	if !u.sessionSvc.CtxIsAuthorized(ctx) {
 		return nil, errs.NotAuthorized
 	}
-	if !u.sessionSvc.CtxIsAdmin(ctx) {
-		return nil, errs.NoPermission
+
+	session := u.sessionSvc.FromContext(ctx)
+	accessibleAppIds, all := session.AccessibleAppIds()
+
+	var scope []string
+	if appId != nil && *appId != "" {
+		if !session.HasAppAccess(*appId) {
+			return nil, errs.NoPermission
+		}
+		scope = []string{*appId}
+	} else if !all {
+		scope = accessibleAppIds
 	}
 
-	result, err := u.svc.SyncSecrets(ctx)
+	result, err := u.svc.SyncSecrets(ctx, scope)
 	if err != nil {
 		// Сентинельные коды (not_in_cluster, sync_in_progress) пробрасываем
 		// как есть — интерцептор превратит их в осмысленный ответ клиенту.

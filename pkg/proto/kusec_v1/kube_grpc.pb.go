@@ -34,7 +34,7 @@ const (
 // Управляемые секреты помечаются лейблом app.kubernetes.io/managed-by=kusec;
 // удаляются только они.
 type KubeClient interface {
-	SyncSecrets(ctx context.Context, in *emptypb.Empty, opts ...grpc.CallOption) (*KubeSyncSecretsRep, error)
+	SyncSecrets(ctx context.Context, in *KubeSyncSecretsReq, opts ...grpc.CallOption) (*KubeSyncSecretsRep, error)
 	ListNamespaces(ctx context.Context, in *emptypb.Empty, opts ...grpc.CallOption) (*KubeListNamespacesRep, error)
 }
 
@@ -46,7 +46,7 @@ func NewKubeClient(cc grpc.ClientConnInterface) KubeClient {
 	return &kubeClient{cc}
 }
 
-func (c *kubeClient) SyncSecrets(ctx context.Context, in *emptypb.Empty, opts ...grpc.CallOption) (*KubeSyncSecretsRep, error) {
+func (c *kubeClient) SyncSecrets(ctx context.Context, in *KubeSyncSecretsReq, opts ...grpc.CallOption) (*KubeSyncSecretsRep, error) {
 	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
 	out := new(KubeSyncSecretsRep)
 	err := c.cc.Invoke(ctx, Kube_SyncSecrets_FullMethodName, in, out, cOpts...)
@@ -76,7 +76,7 @@ func (c *kubeClient) ListNamespaces(ctx context.Context, in *emptypb.Empty, opts
 // Управляемые секреты помечаются лейблом app.kubernetes.io/managed-by=kusec;
 // удаляются только они.
 type KubeServer interface {
-	SyncSecrets(context.Context, *emptypb.Empty) (*KubeSyncSecretsRep, error)
+	SyncSecrets(context.Context, *KubeSyncSecretsReq) (*KubeSyncSecretsRep, error)
 	ListNamespaces(context.Context, *emptypb.Empty) (*KubeListNamespacesRep, error)
 	mustEmbedUnimplementedKubeServer()
 }
@@ -88,7 +88,7 @@ type KubeServer interface {
 // pointer dereference when methods are called.
 type UnimplementedKubeServer struct{}
 
-func (UnimplementedKubeServer) SyncSecrets(context.Context, *emptypb.Empty) (*KubeSyncSecretsRep, error) {
+func (UnimplementedKubeServer) SyncSecrets(context.Context, *KubeSyncSecretsReq) (*KubeSyncSecretsRep, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method SyncSecrets not implemented")
 }
 func (UnimplementedKubeServer) ListNamespaces(context.Context, *emptypb.Empty) (*KubeListNamespacesRep, error) {
@@ -116,7 +116,7 @@ func RegisterKubeServer(s grpc.ServiceRegistrar, srv KubeServer) {
 }
 
 func _Kube_SyncSecrets_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
-	in := new(emptypb.Empty)
+	in := new(KubeSyncSecretsReq)
 	if err := dec(in); err != nil {
 		return nil, err
 	}
@@ -128,7 +128,7 @@ func _Kube_SyncSecrets_Handler(srv interface{}, ctx context.Context, dec func(in
 		FullMethod: Kube_SyncSecrets_FullMethodName,
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(KubeServer).SyncSecrets(ctx, req.(*emptypb.Empty))
+		return srv.(KubeServer).SyncSecrets(ctx, req.(*KubeSyncSecretsReq))
 	}
 	return interceptor(ctx, in, info, handler)
 }

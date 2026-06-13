@@ -521,8 +521,7 @@
             "in": "body",
             "required": true,
             "schema": {
-              "type": "object",
-              "properties": {}
+              "$ref": "#/definitions/kusec_v1KubeSyncSecretsReq"
             }
           }
         ],
@@ -1507,6 +1506,14 @@
         }
       }
     },
+    "kusec_v1KubeSyncSecretsReq": {
+      "type": "object",
+      "properties": {
+        "app_id": {
+          "type": "string"
+        }
+      }
+    },
     "kusec_v1SecretCreateRep": {
       "type": "object",
       "properties": {
@@ -1757,6 +1764,12 @@
         },
         "password": {
           "type": "string"
+        },
+        "app_ids": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
         }
       }
     },
@@ -1815,6 +1828,12 @@
         },
         "username": {
           "type": "string"
+        },
+        "app_ids": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
         }
       }
     },
@@ -1843,6 +1862,12 @@
         },
         "password": {
           "type": "string"
+        },
+        "app_ids": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
         }
       }
     },

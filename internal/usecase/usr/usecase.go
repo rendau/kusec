@@ -24,7 +24,7 @@ func New(svc ServiceI, sessionSvc SessionServiceI) *Usecase {
 }
 
 func (u *Usecase) issueTokenPair(item *model.Main) (string, string, error) {
-	access, err := u.sessionSvc.CreateToken(item.Id, item.IsAdmin)
+	access, err := u.sessionSvc.CreateToken(item.Id, item.IsAdmin, item.AppIds)
 	if err != nil {
 		return "", "", fmt.Errorf("sessionSvc.CreateToken: %w", err)
 	}
@@ -222,6 +222,10 @@ func (u *Usecase) Update(ctx context.Context, id int64, obj *model.Edit) error {
 
 	if err := u.validateEdit(obj, false); err != nil {
 		return err
+	}
+
+	if obj.AppIds == nil {
+		obj.AppIds = []string{}
 	}
 
 	if err := u.svc.Update(ctx, id, obj); err != nil {

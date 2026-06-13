@@ -10,6 +10,7 @@ import (
 	"strings"
 	"sync"
 
+	"github.com/samber/lo"
 	corev1 "k8s.io/api/core/v1"
 	k8serrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -121,7 +122,7 @@ func (s *Service) ListNamespaces(ctx context.Context) ([]string, bool, error) {
 // Управляются только секреты с лейблом app.kubernetes.io/managed-by=kusec —
 // чужие секреты кластера не трогаются. Ошибки отдельных секретов собираются
 // в результат, не прерывая синхронизацию остальных.
-func (s *Service) SyncSecrets(ctx context.Context) (*SyncResult, error) {
+func (s *Service) SyncSecrets(ctx context.Context, appIds []string) (*SyncResult, error) {
 	if !s.mu.TryLock() {
 		return nil, errs.SyncInProgress
 	}
@@ -134,7 +135,7 @@ func (s *Service) SyncSecrets(ctx context.Context) (*SyncResult, error) {
 
 	result := &SyncResult{}
 
-	desired, err := s.buildDesired(ctx, result)
+	desired, err := s.buildDesired(ctx, result, appIds)
 	if err != nil {
 		return nil, err
 	}
@@ -146,9 +147,14 @@ func (s *Service) SyncSecrets(ctx context.Context) (*SyncResult, error) {
 		return nil, fmt.Errorf("k8s: list managed secrets: %w", err)
 	}
 
+	scopeSet := lo.SliceToMap(appIds, func(appId string) (string, bool) { return appId, true })
+
 	existing := make(map[string]*corev1.Secret, len(existingList.Items))
 	for i := range existingList.Items {
 		secret := &existingList.Items[i]
+		if !scopeSet[secret.Annotations[appIdAnnotation]] {
+			continue
+		}
 		existing[secret.Namespace+"/"+secret.Name] = secret
 	}
 
@@ -226,8 +232,8 @@ func (s *Service) SyncSecrets(ctx context.Context) (*SyncResult, error) {
 
 // buildDesired собирает желаемое состояние из базы: только active-записи
 // (app, secret, item). Невалидные секреты пропускаются с ошибкой в result.
-func (s *Service) buildDesired(ctx context.Context, result *SyncResult) (map[string]*desiredSecret, error) {
-	apps, _, err := s.appSvc.List(ctx, &appModel.ListReq{Active: new(true)})
+func (s *Service) buildDesired(ctx context.Context, result *SyncResult, appIds []string) (map[string]*desiredSecret, error) {
+	apps, _, err := s.appSvc.List(ctx, &appModel.ListReq{Ids: appIds, Active: new(true)})
 	if err != nil {
 		return nil, fmt.Errorf("appSvc.List: %w", err)
 	}

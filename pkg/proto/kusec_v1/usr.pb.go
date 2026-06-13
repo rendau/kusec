@@ -31,6 +31,7 @@ type UsrMain struct {
 	IsAdmin       bool                   `protobuf:"varint,3,opt,name=is_admin,json=isAdmin,proto3" json:"is_admin,omitempty"`
 	Name          string                 `protobuf:"bytes,4,opt,name=name,proto3" json:"name,omitempty"`
 	Username      string                 `protobuf:"bytes,5,opt,name=username,proto3" json:"username,omitempty"`
+	AppIds        []string               `protobuf:"bytes,6,rep,name=app_ids,json=appIds,proto3" json:"app_ids,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -98,6 +99,13 @@ func (x *UsrMain) GetUsername() string {
 		return x.Username
 	}
 	return ""
+}
+
+func (x *UsrMain) GetAppIds() []string {
+	if x != nil {
+		return x.AppIds
+	}
+	return nil
 }
 
 type UsrListReq struct {
@@ -271,6 +279,7 @@ type UsrCreateReq struct {
 	Name          string                 `protobuf:"bytes,3,opt,name=name,proto3" json:"name,omitempty"`
 	Username      string                 `protobuf:"bytes,4,opt,name=username,proto3" json:"username,omitempty"`
 	Password      string                 `protobuf:"bytes,5,opt,name=password,proto3" json:"password,omitempty"`
+	AppIds        []string               `protobuf:"bytes,6,rep,name=app_ids,json=appIds,proto3" json:"app_ids,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -340,6 +349,13 @@ func (x *UsrCreateReq) GetPassword() string {
 	return ""
 }
 
+func (x *UsrCreateReq) GetAppIds() []string {
+	if x != nil {
+		return x.AppIds
+	}
+	return nil
+}
+
 type UsrCreateRep struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
 	Id            int64                  `protobuf:"varint,1,opt,name=id,proto3" json:"id,omitempty"`
@@ -392,6 +408,7 @@ type UsrUpdateReq struct {
 	Name          *string                `protobuf:"bytes,4,opt,name=name,proto3,oneof" json:"name,omitempty"`
 	Username      *string                `protobuf:"bytes,5,opt,name=username,proto3,oneof" json:"username,omitempty"`
 	Password      *string                `protobuf:"bytes,6,opt,name=password,proto3,oneof" json:"password,omitempty"`
+	AppIds        []string               `protobuf:"bytes,7,rep,name=app_ids,json=appIds,proto3" json:"app_ids,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -466,6 +483,13 @@ func (x *UsrUpdateReq) GetPassword() string {
 		return *x.Password
 	}
 	return ""
+}
+
+func (x *UsrUpdateReq) GetAppIds() []string {
+	if x != nil {
+		return x.AppIds
+	}
+	return nil
 }
 
 type UsrLoginReq struct {
@@ -724,13 +748,14 @@ var File_kusec_v1_usr_proto protoreflect.FileDescriptor
 
 const file_kusec_v1_usr_proto_rawDesc = "" +
 	"\n" +
-	"\x12kusec_v1/usr.proto\x12\bkusec_v1\x1a\x1cgoogle/api/annotations.proto\x1a\x1bgoogle/protobuf/empty.proto\x1a\x13common/common.proto\"|\n" +
+	"\x12kusec_v1/usr.proto\x12\bkusec_v1\x1a\x1cgoogle/api/annotations.proto\x1a\x1bgoogle/protobuf/empty.proto\x1a\x13common/common.proto\"\x95\x01\n" +
 	"\aUsrMain\x12\x0e\n" +
 	"\x02id\x18\x01 \x01(\x03R\x02id\x12\x16\n" +
 	"\x06active\x18\x02 \x01(\bR\x06active\x12\x19\n" +
 	"\bis_admin\x18\x03 \x01(\bR\aisAdmin\x12\x12\n" +
 	"\x04name\x18\x04 \x01(\tR\x04name\x12\x1a\n" +
-	"\busername\x18\x05 \x01(\tR\busername\"\xc0\x01\n" +
+	"\busername\x18\x05 \x01(\tR\busername\x12\x17\n" +
+	"\aapp_ids\x18\x06 \x03(\tR\x06appIds\"\xc0\x01\n" +
 	"\n" +
 	"UsrListReq\x125\n" +
 	"\vlist_params\x18\x01 \x01(\v2\x14.common.ListParamsStR\n" +
@@ -746,23 +771,25 @@ const file_kusec_v1_usr_proto_rawDesc = "" +
 	"\x0fpagination_info\x18\x01 \x01(\v2\x18.common.PaginationInfoStR\x0epaginationInfo\x12+\n" +
 	"\aresults\x18\x02 \x03(\v2\x11.kusec_v1.UsrMainR\aresults\"\x1b\n" +
 	"\tUsrGetReq\x12\x0e\n" +
-	"\x02id\x18\x01 \x01(\x03R\x02id\"\x9d\x01\n" +
+	"\x02id\x18\x01 \x01(\x03R\x02id\"\xb6\x01\n" +
 	"\fUsrCreateReq\x12\x1b\n" +
 	"\x06active\x18\x01 \x01(\bH\x00R\x06active\x88\x01\x01\x12\x19\n" +
 	"\bis_admin\x18\x02 \x01(\bR\aisAdmin\x12\x12\n" +
 	"\x04name\x18\x03 \x01(\tR\x04name\x12\x1a\n" +
 	"\busername\x18\x04 \x01(\tR\busername\x12\x1a\n" +
-	"\bpassword\x18\x05 \x01(\tR\bpasswordB\t\n" +
+	"\bpassword\x18\x05 \x01(\tR\bpassword\x12\x17\n" +
+	"\aapp_ids\x18\x06 \x03(\tR\x06appIdsB\t\n" +
 	"\a_active\"\x1e\n" +
 	"\fUsrCreateRep\x12\x0e\n" +
-	"\x02id\x18\x01 \x01(\x03R\x02id\"\xf1\x01\n" +
+	"\x02id\x18\x01 \x01(\x03R\x02id\"\x8a\x02\n" +
 	"\fUsrUpdateReq\x12\x0e\n" +
 	"\x02id\x18\x01 \x01(\x03R\x02id\x12\x1b\n" +
 	"\x06active\x18\x02 \x01(\bH\x00R\x06active\x88\x01\x01\x12\x1e\n" +
 	"\bis_admin\x18\x03 \x01(\bH\x01R\aisAdmin\x88\x01\x01\x12\x17\n" +
 	"\x04name\x18\x04 \x01(\tH\x02R\x04name\x88\x01\x01\x12\x1f\n" +
 	"\busername\x18\x05 \x01(\tH\x03R\busername\x88\x01\x01\x12\x1f\n" +
-	"\bpassword\x18\x06 \x01(\tH\x04R\bpassword\x88\x01\x01B\t\n" +
+	"\bpassword\x18\x06 \x01(\tH\x04R\bpassword\x88\x01\x01\x12\x17\n" +
+	"\aapp_ids\x18\a \x03(\tR\x06appIdsB\t\n" +
 	"\a_activeB\v\n" +
 	"\t_is_adminB\a\n" +
 	"\x05_nameB\v\n" +

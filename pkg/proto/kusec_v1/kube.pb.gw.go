@@ -38,7 +38,7 @@ var (
 
 func request_Kube_SyncSecrets_0(ctx context.Context, marshaler runtime.Marshaler, client KubeClient, req *http.Request, pathParams map[string]string) (proto.Message, runtime.ServerMetadata, error) {
 	var (
-		protoReq emptypb.Empty
+		protoReq KubeSyncSecretsReq
 		metadata runtime.ServerMetadata
 	)
 	if err := marshaler.NewDecoder(req.Body).Decode(&protoReq); err != nil && !errors.Is(err, io.EOF) {
@@ -53,7 +53,7 @@ func request_Kube_SyncSecrets_0(ctx context.Context, marshaler runtime.Marshaler
 
 func local_request_Kube_SyncSecrets_0(ctx context.Context, marshaler runtime.Marshaler, server KubeServer, req *http.Request, pathParams map[string]string) (proto.Message, runtime.ServerMetadata, error) {
 	var (
-		protoReq emptypb.Empty
+		protoReq KubeSyncSecretsReq
 		metadata runtime.ServerMetadata
 	)
 	if err := marshaler.NewDecoder(req.Body).Decode(&protoReq); err != nil && !errors.Is(err, io.EOF) {
