@@ -3,6 +3,7 @@ import { defineStore } from 'pinia'
 
 import type { UsrMain, UsrUpdateProfileReq } from '@/api/types'
 import { getToken } from '@/api/auth-session'
+import { useAppsStore } from '@/stores/apps'
 import {
   getProfile,
   login as apiLogin,
@@ -73,6 +74,8 @@ export const useAuthStore = defineStore('auth', () => {
     token.value = ''
     profile.value = null
     initialized.value = true
+    // Drop the previous session's apps so the next login reloads them.
+    useAppsStore().reset()
   }
 
   return {
