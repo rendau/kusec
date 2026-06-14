@@ -81,7 +81,7 @@ func TestListClusterSecrets_FiltersAndSorts(t *testing.T) {
 	}
 }
 
-func TestImportSecrets_CreatesSecretItemsInTargetApp(t *testing.T) {
+func TestImportSecret_CreatesSecretItemsInTargetApp(t *testing.T) {
 	t.Parallel()
 
 	client := k8sfake.NewSimpleClientset(
@@ -95,7 +95,7 @@ func TestImportSecrets_CreatesSecretItemsInTargetApp(t *testing.T) {
 		},
 	)
 
-	var createdSecretApp string
+	var createdSecretApp, createdSlug string
 	createdItems := map[string]string{} // key -> encoding
 
 	svc := &Service{
@@ -114,6 +114,7 @@ func TestImportSecrets_CreatesSecretItemsInTargetApp(t *testing.T) {
 			},
 			createFn: func(_ context.Context, obj *secretModel.Edit) (string, error) {
 				createdSecretApp = *obj.AppId
+				createdSlug = *obj.SlugName
 				return "sec-1", nil
 			},
 		},
@@ -125,40 +126,46 @@ func TestImportSecrets_CreatesSecretItemsInTargetApp(t *testing.T) {
 		},
 	}
 
-	result, err := svc.ImportSecrets(context.Background(), "app-1", []ImportRef{
-		{Namespace: "team-a", Name: "app-creds"},
-	})
+	// secretSlug задан пользователем — он и становится slug посадочного секрета.
+	result, err := svc.ImportSecret(context.Background(), "app-1",
+		ImportRef{Namespace: "team-a", Name: "app-creds"}, "db")
 	if err != nil {
-		t.Fatalf("ImportSecrets() error = %v", err)
+		t.Fatalf("ImportSecret() error = %v", err)
 	}
 
-	if !slices.Equal(result.Imported, []string{"team-a/app-creds"}) {
-		t.Fatalf("unexpected imported: %#v", result.Imported)
+	if result.SecretId != "sec-1" || result.SecretSlug != "db" {
+		t.Fatalf("unexpected result: %+v", result)
 	}
-	if result.CreatedSecrets != 1 || result.CreatedItems != 2 {
-		t.Fatalf("unexpected counts: %+v", result)
-	}
-	if len(result.Errors) != 0 {
-		t.Fatalf("unexpected errors: %#v", result.Errors)
+	if result.CreatedItems != 2 {
+		t.Fatalf("unexpected created items: %+v", result)
 	}
 	if createdSecretApp != "app-1" {
 		t.Fatalf("secret must be created in the target app, got %q", createdSecretApp)
+	}
+	if createdSlug != "db" {
+		t.Fatalf("landing slug must be the user-provided one, got %q", createdSlug)
 	}
 	if createdItems["USER"] != "plain" || createdItems["BIN"] != "base64" {
 		t.Fatalf("unexpected item encodings: %#v", createdItems)
 	}
 }
 
-func TestImportSecrets_SkipsExisting(t *testing.T) {
+func TestImportSecret_TopsUpAndOverrides(t *testing.T) {
 	t.Parallel()
 
 	client := k8sfake.NewSimpleClientset(
 		&corev1.Secret{
 			ObjectMeta: metav1.ObjectMeta{Name: "app-creds", Namespace: "team-a"},
 			Type:       corev1.SecretTypeOpaque,
-			Data:       map[string][]byte{"USER": []byte("admin")},
+			Data: map[string][]byte{
+				"USER": []byte("admin"),  // уже есть в kusec — значение перезаписывается
+				"PASS": []byte("secret"), // недостающий — дозаполняется
+			},
 		},
 	)
+
+	createdItems := map[string]string{} // key -> encoding
+	updatedItems := map[string]string{} // id -> value
 
 	svc := &Service{
 		client: client,
@@ -169,25 +176,46 @@ func TestImportSecrets_SkipsExisting(t *testing.T) {
 		},
 		secretSvc: secretSvcStub{
 			listFn: func(_ context.Context, _ *secretModel.ListReq) ([]*secretModel.Main, int64, error) {
-				return []*secretModel.Main{{Id: "sec-1", SlugName: "app-creds"}}, 1, nil
+				return []*secretModel.Main{{Id: "sec-1", SlugName: "db"}}, 1, nil
 			},
 			createFn: func(_ context.Context, _ *secretModel.Edit) (string, error) {
 				t.Fatal("Create must not be called for an existing secret")
 				return "", nil
 			},
 		},
+		itemSvc: itemSvcStub{
+			listFn: func(_ context.Context, _ *itemModel.ListReq) ([]*itemModel.Main, int64, error) {
+				return []*itemModel.Main{{Id: "i1", Key: "USER"}}, 1, nil
+			},
+			createFn: func(_ context.Context, obj *itemModel.Edit) (string, error) {
+				createdItems[*obj.Key] = *obj.Encoding
+				return "item", nil
+			},
+			updateFn: func(_ context.Context, id string, obj *itemModel.Edit) error {
+				updatedItems[id] = *obj.Value
+				return nil
+			},
+		},
 	}
 
-	result, err := svc.ImportSecrets(context.Background(), "app-1", []ImportRef{
-		{Namespace: "team-a", Name: "app-creds"},
-	})
+	result, err := svc.ImportSecret(context.Background(), "app-1",
+		ImportRef{Namespace: "team-a", Name: "app-creds"}, "db")
 	if err != nil {
-		t.Fatalf("ImportSecrets() error = %v", err)
+		t.Fatalf("ImportSecret() error = %v", err)
 	}
-	if !slices.Equal(result.Skipped, []string{"team-a/app-creds"}) {
-		t.Fatalf("unexpected skipped: %#v", result.Skipped)
+	if result.SecretId != "sec-1" || result.SecretCreated {
+		t.Fatalf("must reuse existing secret: %+v", result)
 	}
-	if result.CreatedSecrets != 0 {
-		t.Fatalf("nothing should be created: %+v", result)
+	if result.CreatedItems != 1 || result.UpdatedItems != 1 {
+		t.Fatalf("unexpected counts: %+v", result)
+	}
+	if _, has := createdItems["USER"]; has {
+		t.Fatalf("existing key USER must be updated, not recreated: %#v", createdItems)
+	}
+	if updatedItems["i1"] != "admin" {
+		t.Fatalf("existing key USER must be overridden with cluster value: %#v", updatedItems)
+	}
+	if createdItems["PASS"] == "" {
+		t.Fatalf("missing key PASS must be created: %#v", createdItems)
 	}
 }

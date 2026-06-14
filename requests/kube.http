@@ -21,7 +21,7 @@ Authorization: Bearer {{auth_token}}
 
 ###
 
-# @name Import Cluster Secrets
+# @name Import Cluster Secret
 POST {{base-url}}/kube/import-secret
 Accept: application/json
 Content-Type: application/json
@@ -29,9 +29,9 @@ Authorization: Bearer {{auth_token}}
 
 {
   "app_id": "{{app_id}}",
-  "secrets": [
-    { "namespace": "default", "name": "app-credentials" }
-  ]
+  "namespace": "default",
+  "name": "app-credentials",
+  "secret_slug": "main"
 }
 
 ###

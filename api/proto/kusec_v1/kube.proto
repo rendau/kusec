@@ -53,10 +53,13 @@ service Kube {
     };
   }
 
-  // Импорт выбранных секретов кластера в указанное приложение (только админ).
-  // Каждый секрет становится записью secret в app_id с item-ами по ключам data.
-  // Источник в кластере не меняется.
-  rpc ImportSecrets(KubeImportSecretsReq) returns (KubeImportSecretsRep) {
+  // Импорт одного секрета кластера в указанное приложение (только админ).
+  // Секрет кластера становится записью secret в app_id с item-ами по ключам
+  // data. Имя посадочного секрета (slug) обязательно. Если секрет с таким slug
+  // в приложении уже есть — выполняется дозаполнение: недостающие ключи
+  // создаются, совпавшие — перезаписываются значением из кластера. Источник в
+  // кластере не меняется.
+  rpc ImportSecret(KubeImportSecretReq) returns (KubeImportSecretRep) {
     option (google.api.http) = {
       post: "/kube/import-secret"
       body: "*"
@@ -71,11 +74,6 @@ message KubeListNamespacesRep {
   bool in_cluster = 1;
   // Имена namespace-ов кластера без системных kube-*.
   repeated string namespaces = 2;
-}
-
-message KubeImportSecretRefSt {
-  string namespace = 1;
-  string name = 2;
 }
 
 message KubeListClusterSecretsReq {
@@ -100,22 +98,27 @@ message KubeListClusterSecretsRep {
   repeated KubeClusterSecretSt secrets = 2;
 }
 
-message KubeImportSecretsReq {
-  // Целевое приложение, в которое импортируются секреты.
+message KubeImportSecretReq {
+  // Целевое приложение, в которое импортируется секрет.
   string app_id = 1;
-  repeated KubeImportSecretRefSt secrets = 2;
+  // Секрет-источник в кластере.
+  string namespace = 2;
+  string name = 3;
+  // Имя посадочного секрета kusec (slug). Обязательно.
+  string secret_slug = 4;
 }
 
-message KubeImportSecretsRep {
-  // Импортированные секреты в формате "namespace/name".
-  repeated string imported = 1;
-  // Пропущены — kusec-секрет с таким slug в приложении уже существует.
-  repeated string skipped = 2;
-  // Ошибки по отдельным секретам (импорт продолжается для остальных).
-  repeated string errors = 3;
-  // Сколько новых записей создано суммарно.
-  int64 created_secrets = 4;
-  int64 created_items = 5;
+message KubeImportSecretRep {
+  // Запись secret (созданная или дозаполненная).
+  string secret_id = 1;
+  // Фактический slug посадочного секрета.
+  string secret_slug = 2;
+  // false — секрет уже существовал, выполнено дозаполнение.
+  bool secret_created = 3;
+  // Сколько item-ов создано (новые ключи).
+  int64 created_items = 4;
+  // Сколько item-ов обновлено (совпавшие ключи — значение перезаписано).
+  int64 updated_items = 5;
 }
 
 message KubeSyncSecretsReq {

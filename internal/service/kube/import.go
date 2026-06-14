@@ -75,12 +75,13 @@ func (s *Service) ListClusterSecrets(ctx context.Context, namespace string) ([]*
 	return result, true, nil
 }
 
-// ImportSecrets переносит выбранные секреты кластера в указанное приложение:
-// каждый секрет становится записью secret в appId с item-ами по ключам data.
-// Уже импортированные (совпал slug в этом приложении) пропускаются. Источник в
-// кластере не изменяется. Ошибки отдельных секретов собираются в результат, не
-// прерывая импорт остальных.
-func (s *Service) ImportSecrets(ctx context.Context, appId string, refs []ImportRef) (*ImportResult, error) {
+// ImportSecret переносит один секрет кластера в указанное приложение:
+// секрет становится записью secret в appId с item-ами по ключам data.
+// secretSlug задаёт имя посадочного секрета (обязателен, валидируется в
+// usecase). Если секрет с таким slug в приложении уже есть — выполняется
+// дозаполнение: недостающие ключи создаются, совпавшие — перезаписываются
+// (значение из кластера). Источник в кластере не изменяется.
+func (s *Service) ImportSecret(ctx context.Context, appId string, ref ImportRef, secretSlug string) (*ImportResult, error) {
 	client, err := s.getClient()
 	if err != nil {
 		return nil, err
@@ -93,71 +94,81 @@ func (s *Service) ImportSecrets(ctx context.Context, appId string, refs []Import
 		return nil, err
 	}
 
-	result := &ImportResult{}
+	ksec, err := client.CoreV1().Secrets(ref.Namespace).Get(ctx, ref.Name, metav1.GetOptions{})
+	if err != nil {
+		return nil, fmt.Errorf("get cluster secret %s/%s: %w", ref.Namespace, ref.Name, err)
+	}
 
-	for _, ref := range refs {
-		key := ref.Namespace + "/" + ref.Name
+	// Slug посадочного секрета обязан быть валидным DNS1123-subdomain (имя
+	// k8s-секрета).
+	slug := strings.TrimSpace(secretSlug)
+	if errMsgs := validation.IsDNS1123Subdomain(slug); len(errMsgs) > 0 {
+		return nil, errs.ErrFull{Err: errs.InvalidRequest, Desc: "invalid secret slug: " + strings.Join(errMsgs, "; ")}
+	}
 
-		ksec, err := client.CoreV1().Secrets(ref.Namespace).Get(ctx, ref.Name, metav1.GetOptions{})
+	existing, err := s.findSecretBySlug(ctx, app.Id, slug)
+	if err != nil {
+		return nil, err
+	}
+
+	result := &ImportResult{SecretSlug: slug}
+
+	// Существующий секрет переиспользуем (дозаполнение), иначе создаём новый.
+	// existingItems: ключ → id item-а (active и неактивные — чтобы найти любой
+	// совпавший ключ и не плодить дубли).
+	existingItems := map[string]string{}
+	if existing != nil {
+		result.SecretId = existing.Id
+		items, _, err := s.itemSvc.List(ctx, &itemModel.ListReq{SecretId: new(existing.Id)})
 		if err != nil {
-			result.Errors = append(result.Errors, fmt.Sprintf("%s: get: %v", key, err))
-			continue
+			return nil, fmt.Errorf("list existing items: %w", err)
 		}
-
-		// Имя k8s-секрета — валидный DNS1123-subdomain, годится как slug.
-		slug := ksec.Name
-		if errMsgs := validation.IsDNS1123Subdomain(slug); len(errMsgs) > 0 {
-			result.Errors = append(result.Errors,
-				fmt.Sprintf("%s: invalid secret name: %s", key, strings.Join(errMsgs, "; ")))
-			continue
+		for _, it := range items {
+			existingItems[it.Key] = it.Id
 		}
-
-		existing, err := s.findSecretBySlug(ctx, app.Id, slug)
-		if err != nil {
-			result.Errors = append(result.Errors, fmt.Sprintf("%s: %v", key, err))
-			continue
-		}
-		if existing != nil {
-			result.Skipped = append(result.Skipped, key)
-			continue
-		}
-
+	} else {
 		secretId, err := s.secretSvc.Create(ctx, &secretModel.Edit{
 			AppId:       new(app.Id),
 			Active:      new(true),
 			SlugName:    new(slug),
-			Description: new("Imported from " + key),
+			Description: new(fmt.Sprintf("Imported from %s/%s", ref.Namespace, ref.Name)),
 			KubeType:    new(displaySecretType(ksec.Type)),
 		})
 		if err != nil {
-			result.Errors = append(result.Errors, fmt.Sprintf("%s: create secret: %v", key, err))
-			continue
+			return nil, fmt.Errorf("create secret: %w", err)
 		}
-		result.CreatedSecrets++
+		result.SecretId = secretId
+		result.SecretCreated = true
+	}
 
-		for _, dataKey := range sortedDataKeys(ksec.Data) {
-			value, encoding := encodeImportValue(ksec.Data[dataKey])
-			_, err = s.itemSvc.Create(ctx, &itemModel.Edit{
-				SecretId: new(secretId),
-				Active:   new(true),
-				Key:      new(dataKey),
+	for _, dataKey := range sortedDataKeys(ksec.Data) {
+		value, encoding := encodeImportValue(ksec.Data[dataKey])
+
+		// Совпавший ключ — перезаписываем значение существующего item-а.
+		if itemId, ok := existingItems[dataKey]; ok {
+			err = s.itemSvc.Update(ctx, itemId, &itemModel.Edit{
 				Value:    new(value),
 				Encoding: new(encoding),
 			})
 			if err != nil {
-				result.Errors = append(result.Errors,
-					fmt.Sprintf("%s: key %q: create item: %v", key, dataKey, err))
-				continue
+				return nil, fmt.Errorf("key %q: update item: %w", dataKey, err)
 			}
-			result.CreatedItems++
+			result.UpdatedItems++
+			continue
 		}
 
-		result.Imported = append(result.Imported, key)
+		_, err = s.itemSvc.Create(ctx, &itemModel.Edit{
+			SecretId: new(result.SecretId),
+			Active:   new(true),
+			Key:      new(dataKey),
+			Value:    new(value),
+			Encoding: new(encoding),
+		})
+		if err != nil {
+			return nil, fmt.Errorf("key %q: create item: %w", dataKey, err)
+		}
+		result.CreatedItems++
 	}
-
-	sort.Strings(result.Imported)
-	sort.Strings(result.Skipped)
-	sort.Strings(result.Errors)
 
 	return result, nil
 }

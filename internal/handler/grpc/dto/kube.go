@@ -20,16 +20,16 @@ func EncodeKubeClusterSecret(v *kubeService.ClusterSecret, _ int) *proto.KubeClu
 	}
 }
 
-func EncodeKubeImportResult(v *kubeService.ImportResult) *proto.KubeImportSecretsRep {
+func EncodeKubeImportResult(v *kubeService.ImportResult) *proto.KubeImportSecretRep {
 	if v == nil {
 		return nil
 	}
-	return &proto.KubeImportSecretsRep{
-		Imported:       v.Imported,
-		Skipped:        v.Skipped,
-		Errors:         v.Errors,
-		CreatedSecrets: v.CreatedSecrets,
-		CreatedItems:   v.CreatedItems,
+	return &proto.KubeImportSecretRep{
+		SecretId:      v.SecretId,
+		SecretSlug:    v.SecretSlug,
+		SecretCreated: v.SecretCreated,
+		CreatedItems:  v.CreatedItems,
+		UpdatedItems:  v.UpdatedItems,
 	}
 }
 
@@ -56,17 +56,5 @@ func EncodeKubeSyncConfigMapsRep(v *kubeService.SyncResult) *proto.KubeSyncConfi
 		Deleted:   v.Deleted,
 		Unchanged: v.Unchanged,
 		Errors:    v.Errors,
-	}
-}
-
-// proto → service
-
-func DecodeKubeImportRef(v *proto.KubeImportSecretRefSt, _ int) kubeService.ImportRef {
-	if v == nil {
-		return kubeService.ImportRef{}
-	}
-	return kubeService.ImportRef{
-		Namespace: v.Namespace,
-		Name:      v.Name,
 	}
 }

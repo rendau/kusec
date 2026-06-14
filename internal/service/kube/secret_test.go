@@ -32,6 +32,7 @@ func (s secretSvcStub) Create(ctx context.Context, obj *secretModel.Edit) (strin
 type itemSvcStub struct {
 	listFn   func(_ context.Context, req *itemModel.ListReq) ([]*itemModel.Main, int64, error)
 	createFn func(_ context.Context, obj *itemModel.Edit) (string, error)
+	updateFn func(_ context.Context, id string, obj *itemModel.Edit) error
 }
 
 func (s itemSvcStub) List(ctx context.Context, req *itemModel.ListReq) ([]*itemModel.Main, int64, error) {
@@ -40,6 +41,10 @@ func (s itemSvcStub) List(ctx context.Context, req *itemModel.ListReq) ([]*itemM
 
 func (s itemSvcStub) Create(ctx context.Context, obj *itemModel.Edit) (string, error) {
 	return s.createFn(ctx, obj)
+}
+
+func (s itemSvcStub) Update(ctx context.Context, id string, obj *itemModel.Edit) error {
+	return s.updateFn(ctx, id, obj)
 }
 
 func TestBuildSecretData_OK(t *testing.T) {

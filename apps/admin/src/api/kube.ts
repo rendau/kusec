@@ -1,8 +1,7 @@
 import { apiFetch } from './http'
 import { buildListQuery } from './query'
 import type {
-  KubeImportSecretRefSt,
-  KubeImportSecretsRep,
+  KubeImportSecretRep,
   KubeListClusterSecretsRep,
   KubeListNamespacesRep,
   KubeSyncConfigMapsRep,
@@ -69,16 +68,23 @@ export function listClusterSecrets(
 }
 
 /**
- * Import the selected cluster secrets into application `appId` (admin only).
- * Each secret becomes a kusec secret (slug = its cluster name) with one item
- * per data key. The cluster source is left intact.
+ * Import one cluster secret into application `appId` (admin only). The secret
+ * becomes a kusec secret with one item per data key. `secretSlug` is the
+ * landing secret name; pass an empty string to default to the cluster name.
+ * The cluster source is left intact.
  */
-export function importClusterSecrets(
+export function importClusterSecret(
   appId: string,
-  secrets: KubeImportSecretRefSt[],
-): Promise<KubeImportSecretsRep> {
-  return apiFetch<KubeImportSecretsRep>('/kube/import-secret', {
+  ref: { namespace: string; name: string },
+  secretSlug: string,
+): Promise<KubeImportSecretRep> {
+  return apiFetch<KubeImportSecretRep>('/kube/import-secret', {
     method: 'POST',
-    body: JSON.stringify({ app_id: appId, secrets }),
+    body: JSON.stringify({
+      app_id: appId,
+      namespace: ref.namespace,
+      name: ref.name,
+      secret_slug: secretSlug,
+    }),
   })
 }

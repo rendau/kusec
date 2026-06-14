@@ -362,28 +362,30 @@ export interface KubeListClusterSecretsRep {
   secrets: KubeClusterSecretSt[]
 }
 
-/** `KubeImportSecretRefSt` — reference to a cluster secret to import. */
-export interface KubeImportSecretRefSt {
+/**
+ * `KubeImportSecretReq` — import one cluster secret into `app_id`.
+ * `secret_slug` is the landing kusec secret name (required). When a secret with
+ * that slug already exists, missing keys are added and matching keys are
+ * overridden with the cluster value.
+ */
+export interface KubeImportSecretReq {
+  app_id: string
   namespace: string
   name: string
-}
-
-/** `KubeImportSecretsReq` — import the selected secrets into `app_id`. */
-export interface KubeImportSecretsReq {
-  app_id: string
-  secrets: KubeImportSecretRefSt[]
+  secret_slug: string
 }
 
 /**
- * Cluster secret import result (`KubeImportSecretsRep`).
- * `imported`/`skipped` lists are "namespace/name"; counters are int64 → string.
+ * Cluster secret import result (`KubeImportSecretRep`).
+ * `secret_created` is false when an existing secret was topped up.
+ * `created_items`/`updated_items` are int64 → may arrive as string.
  */
-export interface KubeImportSecretsRep {
-  imported: string[]
-  skipped: string[]
-  errors: string[]
-  created_secrets: number | string
+export interface KubeImportSecretRep {
+  secret_id: string
+  secret_slug: string
+  secret_created: boolean
   created_items: number | string
+  updated_items: number | string
 }
 
 /** Item entity (`ItemMain`). */

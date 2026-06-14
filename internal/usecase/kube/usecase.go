@@ -59,9 +59,9 @@ func (u *Usecase) ListClusterSecrets(ctx context.Context, namespace string) ([]*
 	return secrets, inCluster, nil
 }
 
-// ImportSecrets импортирует выбранные секреты кластера в указанное приложение
+// ImportSecret импортирует один секрет кластера в указанное приложение
 // (создание secret/item) — операция администратора.
-func (u *Usecase) ImportSecrets(ctx context.Context, appId string, refs []kubeService.ImportRef) (*kubeService.ImportResult, error) {
+func (u *Usecase) ImportSecret(ctx context.Context, appId string, ref kubeService.ImportRef, secretSlug string) (*kubeService.ImportResult, error) {
 	if !u.sessionSvc.CtxIsAuthorized(ctx) {
 		return nil, errs.NotAuthorized
 	}
@@ -71,17 +71,24 @@ func (u *Usecase) ImportSecrets(ctx context.Context, appId string, refs []kubeSe
 	if appId == "" {
 		return nil, errs.IdRequired
 	}
-	if len(refs) == 0 {
+	if ref.Namespace == "" || ref.Name == "" {
 		return nil, errs.InvalidRequest
 	}
+	if secretSlug == "" {
+		return nil, errs.NameRequired
+	}
 
-	result, err := u.svc.ImportSecrets(ctx, appId, refs)
+	result, err := u.svc.ImportSecret(ctx, appId, ref, secretSlug)
 	if err != nil {
-		// Сентинельные коды (not_in_cluster, object_not_found) пробрасываем как есть.
+		// Сентинельные коды (not_in_cluster, object_not_found) и ErrFull
+		// (невалидный slug) пробрасываем как есть.
 		if _, ok := errors.AsType[errs.Err](err); ok {
 			return nil, err
 		}
-		return nil, fmt.Errorf("svc.ImportSecrets: %w", err)
+		if _, ok := errors.AsType[errs.ErrFull](err); ok {
+			return nil, err
+		}
+		return nil, fmt.Errorf("svc.ImportSecret: %w", err)
 	}
 
 	return result, nil

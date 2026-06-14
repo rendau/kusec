@@ -77,58 +77,6 @@ func (x *KubeListNamespacesRep) GetNamespaces() []string {
 	return nil
 }
 
-type KubeImportSecretRefSt struct {
-	state         protoimpl.MessageState `protogen:"open.v1"`
-	Namespace     string                 `protobuf:"bytes,1,opt,name=namespace,proto3" json:"namespace,omitempty"`
-	Name          string                 `protobuf:"bytes,2,opt,name=name,proto3" json:"name,omitempty"`
-	unknownFields protoimpl.UnknownFields
-	sizeCache     protoimpl.SizeCache
-}
-
-func (x *KubeImportSecretRefSt) Reset() {
-	*x = KubeImportSecretRefSt{}
-	mi := &file_kusec_v1_kube_proto_msgTypes[1]
-	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
-	ms.StoreMessageInfo(mi)
-}
-
-func (x *KubeImportSecretRefSt) String() string {
-	return protoimpl.X.MessageStringOf(x)
-}
-
-func (*KubeImportSecretRefSt) ProtoMessage() {}
-
-func (x *KubeImportSecretRefSt) ProtoReflect() protoreflect.Message {
-	mi := &file_kusec_v1_kube_proto_msgTypes[1]
-	if x != nil {
-		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
-		if ms.LoadMessageInfo() == nil {
-			ms.StoreMessageInfo(mi)
-		}
-		return ms
-	}
-	return mi.MessageOf(x)
-}
-
-// Deprecated: Use KubeImportSecretRefSt.ProtoReflect.Descriptor instead.
-func (*KubeImportSecretRefSt) Descriptor() ([]byte, []int) {
-	return file_kusec_v1_kube_proto_rawDescGZIP(), []int{1}
-}
-
-func (x *KubeImportSecretRefSt) GetNamespace() string {
-	if x != nil {
-		return x.Namespace
-	}
-	return ""
-}
-
-func (x *KubeImportSecretRefSt) GetName() string {
-	if x != nil {
-		return x.Name
-	}
-	return ""
-}
-
 type KubeListClusterSecretsReq struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
 	// Namespace для выборки; пусто — все namespace-ы без системных kube-*.
@@ -139,7 +87,7 @@ type KubeListClusterSecretsReq struct {
 
 func (x *KubeListClusterSecretsReq) Reset() {
 	*x = KubeListClusterSecretsReq{}
-	mi := &file_kusec_v1_kube_proto_msgTypes[2]
+	mi := &file_kusec_v1_kube_proto_msgTypes[1]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -151,7 +99,7 @@ func (x *KubeListClusterSecretsReq) String() string {
 func (*KubeListClusterSecretsReq) ProtoMessage() {}
 
 func (x *KubeListClusterSecretsReq) ProtoReflect() protoreflect.Message {
-	mi := &file_kusec_v1_kube_proto_msgTypes[2]
+	mi := &file_kusec_v1_kube_proto_msgTypes[1]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -164,7 +112,7 @@ func (x *KubeListClusterSecretsReq) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use KubeListClusterSecretsReq.ProtoReflect.Descriptor instead.
 func (*KubeListClusterSecretsReq) Descriptor() ([]byte, []int) {
-	return file_kusec_v1_kube_proto_rawDescGZIP(), []int{2}
+	return file_kusec_v1_kube_proto_rawDescGZIP(), []int{1}
 }
 
 func (x *KubeListClusterSecretsReq) GetNamespace() string {
@@ -190,7 +138,7 @@ type KubeClusterSecretSt struct {
 
 func (x *KubeClusterSecretSt) Reset() {
 	*x = KubeClusterSecretSt{}
-	mi := &file_kusec_v1_kube_proto_msgTypes[3]
+	mi := &file_kusec_v1_kube_proto_msgTypes[2]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -202,7 +150,7 @@ func (x *KubeClusterSecretSt) String() string {
 func (*KubeClusterSecretSt) ProtoMessage() {}
 
 func (x *KubeClusterSecretSt) ProtoReflect() protoreflect.Message {
-	mi := &file_kusec_v1_kube_proto_msgTypes[3]
+	mi := &file_kusec_v1_kube_proto_msgTypes[2]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -215,7 +163,7 @@ func (x *KubeClusterSecretSt) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use KubeClusterSecretSt.ProtoReflect.Descriptor instead.
 func (*KubeClusterSecretSt) Descriptor() ([]byte, []int) {
-	return file_kusec_v1_kube_proto_rawDescGZIP(), []int{3}
+	return file_kusec_v1_kube_proto_rawDescGZIP(), []int{2}
 }
 
 func (x *KubeClusterSecretSt) GetNamespace() string {
@@ -264,7 +212,7 @@ type KubeListClusterSecretsRep struct {
 
 func (x *KubeListClusterSecretsRep) Reset() {
 	*x = KubeListClusterSecretsRep{}
-	mi := &file_kusec_v1_kube_proto_msgTypes[4]
+	mi := &file_kusec_v1_kube_proto_msgTypes[3]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -276,7 +224,7 @@ func (x *KubeListClusterSecretsRep) String() string {
 func (*KubeListClusterSecretsRep) ProtoMessage() {}
 
 func (x *KubeListClusterSecretsRep) ProtoReflect() protoreflect.Message {
-	mi := &file_kusec_v1_kube_proto_msgTypes[4]
+	mi := &file_kusec_v1_kube_proto_msgTypes[3]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -289,7 +237,7 @@ func (x *KubeListClusterSecretsRep) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use KubeListClusterSecretsRep.ProtoReflect.Descriptor instead.
 func (*KubeListClusterSecretsRep) Descriptor() ([]byte, []int) {
-	return file_kusec_v1_kube_proto_rawDescGZIP(), []int{4}
+	return file_kusec_v1_kube_proto_rawDescGZIP(), []int{3}
 }
 
 func (x *KubeListClusterSecretsRep) GetInCluster() bool {
@@ -306,30 +254,34 @@ func (x *KubeListClusterSecretsRep) GetSecrets() []*KubeClusterSecretSt {
 	return nil
 }
 
-type KubeImportSecretsReq struct {
+type KubeImportSecretReq struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
-	// Целевое приложение, в которое импортируются секреты.
-	AppId         string                   `protobuf:"bytes,1,opt,name=app_id,json=appId,proto3" json:"app_id,omitempty"`
-	Secrets       []*KubeImportSecretRefSt `protobuf:"bytes,2,rep,name=secrets,proto3" json:"secrets,omitempty"`
+	// Целевое приложение, в которое импортируется секрет.
+	AppId string `protobuf:"bytes,1,opt,name=app_id,json=appId,proto3" json:"app_id,omitempty"`
+	// Секрет-источник в кластере.
+	Namespace string `protobuf:"bytes,2,opt,name=namespace,proto3" json:"namespace,omitempty"`
+	Name      string `protobuf:"bytes,3,opt,name=name,proto3" json:"name,omitempty"`
+	// Имя посадочного секрета kusec (slug). Обязательно.
+	SecretSlug    string `protobuf:"bytes,4,opt,name=secret_slug,json=secretSlug,proto3" json:"secret_slug,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
 
-func (x *KubeImportSecretsReq) Reset() {
-	*x = KubeImportSecretsReq{}
-	mi := &file_kusec_v1_kube_proto_msgTypes[5]
+func (x *KubeImportSecretReq) Reset() {
+	*x = KubeImportSecretReq{}
+	mi := &file_kusec_v1_kube_proto_msgTypes[4]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
 
-func (x *KubeImportSecretsReq) String() string {
+func (x *KubeImportSecretReq) String() string {
 	return protoimpl.X.MessageStringOf(x)
 }
 
-func (*KubeImportSecretsReq) ProtoMessage() {}
+func (*KubeImportSecretReq) ProtoMessage() {}
 
-func (x *KubeImportSecretsReq) ProtoReflect() protoreflect.Message {
-	mi := &file_kusec_v1_kube_proto_msgTypes[5]
+func (x *KubeImportSecretReq) ProtoReflect() protoreflect.Message {
+	mi := &file_kusec_v1_kube_proto_msgTypes[4]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -340,55 +292,70 @@ func (x *KubeImportSecretsReq) ProtoReflect() protoreflect.Message {
 	return mi.MessageOf(x)
 }
 
-// Deprecated: Use KubeImportSecretsReq.ProtoReflect.Descriptor instead.
-func (*KubeImportSecretsReq) Descriptor() ([]byte, []int) {
-	return file_kusec_v1_kube_proto_rawDescGZIP(), []int{5}
+// Deprecated: Use KubeImportSecretReq.ProtoReflect.Descriptor instead.
+func (*KubeImportSecretReq) Descriptor() ([]byte, []int) {
+	return file_kusec_v1_kube_proto_rawDescGZIP(), []int{4}
 }
 
-func (x *KubeImportSecretsReq) GetAppId() string {
+func (x *KubeImportSecretReq) GetAppId() string {
 	if x != nil {
 		return x.AppId
 	}
 	return ""
 }
 
-func (x *KubeImportSecretsReq) GetSecrets() []*KubeImportSecretRefSt {
+func (x *KubeImportSecretReq) GetNamespace() string {
 	if x != nil {
-		return x.Secrets
+		return x.Namespace
 	}
-	return nil
+	return ""
 }
 
-type KubeImportSecretsRep struct {
+func (x *KubeImportSecretReq) GetName() string {
+	if x != nil {
+		return x.Name
+	}
+	return ""
+}
+
+func (x *KubeImportSecretReq) GetSecretSlug() string {
+	if x != nil {
+		return x.SecretSlug
+	}
+	return ""
+}
+
+type KubeImportSecretRep struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
-	// Импортированные секреты в формате "namespace/name".
-	Imported []string `protobuf:"bytes,1,rep,name=imported,proto3" json:"imported,omitempty"`
-	// Пропущены — kusec-секрет с таким slug в приложении уже существует.
-	Skipped []string `protobuf:"bytes,2,rep,name=skipped,proto3" json:"skipped,omitempty"`
-	// Ошибки по отдельным секретам (импорт продолжается для остальных).
-	Errors []string `protobuf:"bytes,3,rep,name=errors,proto3" json:"errors,omitempty"`
-	// Сколько новых записей создано суммарно.
-	CreatedSecrets int64 `protobuf:"varint,4,opt,name=created_secrets,json=createdSecrets,proto3" json:"created_secrets,omitempty"`
-	CreatedItems   int64 `protobuf:"varint,5,opt,name=created_items,json=createdItems,proto3" json:"created_items,omitempty"`
-	unknownFields  protoimpl.UnknownFields
-	sizeCache      protoimpl.SizeCache
+	// Запись secret (созданная или дозаполненная).
+	SecretId string `protobuf:"bytes,1,opt,name=secret_id,json=secretId,proto3" json:"secret_id,omitempty"`
+	// Фактический slug посадочного секрета.
+	SecretSlug string `protobuf:"bytes,2,opt,name=secret_slug,json=secretSlug,proto3" json:"secret_slug,omitempty"`
+	// false — секрет уже существовал, выполнено дозаполнение.
+	SecretCreated bool `protobuf:"varint,3,opt,name=secret_created,json=secretCreated,proto3" json:"secret_created,omitempty"`
+	// Сколько item-ов создано (новые ключи).
+	CreatedItems int64 `protobuf:"varint,4,opt,name=created_items,json=createdItems,proto3" json:"created_items,omitempty"`
+	// Сколько item-ов обновлено (совпавшие ключи — значение перезаписано).
+	UpdatedItems  int64 `protobuf:"varint,5,opt,name=updated_items,json=updatedItems,proto3" json:"updated_items,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
 }
 
-func (x *KubeImportSecretsRep) Reset() {
-	*x = KubeImportSecretsRep{}
-	mi := &file_kusec_v1_kube_proto_msgTypes[6]
+func (x *KubeImportSecretRep) Reset() {
+	*x = KubeImportSecretRep{}
+	mi := &file_kusec_v1_kube_proto_msgTypes[5]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
 
-func (x *KubeImportSecretsRep) String() string {
+func (x *KubeImportSecretRep) String() string {
 	return protoimpl.X.MessageStringOf(x)
 }
 
-func (*KubeImportSecretsRep) ProtoMessage() {}
+func (*KubeImportSecretRep) ProtoMessage() {}
 
-func (x *KubeImportSecretsRep) ProtoReflect() protoreflect.Message {
-	mi := &file_kusec_v1_kube_proto_msgTypes[6]
+func (x *KubeImportSecretRep) ProtoReflect() protoreflect.Message {
+	mi := &file_kusec_v1_kube_proto_msgTypes[5]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -399,42 +366,42 @@ func (x *KubeImportSecretsRep) ProtoReflect() protoreflect.Message {
 	return mi.MessageOf(x)
 }
 
-// Deprecated: Use KubeImportSecretsRep.ProtoReflect.Descriptor instead.
-func (*KubeImportSecretsRep) Descriptor() ([]byte, []int) {
-	return file_kusec_v1_kube_proto_rawDescGZIP(), []int{6}
+// Deprecated: Use KubeImportSecretRep.ProtoReflect.Descriptor instead.
+func (*KubeImportSecretRep) Descriptor() ([]byte, []int) {
+	return file_kusec_v1_kube_proto_rawDescGZIP(), []int{5}
 }
 
-func (x *KubeImportSecretsRep) GetImported() []string {
+func (x *KubeImportSecretRep) GetSecretId() string {
 	if x != nil {
-		return x.Imported
+		return x.SecretId
 	}
-	return nil
+	return ""
 }
 
-func (x *KubeImportSecretsRep) GetSkipped() []string {
+func (x *KubeImportSecretRep) GetSecretSlug() string {
 	if x != nil {
-		return x.Skipped
+		return x.SecretSlug
 	}
-	return nil
+	return ""
 }
 
-func (x *KubeImportSecretsRep) GetErrors() []string {
+func (x *KubeImportSecretRep) GetSecretCreated() bool {
 	if x != nil {
-		return x.Errors
+		return x.SecretCreated
 	}
-	return nil
+	return false
 }
 
-func (x *KubeImportSecretsRep) GetCreatedSecrets() int64 {
+func (x *KubeImportSecretRep) GetCreatedItems() int64 {
 	if x != nil {
-		return x.CreatedSecrets
+		return x.CreatedItems
 	}
 	return 0
 }
 
-func (x *KubeImportSecretsRep) GetCreatedItems() int64 {
+func (x *KubeImportSecretRep) GetUpdatedItems() int64 {
 	if x != nil {
-		return x.CreatedItems
+		return x.UpdatedItems
 	}
 	return 0
 }
@@ -448,7 +415,7 @@ type KubeSyncSecretsReq struct {
 
 func (x *KubeSyncSecretsReq) Reset() {
 	*x = KubeSyncSecretsReq{}
-	mi := &file_kusec_v1_kube_proto_msgTypes[7]
+	mi := &file_kusec_v1_kube_proto_msgTypes[6]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -460,7 +427,7 @@ func (x *KubeSyncSecretsReq) String() string {
 func (*KubeSyncSecretsReq) ProtoMessage() {}
 
 func (x *KubeSyncSecretsReq) ProtoReflect() protoreflect.Message {
-	mi := &file_kusec_v1_kube_proto_msgTypes[7]
+	mi := &file_kusec_v1_kube_proto_msgTypes[6]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -473,7 +440,7 @@ func (x *KubeSyncSecretsReq) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use KubeSyncSecretsReq.ProtoReflect.Descriptor instead.
 func (*KubeSyncSecretsReq) Descriptor() ([]byte, []int) {
-	return file_kusec_v1_kube_proto_rawDescGZIP(), []int{7}
+	return file_kusec_v1_kube_proto_rawDescGZIP(), []int{6}
 }
 
 func (x *KubeSyncSecretsReq) GetAppId() string {
@@ -498,7 +465,7 @@ type KubeSyncSecretsRep struct {
 
 func (x *KubeSyncSecretsRep) Reset() {
 	*x = KubeSyncSecretsRep{}
-	mi := &file_kusec_v1_kube_proto_msgTypes[8]
+	mi := &file_kusec_v1_kube_proto_msgTypes[7]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -510,7 +477,7 @@ func (x *KubeSyncSecretsRep) String() string {
 func (*KubeSyncSecretsRep) ProtoMessage() {}
 
 func (x *KubeSyncSecretsRep) ProtoReflect() protoreflect.Message {
-	mi := &file_kusec_v1_kube_proto_msgTypes[8]
+	mi := &file_kusec_v1_kube_proto_msgTypes[7]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -523,7 +490,7 @@ func (x *KubeSyncSecretsRep) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use KubeSyncSecretsRep.ProtoReflect.Descriptor instead.
 func (*KubeSyncSecretsRep) Descriptor() ([]byte, []int) {
-	return file_kusec_v1_kube_proto_rawDescGZIP(), []int{8}
+	return file_kusec_v1_kube_proto_rawDescGZIP(), []int{7}
 }
 
 func (x *KubeSyncSecretsRep) GetCreated() []string {
@@ -570,7 +537,7 @@ type KubeSyncConfigMapsReq struct {
 
 func (x *KubeSyncConfigMapsReq) Reset() {
 	*x = KubeSyncConfigMapsReq{}
-	mi := &file_kusec_v1_kube_proto_msgTypes[9]
+	mi := &file_kusec_v1_kube_proto_msgTypes[8]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -582,7 +549,7 @@ func (x *KubeSyncConfigMapsReq) String() string {
 func (*KubeSyncConfigMapsReq) ProtoMessage() {}
 
 func (x *KubeSyncConfigMapsReq) ProtoReflect() protoreflect.Message {
-	mi := &file_kusec_v1_kube_proto_msgTypes[9]
+	mi := &file_kusec_v1_kube_proto_msgTypes[8]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -595,7 +562,7 @@ func (x *KubeSyncConfigMapsReq) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use KubeSyncConfigMapsReq.ProtoReflect.Descriptor instead.
 func (*KubeSyncConfigMapsReq) Descriptor() ([]byte, []int) {
-	return file_kusec_v1_kube_proto_rawDescGZIP(), []int{9}
+	return file_kusec_v1_kube_proto_rawDescGZIP(), []int{8}
 }
 
 func (x *KubeSyncConfigMapsReq) GetAppId() string {
@@ -620,7 +587,7 @@ type KubeSyncConfigMapsRep struct {
 
 func (x *KubeSyncConfigMapsRep) Reset() {
 	*x = KubeSyncConfigMapsRep{}
-	mi := &file_kusec_v1_kube_proto_msgTypes[10]
+	mi := &file_kusec_v1_kube_proto_msgTypes[9]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -632,7 +599,7 @@ func (x *KubeSyncConfigMapsRep) String() string {
 func (*KubeSyncConfigMapsRep) ProtoMessage() {}
 
 func (x *KubeSyncConfigMapsRep) ProtoReflect() protoreflect.Message {
-	mi := &file_kusec_v1_kube_proto_msgTypes[10]
+	mi := &file_kusec_v1_kube_proto_msgTypes[9]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -645,7 +612,7 @@ func (x *KubeSyncConfigMapsRep) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use KubeSyncConfigMapsRep.ProtoReflect.Descriptor instead.
 func (*KubeSyncConfigMapsRep) Descriptor() ([]byte, []int) {
-	return file_kusec_v1_kube_proto_rawDescGZIP(), []int{10}
+	return file_kusec_v1_kube_proto_rawDescGZIP(), []int{9}
 }
 
 func (x *KubeSyncConfigMapsRep) GetCreated() []string {
@@ -692,7 +659,7 @@ type KubeSyncReq struct {
 
 func (x *KubeSyncReq) Reset() {
 	*x = KubeSyncReq{}
-	mi := &file_kusec_v1_kube_proto_msgTypes[11]
+	mi := &file_kusec_v1_kube_proto_msgTypes[10]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -704,7 +671,7 @@ func (x *KubeSyncReq) String() string {
 func (*KubeSyncReq) ProtoMessage() {}
 
 func (x *KubeSyncReq) ProtoReflect() protoreflect.Message {
-	mi := &file_kusec_v1_kube_proto_msgTypes[11]
+	mi := &file_kusec_v1_kube_proto_msgTypes[10]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -717,7 +684,7 @@ func (x *KubeSyncReq) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use KubeSyncReq.ProtoReflect.Descriptor instead.
 func (*KubeSyncReq) Descriptor() ([]byte, []int) {
-	return file_kusec_v1_kube_proto_rawDescGZIP(), []int{11}
+	return file_kusec_v1_kube_proto_rawDescGZIP(), []int{10}
 }
 
 func (x *KubeSyncReq) GetAppId() string {
@@ -739,7 +706,7 @@ type KubeSyncRep struct {
 
 func (x *KubeSyncRep) Reset() {
 	*x = KubeSyncRep{}
-	mi := &file_kusec_v1_kube_proto_msgTypes[12]
+	mi := &file_kusec_v1_kube_proto_msgTypes[11]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -751,7 +718,7 @@ func (x *KubeSyncRep) String() string {
 func (*KubeSyncRep) ProtoMessage() {}
 
 func (x *KubeSyncRep) ProtoReflect() protoreflect.Message {
-	mi := &file_kusec_v1_kube_proto_msgTypes[12]
+	mi := &file_kusec_v1_kube_proto_msgTypes[11]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -764,7 +731,7 @@ func (x *KubeSyncRep) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use KubeSyncRep.ProtoReflect.Descriptor instead.
 func (*KubeSyncRep) Descriptor() ([]byte, []int) {
-	return file_kusec_v1_kube_proto_rawDescGZIP(), []int{12}
+	return file_kusec_v1_kube_proto_rawDescGZIP(), []int{11}
 }
 
 func (x *KubeSyncRep) GetSecrets() *KubeSyncSecretsRep {
@@ -791,10 +758,7 @@ const file_kusec_v1_kube_proto_rawDesc = "" +
 	"in_cluster\x18\x01 \x01(\bR\tinCluster\x12\x1e\n" +
 	"\n" +
 	"namespaces\x18\x02 \x03(\tR\n" +
-	"namespaces\"I\n" +
-	"\x15KubeImportSecretRefSt\x12\x1c\n" +
-	"\tnamespace\x18\x01 \x01(\tR\tnamespace\x12\x12\n" +
-	"\x04name\x18\x02 \x01(\tR\x04name\"9\n" +
+	"namespaces\"9\n" +
 	"\x19KubeListClusterSecretsReq\x12\x1c\n" +
 	"\tnamespace\x18\x01 \x01(\tR\tnamespace\"\x89\x01\n" +
 	"\x13KubeClusterSecretSt\x12\x1c\n" +
@@ -806,16 +770,20 @@ const file_kusec_v1_kube_proto_rawDesc = "" +
 	"\x19KubeListClusterSecretsRep\x12\x1d\n" +
 	"\n" +
 	"in_cluster\x18\x01 \x01(\bR\tinCluster\x127\n" +
-	"\asecrets\x18\x02 \x03(\v2\x1d.kusec_v1.KubeClusterSecretStR\asecrets\"h\n" +
-	"\x14KubeImportSecretsReq\x12\x15\n" +
-	"\x06app_id\x18\x01 \x01(\tR\x05appId\x129\n" +
-	"\asecrets\x18\x02 \x03(\v2\x1f.kusec_v1.KubeImportSecretRefStR\asecrets\"\xb2\x01\n" +
-	"\x14KubeImportSecretsRep\x12\x1a\n" +
-	"\bimported\x18\x01 \x03(\tR\bimported\x12\x18\n" +
-	"\askipped\x18\x02 \x03(\tR\askipped\x12\x16\n" +
-	"\x06errors\x18\x03 \x03(\tR\x06errors\x12'\n" +
-	"\x0fcreated_secrets\x18\x04 \x01(\x03R\x0ecreatedSecrets\x12#\n" +
-	"\rcreated_items\x18\x05 \x01(\x03R\fcreatedItems\"+\n" +
+	"\asecrets\x18\x02 \x03(\v2\x1d.kusec_v1.KubeClusterSecretStR\asecrets\"\x7f\n" +
+	"\x13KubeImportSecretReq\x12\x15\n" +
+	"\x06app_id\x18\x01 \x01(\tR\x05appId\x12\x1c\n" +
+	"\tnamespace\x18\x02 \x01(\tR\tnamespace\x12\x12\n" +
+	"\x04name\x18\x03 \x01(\tR\x04name\x12\x1f\n" +
+	"\vsecret_slug\x18\x04 \x01(\tR\n" +
+	"secretSlug\"\xc4\x01\n" +
+	"\x13KubeImportSecretRep\x12\x1b\n" +
+	"\tsecret_id\x18\x01 \x01(\tR\bsecretId\x12\x1f\n" +
+	"\vsecret_slug\x18\x02 \x01(\tR\n" +
+	"secretSlug\x12%\n" +
+	"\x0esecret_created\x18\x03 \x01(\bR\rsecretCreated\x12#\n" +
+	"\rcreated_items\x18\x04 \x01(\x03R\fcreatedItems\x12#\n" +
+	"\rupdated_items\x18\x05 \x01(\x03R\fupdatedItems\"+\n" +
 	"\x12KubeSyncSecretsReq\x12\x15\n" +
 	"\x06app_id\x18\x01 \x01(\tR\x05appId\"\x98\x01\n" +
 	"\x12KubeSyncSecretsRep\x12\x18\n" +
@@ -838,15 +806,15 @@ const file_kusec_v1_kube_proto_rawDesc = "" +
 	"\asecrets\x18\x01 \x01(\v2\x1c.kusec_v1.KubeSyncSecretsRepR\asecrets\x12?\n" +
 	"\n" +
 	"configmaps\x18\x02 \x01(\v2\x1f.kusec_v1.KubeSyncConfigMapsRepR\n" +
-	"configmaps2\x84\x05\n" +
+	"configmaps2\x81\x05\n" +
 	"\x04Kube\x12g\n" +
 	"\vSyncSecrets\x12\x1c.kusec_v1.KubeSyncSecretsReq\x1a\x1c.kusec_v1.KubeSyncSecretsRep\"\x1c\x82\xd3\xe4\x93\x02\x16:\x01*\"\x11/kube/sync-secret\x12s\n" +
 	"\x0eSyncConfigMaps\x12\x1f.kusec_v1.KubeSyncConfigMapsReq\x1a\x1f.kusec_v1.KubeSyncConfigMapsRep\"\x1f\x82\xd3\xe4\x93\x02\x19:\x01*\"\x14/kube/sync-configmap\x12K\n" +
 	"\x04Sync\x12\x15.kusec_v1.KubeSyncReq\x1a\x15.kusec_v1.KubeSyncRep\"\x15\x82\xd3\xe4\x93\x02\x0f:\x01*\"\n" +
 	"/kube/sync\x12b\n" +
 	"\x0eListNamespaces\x12\x16.google.protobuf.Empty\x1a\x1f.kusec_v1.KubeListNamespacesRep\"\x17\x82\xd3\xe4\x93\x02\x11\x12\x0f/kube/namespace\x12|\n" +
-	"\x12ListClusterSecrets\x12#.kusec_v1.KubeListClusterSecretsReq\x1a#.kusec_v1.KubeListClusterSecretsRep\"\x1c\x82\xd3\xe4\x93\x02\x16\x12\x14/kube/cluster-secret\x12o\n" +
-	"\rImportSecrets\x12\x1e.kusec_v1.KubeImportSecretsReq\x1a\x1e.kusec_v1.KubeImportSecretsRep\"\x1e\x82\xd3\xe4\x93\x02\x18:\x01*\"\x13/kube/import-secretB\vZ\t/kusec_v1b\x06proto3"
+	"\x12ListClusterSecrets\x12#.kusec_v1.KubeListClusterSecretsReq\x1a#.kusec_v1.KubeListClusterSecretsRep\"\x1c\x82\xd3\xe4\x93\x02\x16\x12\x14/kube/cluster-secret\x12l\n" +
+	"\fImportSecret\x12\x1d.kusec_v1.KubeImportSecretReq\x1a\x1d.kusec_v1.KubeImportSecretRep\"\x1e\x82\xd3\xe4\x93\x02\x18:\x01*\"\x13/kube/import-secretB\vZ\t/kusec_v1b\x06proto3"
 
 var (
 	file_kusec_v1_kube_proto_rawDescOnce sync.Once
@@ -860,45 +828,43 @@ func file_kusec_v1_kube_proto_rawDescGZIP() []byte {
 	return file_kusec_v1_kube_proto_rawDescData
 }
 
-var file_kusec_v1_kube_proto_msgTypes = make([]protoimpl.MessageInfo, 13)
+var file_kusec_v1_kube_proto_msgTypes = make([]protoimpl.MessageInfo, 12)
 var file_kusec_v1_kube_proto_goTypes = []any{
 	(*KubeListNamespacesRep)(nil),     // 0: kusec_v1.KubeListNamespacesRep
-	(*KubeImportSecretRefSt)(nil),     // 1: kusec_v1.KubeImportSecretRefSt
-	(*KubeListClusterSecretsReq)(nil), // 2: kusec_v1.KubeListClusterSecretsReq
-	(*KubeClusterSecretSt)(nil),       // 3: kusec_v1.KubeClusterSecretSt
-	(*KubeListClusterSecretsRep)(nil), // 4: kusec_v1.KubeListClusterSecretsRep
-	(*KubeImportSecretsReq)(nil),      // 5: kusec_v1.KubeImportSecretsReq
-	(*KubeImportSecretsRep)(nil),      // 6: kusec_v1.KubeImportSecretsRep
-	(*KubeSyncSecretsReq)(nil),        // 7: kusec_v1.KubeSyncSecretsReq
-	(*KubeSyncSecretsRep)(nil),        // 8: kusec_v1.KubeSyncSecretsRep
-	(*KubeSyncConfigMapsReq)(nil),     // 9: kusec_v1.KubeSyncConfigMapsReq
-	(*KubeSyncConfigMapsRep)(nil),     // 10: kusec_v1.KubeSyncConfigMapsRep
-	(*KubeSyncReq)(nil),               // 11: kusec_v1.KubeSyncReq
-	(*KubeSyncRep)(nil),               // 12: kusec_v1.KubeSyncRep
-	(*emptypb.Empty)(nil),             // 13: google.protobuf.Empty
+	(*KubeListClusterSecretsReq)(nil), // 1: kusec_v1.KubeListClusterSecretsReq
+	(*KubeClusterSecretSt)(nil),       // 2: kusec_v1.KubeClusterSecretSt
+	(*KubeListClusterSecretsRep)(nil), // 3: kusec_v1.KubeListClusterSecretsRep
+	(*KubeImportSecretReq)(nil),       // 4: kusec_v1.KubeImportSecretReq
+	(*KubeImportSecretRep)(nil),       // 5: kusec_v1.KubeImportSecretRep
+	(*KubeSyncSecretsReq)(nil),        // 6: kusec_v1.KubeSyncSecretsReq
+	(*KubeSyncSecretsRep)(nil),        // 7: kusec_v1.KubeSyncSecretsRep
+	(*KubeSyncConfigMapsReq)(nil),     // 8: kusec_v1.KubeSyncConfigMapsReq
+	(*KubeSyncConfigMapsRep)(nil),     // 9: kusec_v1.KubeSyncConfigMapsRep
+	(*KubeSyncReq)(nil),               // 10: kusec_v1.KubeSyncReq
+	(*KubeSyncRep)(nil),               // 11: kusec_v1.KubeSyncRep
+	(*emptypb.Empty)(nil),             // 12: google.protobuf.Empty
 }
 var file_kusec_v1_kube_proto_depIdxs = []int32{
-	3,  // 0: kusec_v1.KubeListClusterSecretsRep.secrets:type_name -> kusec_v1.KubeClusterSecretSt
-	1,  // 1: kusec_v1.KubeImportSecretsReq.secrets:type_name -> kusec_v1.KubeImportSecretRefSt
-	8,  // 2: kusec_v1.KubeSyncRep.secrets:type_name -> kusec_v1.KubeSyncSecretsRep
-	10, // 3: kusec_v1.KubeSyncRep.configmaps:type_name -> kusec_v1.KubeSyncConfigMapsRep
-	7,  // 4: kusec_v1.Kube.SyncSecrets:input_type -> kusec_v1.KubeSyncSecretsReq
-	9,  // 5: kusec_v1.Kube.SyncConfigMaps:input_type -> kusec_v1.KubeSyncConfigMapsReq
-	11, // 6: kusec_v1.Kube.Sync:input_type -> kusec_v1.KubeSyncReq
-	13, // 7: kusec_v1.Kube.ListNamespaces:input_type -> google.protobuf.Empty
-	2,  // 8: kusec_v1.Kube.ListClusterSecrets:input_type -> kusec_v1.KubeListClusterSecretsReq
-	5,  // 9: kusec_v1.Kube.ImportSecrets:input_type -> kusec_v1.KubeImportSecretsReq
-	8,  // 10: kusec_v1.Kube.SyncSecrets:output_type -> kusec_v1.KubeSyncSecretsRep
-	10, // 11: kusec_v1.Kube.SyncConfigMaps:output_type -> kusec_v1.KubeSyncConfigMapsRep
-	12, // 12: kusec_v1.Kube.Sync:output_type -> kusec_v1.KubeSyncRep
-	0,  // 13: kusec_v1.Kube.ListNamespaces:output_type -> kusec_v1.KubeListNamespacesRep
-	4,  // 14: kusec_v1.Kube.ListClusterSecrets:output_type -> kusec_v1.KubeListClusterSecretsRep
-	6,  // 15: kusec_v1.Kube.ImportSecrets:output_type -> kusec_v1.KubeImportSecretsRep
-	10, // [10:16] is the sub-list for method output_type
-	4,  // [4:10] is the sub-list for method input_type
-	4,  // [4:4] is the sub-list for extension type_name
-	4,  // [4:4] is the sub-list for extension extendee
-	0,  // [0:4] is the sub-list for field type_name
+	2,  // 0: kusec_v1.KubeListClusterSecretsRep.secrets:type_name -> kusec_v1.KubeClusterSecretSt
+	7,  // 1: kusec_v1.KubeSyncRep.secrets:type_name -> kusec_v1.KubeSyncSecretsRep
+	9,  // 2: kusec_v1.KubeSyncRep.configmaps:type_name -> kusec_v1.KubeSyncConfigMapsRep
+	6,  // 3: kusec_v1.Kube.SyncSecrets:input_type -> kusec_v1.KubeSyncSecretsReq
+	8,  // 4: kusec_v1.Kube.SyncConfigMaps:input_type -> kusec_v1.KubeSyncConfigMapsReq
+	10, // 5: kusec_v1.Kube.Sync:input_type -> kusec_v1.KubeSyncReq
+	12, // 6: kusec_v1.Kube.ListNamespaces:input_type -> google.protobuf.Empty
+	1,  // 7: kusec_v1.Kube.ListClusterSecrets:input_type -> kusec_v1.KubeListClusterSecretsReq
+	4,  // 8: kusec_v1.Kube.ImportSecret:input_type -> kusec_v1.KubeImportSecretReq
+	7,  // 9: kusec_v1.Kube.SyncSecrets:output_type -> kusec_v1.KubeSyncSecretsRep
+	9,  // 10: kusec_v1.Kube.SyncConfigMaps:output_type -> kusec_v1.KubeSyncConfigMapsRep
+	11, // 11: kusec_v1.Kube.Sync:output_type -> kusec_v1.KubeSyncRep
+	0,  // 12: kusec_v1.Kube.ListNamespaces:output_type -> kusec_v1.KubeListNamespacesRep
+	3,  // 13: kusec_v1.Kube.ListClusterSecrets:output_type -> kusec_v1.KubeListClusterSecretsRep
+	5,  // 14: kusec_v1.Kube.ImportSecret:output_type -> kusec_v1.KubeImportSecretRep
+	9,  // [9:15] is the sub-list for method output_type
+	3,  // [3:9] is the sub-list for method input_type
+	3,  // [3:3] is the sub-list for extension type_name
+	3,  // [3:3] is the sub-list for extension extendee
+	0,  // [0:3] is the sub-list for field type_name
 }
 
 func init() { file_kusec_v1_kube_proto_init() }
@@ -912,7 +878,7 @@ func file_kusec_v1_kube_proto_init() {
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_kusec_v1_kube_proto_rawDesc), len(file_kusec_v1_kube_proto_rawDesc)),
 			NumEnums:      0,
-			NumMessages:   13,
+			NumMessages:   12,
 			NumExtensions: 0,
 			NumServices:   1,
 		},

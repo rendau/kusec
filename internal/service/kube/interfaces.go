@@ -23,6 +23,7 @@ type SecretServiceI interface {
 type ItemServiceI interface {
 	List(ctx context.Context, pars *itemModel.ListReq) ([]*itemModel.Main, int64, error)
 	Create(ctx context.Context, obj *itemModel.Edit) (string, error)
+	Update(ctx context.Context, id string, obj *itemModel.Edit) error
 }
 
 type ConfigMapServiceI interface {

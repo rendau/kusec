@@ -50,15 +50,16 @@ func (h *Kube) ListClusterSecrets(ctx context.Context, req *proto.KubeListCluste
 	}, nil
 }
 
-func (h *Kube) ImportSecrets(ctx context.Context, req *proto.KubeImportSecretsReq) (*proto.KubeImportSecretsRep, error) {
-	var appId string
-	var refs []kubeService.ImportRef
+func (h *Kube) ImportSecret(ctx context.Context, req *proto.KubeImportSecretReq) (*proto.KubeImportSecretRep, error) {
+	var appId, secretSlug string
+	var ref kubeService.ImportRef
 	if req != nil {
 		appId = req.AppId
-		refs = lo.Map(req.Secrets, dto.DecodeKubeImportRef)
+		secretSlug = req.SecretSlug
+		ref = kubeService.ImportRef{Namespace: req.Namespace, Name: req.Name}
 	}
 
-	result, err := h.usecase.ImportSecrets(ctx, appId, refs)
+	result, err := h.usecase.ImportSecret(ctx, appId, ref, secretSlug)
 	if err != nil {
 		return nil, err
 	}

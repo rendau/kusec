@@ -173,9 +173,9 @@ func local_request_Kube_ListClusterSecrets_0(ctx context.Context, marshaler runt
 	return msg, metadata, err
 }
 
-func request_Kube_ImportSecrets_0(ctx context.Context, marshaler runtime.Marshaler, client KubeClient, req *http.Request, pathParams map[string]string) (proto.Message, runtime.ServerMetadata, error) {
+func request_Kube_ImportSecret_0(ctx context.Context, marshaler runtime.Marshaler, client KubeClient, req *http.Request, pathParams map[string]string) (proto.Message, runtime.ServerMetadata, error) {
 	var (
-		protoReq KubeImportSecretsReq
+		protoReq KubeImportSecretReq
 		metadata runtime.ServerMetadata
 	)
 	if err := marshaler.NewDecoder(req.Body).Decode(&protoReq); err != nil && !errors.Is(err, io.EOF) {
@@ -184,19 +184,19 @@ func request_Kube_ImportSecrets_0(ctx context.Context, marshaler runtime.Marshal
 	if req.Body != nil {
 		_, _ = io.Copy(io.Discard, req.Body)
 	}
-	msg, err := client.ImportSecrets(ctx, &protoReq, grpc.Header(&metadata.HeaderMD), grpc.Trailer(&metadata.TrailerMD))
+	msg, err := client.ImportSecret(ctx, &protoReq, grpc.Header(&metadata.HeaderMD), grpc.Trailer(&metadata.TrailerMD))
 	return msg, metadata, err
 }
 
-func local_request_Kube_ImportSecrets_0(ctx context.Context, marshaler runtime.Marshaler, server KubeServer, req *http.Request, pathParams map[string]string) (proto.Message, runtime.ServerMetadata, error) {
+func local_request_Kube_ImportSecret_0(ctx context.Context, marshaler runtime.Marshaler, server KubeServer, req *http.Request, pathParams map[string]string) (proto.Message, runtime.ServerMetadata, error) {
 	var (
-		protoReq KubeImportSecretsReq
+		protoReq KubeImportSecretReq
 		metadata runtime.ServerMetadata
 	)
 	if err := marshaler.NewDecoder(req.Body).Decode(&protoReq); err != nil && !errors.Is(err, io.EOF) {
 		return nil, metadata, status.Errorf(codes.InvalidArgument, "%v", err)
 	}
-	msg, err := server.ImportSecrets(ctx, &protoReq)
+	msg, err := server.ImportSecret(ctx, &protoReq)
 	return msg, metadata, err
 }
 
@@ -306,25 +306,25 @@ func RegisterKubeHandlerServer(ctx context.Context, mux *runtime.ServeMux, serve
 		}
 		forward_Kube_ListClusterSecrets_0(annotatedContext, mux, outboundMarshaler, w, req, resp, mux.GetForwardResponseOptions()...)
 	})
-	mux.Handle(http.MethodPost, pattern_Kube_ImportSecrets_0, func(w http.ResponseWriter, req *http.Request, pathParams map[string]string) {
+	mux.Handle(http.MethodPost, pattern_Kube_ImportSecret_0, func(w http.ResponseWriter, req *http.Request, pathParams map[string]string) {
 		ctx, cancel := context.WithCancel(req.Context())
 		defer cancel()
 		var stream runtime.ServerTransportStream
 		ctx = grpc.NewContextWithServerTransportStream(ctx, &stream)
 		inboundMarshaler, outboundMarshaler := runtime.MarshalerForRequest(mux, req)
-		annotatedContext, err := runtime.AnnotateIncomingContext(ctx, mux, req, "/kusec_v1.Kube/ImportSecrets", runtime.WithHTTPPathPattern("/kube/import-secret"))
+		annotatedContext, err := runtime.AnnotateIncomingContext(ctx, mux, req, "/kusec_v1.Kube/ImportSecret", runtime.WithHTTPPathPattern("/kube/import-secret"))
 		if err != nil {
 			runtime.HTTPError(ctx, mux, outboundMarshaler, w, req, err)
 			return
 		}
-		resp, md, err := local_request_Kube_ImportSecrets_0(annotatedContext, inboundMarshaler, server, req, pathParams)
+		resp, md, err := local_request_Kube_ImportSecret_0(annotatedContext, inboundMarshaler, server, req, pathParams)
 		md.HeaderMD, md.TrailerMD = metadata.Join(md.HeaderMD, stream.Header()), metadata.Join(md.TrailerMD, stream.Trailer())
 		annotatedContext = runtime.NewServerMetadataContext(annotatedContext, md)
 		if err != nil {
 			runtime.HTTPError(annotatedContext, mux, outboundMarshaler, w, req, err)
 			return
 		}
-		forward_Kube_ImportSecrets_0(annotatedContext, mux, outboundMarshaler, w, req, resp, mux.GetForwardResponseOptions()...)
+		forward_Kube_ImportSecret_0(annotatedContext, mux, outboundMarshaler, w, req, resp, mux.GetForwardResponseOptions()...)
 	})
 
 	return nil
@@ -451,22 +451,22 @@ func RegisterKubeHandlerClient(ctx context.Context, mux *runtime.ServeMux, clien
 		}
 		forward_Kube_ListClusterSecrets_0(annotatedContext, mux, outboundMarshaler, w, req, resp, mux.GetForwardResponseOptions()...)
 	})
-	mux.Handle(http.MethodPost, pattern_Kube_ImportSecrets_0, func(w http.ResponseWriter, req *http.Request, pathParams map[string]string) {
+	mux.Handle(http.MethodPost, pattern_Kube_ImportSecret_0, func(w http.ResponseWriter, req *http.Request, pathParams map[string]string) {
 		ctx, cancel := context.WithCancel(req.Context())
 		defer cancel()
 		inboundMarshaler, outboundMarshaler := runtime.MarshalerForRequest(mux, req)
-		annotatedContext, err := runtime.AnnotateContext(ctx, mux, req, "/kusec_v1.Kube/ImportSecrets", runtime.WithHTTPPathPattern("/kube/import-secret"))
+		annotatedContext, err := runtime.AnnotateContext(ctx, mux, req, "/kusec_v1.Kube/ImportSecret", runtime.WithHTTPPathPattern("/kube/import-secret"))
 		if err != nil {
 			runtime.HTTPError(ctx, mux, outboundMarshaler, w, req, err)
 			return
 		}
-		resp, md, err := request_Kube_ImportSecrets_0(annotatedContext, inboundMarshaler, client, req, pathParams)
+		resp, md, err := request_Kube_ImportSecret_0(annotatedContext, inboundMarshaler, client, req, pathParams)
 		annotatedContext = runtime.NewServerMetadataContext(annotatedContext, md)
 		if err != nil {
 			runtime.HTTPError(annotatedContext, mux, outboundMarshaler, w, req, err)
 			return
 		}
-		forward_Kube_ImportSecrets_0(annotatedContext, mux, outboundMarshaler, w, req, resp, mux.GetForwardResponseOptions()...)
+		forward_Kube_ImportSecret_0(annotatedContext, mux, outboundMarshaler, w, req, resp, mux.GetForwardResponseOptions()...)
 	})
 	return nil
 }
@@ -477,7 +477,7 @@ var (
 	pattern_Kube_Sync_0               = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 2, 1}, []string{"kube", "sync"}, ""))
 	pattern_Kube_ListNamespaces_0     = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 2, 1}, []string{"kube", "namespace"}, ""))
 	pattern_Kube_ListClusterSecrets_0 = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 2, 1}, []string{"kube", "cluster-secret"}, ""))
-	pattern_Kube_ImportSecrets_0      = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 2, 1}, []string{"kube", "import-secret"}, ""))
+	pattern_Kube_ImportSecret_0       = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 2, 1}, []string{"kube", "import-secret"}, ""))
 )
 
 var (
@@ -486,5 +486,5 @@ var (
 	forward_Kube_Sync_0               = runtime.ForwardResponseMessage
 	forward_Kube_ListNamespaces_0     = runtime.ForwardResponseMessage
 	forward_Kube_ListClusterSecrets_0 = runtime.ForwardResponseMessage
-	forward_Kube_ImportSecrets_0      = runtime.ForwardResponseMessage
+	forward_Kube_ImportSecret_0       = runtime.ForwardResponseMessage
 )

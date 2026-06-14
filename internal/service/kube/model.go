@@ -31,17 +31,17 @@ type ImportRef struct {
 	Name      string
 }
 
+// ImportResult — итог импорта одного секрета.
 type ImportResult struct {
-	// Импортированные секреты в формате "namespace/name".
-	Imported []string
-	// Пропущены — kusec-секрет с таким slug уже существует.
-	Skipped []string
-	// Ошибки по отдельным секретам: импорт не прерывается, проблемные
-	// секреты пропускаются и попадают сюда.
-	Errors []string
-
-	CreatedSecrets int64
-	CreatedItems   int64
+	// Запись secret (созданная или дозаполненная).
+	SecretId   string
+	SecretSlug string
+	// false — секрет уже существовал, выполнено дозаполнение.
+	SecretCreated bool
+	// Сколько item-ов создано (новые ключи).
+	CreatedItems int64
+	// Сколько item-ов обновлено (совпавшие ключи — значение перезаписано).
+	UpdatedItems int64
 }
 
 type desiredSecret struct {

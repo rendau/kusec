@@ -958,13 +958,13 @@
     },
     "/kube/import-secret": {
       "post": {
-        "summary": "Импорт выбранных секретов кластера в указанное приложение (только админ).\nКаждый секрет становится записью secret в app_id с item-ами по ключам data.\nИсточник в кластере не меняется.",
-        "operationId": "Kube_ImportSecrets",
+        "summary": "Импорт одного секрета кластера в указанное приложение (только админ).\nСекрет кластера становится записью secret в app_id с item-ами по ключам\ndata. Имя посадочного секрета (slug) обязательно. Если секрет с таким slug\nв приложении уже есть — выполняется дозаполнение: недостающие ключи\nсоздаются, совпавшие — перезаписываются значением из кластера. Источник в\nкластере не меняется.",
+        "operationId": "Kube_ImportSecret",
         "responses": {
           "200": {
             "description": "A successful response.",
             "schema": {
-              "$ref": "#/definitions/kusec_v1KubeImportSecretsRep"
+              "$ref": "#/definitions/kusec_v1KubeImportSecretRep"
             }
           },
           "default": {
@@ -980,7 +980,7 @@
             "in": "body",
             "required": true,
             "schema": {
-              "$ref": "#/definitions/kusec_v1KubeImportSecretsReq"
+              "$ref": "#/definitions/kusec_v1KubeImportSecretReq"
             }
           }
         ],
@@ -2285,65 +2285,50 @@
         }
       }
     },
-    "kusec_v1KubeImportSecretRefSt": {
+    "kusec_v1KubeImportSecretRep": {
       "type": "object",
       "properties": {
-        "namespace": {
-          "type": "string"
-        },
-        "name": {
-          "type": "string"
-        }
-      }
-    },
-    "kusec_v1KubeImportSecretsRep": {
-      "type": "object",
-      "properties": {
-        "imported": {
-          "type": "array",
-          "items": {
-            "type": "string"
-          },
-          "description": "Импортированные секреты в формате \"namespace/name\"."
-        },
-        "skipped": {
-          "type": "array",
-          "items": {
-            "type": "string"
-          },
-          "description": "Пропущены — kusec-секрет с таким slug в приложении уже существует."
-        },
-        "errors": {
-          "type": "array",
-          "items": {
-            "type": "string"
-          },
-          "description": "Ошибки по отдельным секретам (импорт продолжается для остальных)."
-        },
-        "created_secrets": {
+        "secret_id": {
           "type": "string",
-          "format": "int64",
-          "description": "Сколько новых записей создано суммарно."
+          "description": "Запись secret (созданная или дозаполненная)."
+        },
+        "secret_slug": {
+          "type": "string",
+          "description": "Фактический slug посадочного секрета."
+        },
+        "secret_created": {
+          "type": "boolean",
+          "description": "false — секрет уже существовал, выполнено дозаполнение."
         },
         "created_items": {
           "type": "string",
-          "format": "int64"
+          "format": "int64",
+          "description": "Сколько item-ов создано (новые ключи)."
+        },
+        "updated_items": {
+          "type": "string",
+          "format": "int64",
+          "description": "Сколько item-ов обновлено (совпавшие ключи — значение перезаписано)."
         }
       }
     },
-    "kusec_v1KubeImportSecretsReq": {
+    "kusec_v1KubeImportSecretReq": {
       "type": "object",
       "properties": {
         "app_id": {
           "type": "string",
-          "description": "Целевое приложение, в которое импортируются секреты."
+          "description": "Целевое приложение, в которое импортируется секрет."
         },
-        "secrets": {
-          "type": "array",
-          "items": {
-            "type": "object",
-            "$ref": "#/definitions/kusec_v1KubeImportSecretRefSt"
-          }
+        "namespace": {
+          "type": "string",
+          "description": "Секрет-источник в кластере."
+        },
+        "name": {
+          "type": "string"
+        },
+        "secret_slug": {
+          "type": "string",
+          "description": "Имя посадочного секрета kusec (slug). Обязательно."
         }
       }
     },

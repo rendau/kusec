@@ -2,14 +2,14 @@
 import { computed, h, ref, watch } from 'vue'
 import {
   NButton,
-  NCheckbox,
-  NCheckboxGroup,
   NDataTable,
   NEmpty,
   NFormItem,
   NIcon,
   NInput,
   NModal,
+  NRadio,
+  NRadioGroup,
   NResult,
   NScrollbar,
   NSelect,
@@ -18,14 +18,13 @@ import {
   NTag,
   NText,
   useMessage,
-  useNotification,
 } from 'naive-ui'
 import type { DataTableColumns, SelectOption } from 'naive-ui'
 import { Refresh, Search } from '@vicons/tabler'
 import { storeToRefs } from 'pinia'
 
 import { ApiError, apiErrorMessage } from '@/api/http'
-import { importClusterSecrets, listClusterSecrets } from '@/api/kube'
+import { importClusterSecret, listClusterSecrets } from '@/api/kube'
 import type { KubeClusterSecretSt } from '@/api/types'
 import { useBreakpoint } from '@/composables/useBreakpoint'
 import { useAppsStore } from '@/stores/apps'
@@ -43,7 +42,6 @@ const emit = defineEmits<{
 }>()
 
 const message = useMessage()
-const notification = useNotification()
 const { isMobile } = useBreakpoint()
 
 const appsStore = useAppsStore()
@@ -53,11 +51,25 @@ const loading = ref(false)
 const importing = ref(false)
 const inCluster = ref(true)
 const secrets = ref<KubeClusterSecretSt[]>([])
-const checkedKeys = ref<string[]>([])
+
+// Один секрет за импорт: выбранный ключ строки и имя посадочного секрета.
+const selectedKey = ref<string | null>(null)
+const secretSlug = ref('')
 
 const targetAppId = ref<string | null>(null)
 const namespaceFilter = ref<string>('')
 const search = ref('')
+
+/** Currently selected cluster secret (single selection). */
+const selectedSecret = computed<KubeClusterSecretSt | null>(
+  () => secrets.value.find((s) => rowKey(s) === selectedKey.value) ?? null,
+)
+
+// При выборе секрета подставляем его имя как имя посадочного секрета —
+// пользователь может отредактировать перед импортом.
+watch(selectedSecret, (secret) => {
+  secretSlug.value = secret?.name ?? ''
+})
 
 /** Target application options (`name · namespace`). */
 const appOptions = computed<SelectOption[]>(() =>
@@ -100,7 +112,7 @@ const filteredSecrets = computed<KubeClusterSecretSt[]>(() => {
 })
 
 const columns = computed<DataTableColumns<KubeClusterSecretSt>>(() => [
-  { type: 'selection' },
+  { type: 'selection', multiple: false },
   {
     title: 'Namespace',
     key: 'namespace',
@@ -156,7 +168,13 @@ const columns = computed<DataTableColumns<KubeClusterSecretSt>>(() => [
   },
 ])
 
-const selectedCount = computed(() => checkedKeys.value.length)
+const canImport = computed(
+  () =>
+    inCluster.value &&
+    !!targetAppId.value &&
+    !!selectedKey.value &&
+    secretSlug.value.trim().length > 0,
+)
 
 async function load(): Promise<void> {
   loading.value = true
@@ -179,7 +197,8 @@ watch(
   () => props.show,
   (show) => {
     if (!show) return
-    checkedKeys.value = []
+    selectedKey.value = null
+    secretSlug.value = ''
     namespaceFilter.value = ''
     search.value = ''
     void appsStore.ensureLoaded()
@@ -196,41 +215,23 @@ function close(): void {
 }
 
 async function submit(): Promise<void> {
-  if (!targetAppId.value) return
-
-  const byKey = new Map(secrets.value.map((s) => [rowKey(s), s]))
-  const refs = checkedKeys.value
-    .map((key) => byKey.get(key))
-    .filter((s): s is KubeClusterSecretSt => s != null)
-    .map((s) => ({ namespace: s.namespace, name: s.name }))
-
-  if (!refs.length) return
+  const secret = selectedSecret.value
+  const slug = secretSlug.value.trim()
+  if (!targetAppId.value || !secret || !slug) return
 
   importing.value = true
   try {
-    const rep = await importClusterSecrets(targetAppId.value, refs)
-    const summary = [
-      `imported ${rep.imported?.length ?? 0}`,
-      `skipped ${rep.skipped?.length ?? 0}`,
-      `+${toCount(rep.created_secrets)} secrets`,
-      `+${toCount(rep.created_items)} items`,
-    ].join(' · ')
-
-    if (rep.errors?.length) {
-      notification.warning({
-        title: 'Import finished with errors',
-        content: `${summary}\n\n${rep.errors.join('\n')}`,
-        duration: 0,
-      })
-    } else {
-      notification.success({
-        title: 'Cluster secrets imported',
-        content: summary,
-        duration: 6000,
-      })
-    }
-
-    if (toCount(rep.created_secrets) > 0) emit('imported')
+    const rep = await importClusterSecret(
+      targetAppId.value,
+      { namespace: secret.namespace, name: secret.name },
+      slug,
+    )
+    const verb = rep.secret_created ? 'Imported' : 'Topped up'
+    const updated = toCount(rep.updated_items)
+    const parts = [`+${toCount(rep.created_items)} items`]
+    if (updated > 0) parts.push(`${updated} overridden`)
+    message.success(`${verb} "${rep.secret_slug}" · ${parts.join(' · ')}`)
+    emit('imported')
     close()
   } catch (error) {
     const hint =
@@ -264,9 +265,10 @@ async function submit(): Promise<void> {
       <template v-else>
         <NSpace vertical :size="12">
           <NText depth="3" style="font-size: 12px">
-            Pick the target application and the cluster secrets to import. Each
-            secret becomes a kusec secret (named after its cluster name) with one
-            item per key. The cluster source is left unchanged.
+            Pick the target application and one cluster secret to import, then
+            name the landing kusec secret. If a secret with that name already
+            exists, missing keys are added and matching keys are overridden. The
+            cluster source is left unchanged.
           </NText>
 
           <NFormItem label="Target application" :show-feedback="false">
@@ -275,6 +277,14 @@ async function submit(): Promise<void> {
               :options="appOptions"
               filterable
               placeholder="Choose an application"
+            />
+          </NFormItem>
+
+          <NFormItem label="Landing secret name" :show-feedback="false">
+            <NInput
+              v-model:value="secretSlug"
+              placeholder="kusec secret slug (required)"
+              :disabled="!selectedKey"
             />
           </NFormItem>
 
@@ -310,13 +320,13 @@ async function submit(): Promise<void> {
               description="No cluster secrets found"
               style="padding: 24px 0"
             />
-            <NCheckboxGroup v-else v-model:value="checkedKeys" class="kube-cards">
+            <NRadioGroup v-else v-model:value="selectedKey" class="kube-cards">
               <label
                 v-for="row in filteredSecrets"
                 :key="rowKey(row)"
                 class="kube-card"
               >
-                <NCheckbox :value="rowKey(row)" class="kube-card__check" />
+                <NRadio :value="rowKey(row)" class="kube-card__check" />
                 <div class="kube-card__body">
                   <div class="kube-card__row">
                     <NText code class="kube-card__name">{{ row.name }}</NText>
@@ -346,7 +356,7 @@ async function submit(): Promise<void> {
                   </NText>
                 </div>
               </label>
-            </NCheckboxGroup>
+            </NRadioGroup>
           </NScrollbar>
 
           <!-- Desktop: dense table with row selection. -->
@@ -355,11 +365,13 @@ async function submit(): Promise<void> {
             :columns="columns"
             :data="filteredSecrets"
             :row-key="rowKey"
-            :checked-row-keys="checkedKeys"
+            :checked-row-keys="selectedKey ? [selectedKey] : []"
             max-height="50vh"
             size="small"
             :pagination="false"
-            @update:checked-row-keys="(keys) => (checkedKeys = keys.map(String))"
+            @update:checked-row-keys="
+              (keys) => (selectedKey = keys.length ? String(keys[keys.length - 1]) : null)
+            "
           >
             <template #empty>
               <NEmpty size="small" description="No cluster secrets found" />
@@ -371,16 +383,18 @@ async function submit(): Promise<void> {
 
     <template #footer>
       <NSpace justify="space-between" align="center">
-        <NText depth="3" style="font-size: 13px"> {{ selectedCount }} selected </NText>
+        <NText depth="3" style="font-size: 13px">
+          {{ selectedSecret ? `${selectedSecret.namespace}/${selectedSecret.name}` : 'none selected' }}
+        </NText>
         <NSpace>
           <NButton :disabled="importing" @click="close">Cancel</NButton>
           <NButton
             type="primary"
             :loading="importing"
-            :disabled="!selectedCount || !inCluster || !targetAppId"
+            :disabled="!canImport"
             @click="submit"
           >
-            Import {{ selectedCount || '' }}
+            Import
           </NButton>
         </NSpace>
       </NSpace>

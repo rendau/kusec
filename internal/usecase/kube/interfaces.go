@@ -13,7 +13,7 @@ type KubeServiceI interface {
 	Sync(ctx context.Context, appIds []string) (*kubeService.SyncResult, *kubeService.SyncResult, error)
 	ListNamespaces(ctx context.Context) ([]string, bool, error)
 	ListClusterSecrets(ctx context.Context, namespace string) ([]*kubeService.ClusterSecret, bool, error)
-	ImportSecrets(ctx context.Context, appId string, refs []kubeService.ImportRef) (*kubeService.ImportResult, error)
+	ImportSecret(ctx context.Context, appId string, ref kubeService.ImportRef, secretSlug string) (*kubeService.ImportResult, error)
 }
 
 type SessionServiceI interface {
