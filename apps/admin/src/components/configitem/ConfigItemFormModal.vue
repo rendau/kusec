@@ -108,7 +108,10 @@ const rules: FormRules = {
       validator: (_rule, value: string | null) => value != null && value !== '',
     },
   ],
-  key: [{ required: true, message: 'Key is required', trigger: ['blur', 'input'] }],
+  // Validate on input/submit only — not on blur: clicking "Upload file" blurs
+  // the key input, and a file fills the key from its name, so a blur error here
+  // would flash spuriously right before the field gets populated.
+  key: [{ required: true, message: 'Key is required', trigger: 'input' }],
 }
 
 /**
