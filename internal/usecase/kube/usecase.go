@@ -132,6 +132,30 @@ func (u *Usecase) SyncConfigMaps(ctx context.Context, appId *string) (*kubeServi
 	return result, nil
 }
 
+// Sync выполняет общую синхронизацию секретов и configmap-ов за один вызов.
+func (u *Usecase) Sync(ctx context.Context, appId *string) (*kubeService.SyncResult, *kubeService.SyncResult, error) {
+	if !u.sessionSvc.CtxIsAuthorized(ctx) {
+		return nil, nil, errs.NotAuthorized
+	}
+
+	scope, err := u.syncScope(ctx, appId)
+	if err != nil {
+		return nil, nil, err
+	}
+
+	secrets, configMaps, err := u.svc.Sync(ctx, scope)
+	if err != nil {
+		// Сентинельные коды (not_in_cluster, sync_in_progress) пробрасываем
+		// как есть — интерцептор превратит их в осмысленный ответ клиенту.
+		if _, ok := err.(errs.Err); ok {
+			return nil, nil, err
+		}
+		return nil, nil, fmt.Errorf("svc.Sync: %w", err)
+	}
+
+	return secrets, configMaps, nil
+}
+
 // syncScope определяет область синхронизации: при заданном appId — один app
 // (с проверкой доступа), иначе — все доступные app (или nil, если доступны все).
 func (u *Usecase) syncScope(ctx context.Context, appId *string) ([]string, error) {

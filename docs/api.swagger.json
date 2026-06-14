@@ -1011,6 +1011,39 @@
         ]
       }
     },
+    "/kube/sync": {
+      "post": {
+        "summary": "Общая синхронизация: и секреты, и configmap-ы за один вызов под единой\nблокировкой (только изнутри кластера).",
+        "operationId": "Kube_Sync",
+        "responses": {
+          "200": {
+            "description": "A successful response.",
+            "schema": {
+              "$ref": "#/definitions/kusec_v1KubeSyncRep"
+            }
+          },
+          "default": {
+            "description": "An unexpected error response.",
+            "schema": {
+              "$ref": "#/definitions/rpcStatus"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "body",
+            "in": "body",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/kusec_v1KubeSyncReq"
+            }
+          }
+        ],
+        "tags": [
+          "Kube"
+        ]
+      }
+    },
     "/kube/sync-configmap": {
       "post": {
         "summary": "Синхронизация configmap-ов из базы в Kubernetes (только изнутри кластера).\nИмя k8s-configmap: {KUBE_SECRET_NAME_PREFIX}{app.slug_name}-{configmap.slug_name}.\nУправляемые configmap-ы помечаются лейблом app.kubernetes.io/managed-by=kusec.",
@@ -2382,6 +2415,27 @@
       }
     },
     "kusec_v1KubeSyncConfigMapsReq": {
+      "type": "object",
+      "properties": {
+        "app_id": {
+          "type": "string"
+        }
+      }
+    },
+    "kusec_v1KubeSyncRep": {
+      "type": "object",
+      "properties": {
+        "secrets": {
+          "$ref": "#/definitions/kusec_v1KubeSyncSecretsRep",
+          "description": "Результат синхронизации секретов."
+        },
+        "configmaps": {
+          "$ref": "#/definitions/kusec_v1KubeSyncConfigMapsRep",
+          "description": "Результат синхронизации configmap-ов."
+        }
+      }
+    },
+    "kusec_v1KubeSyncReq": {
       "type": "object",
       "properties": {
         "app_id": {

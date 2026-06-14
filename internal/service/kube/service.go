@@ -144,6 +144,38 @@ func (s *Service) SyncSecrets(ctx context.Context, appIds []string) (*SyncResult
 		return nil, err
 	}
 
+	return s.syncSecretsLocked(ctx, client, appIds)
+}
+
+// Sync выполняет общую синхронизацию: и секреты, и configmap-ы за один проход
+// под единой блокировкой, чтобы между двумя видами объектов не было гонки и
+// чтобы параллельный sync не стартовал в середине.
+func (s *Service) Sync(ctx context.Context, appIds []string) (*SyncResult, *SyncResult, error) {
+	if !s.mu.TryLock() {
+		return nil, nil, errs.SyncInProgress
+	}
+	defer s.mu.Unlock()
+
+	client, err := s.getClient()
+	if err != nil {
+		return nil, nil, err
+	}
+
+	secrets, err := s.syncSecretsLocked(ctx, client, appIds)
+	if err != nil {
+		return nil, nil, err
+	}
+
+	configMaps, err := s.syncConfigMapsLocked(ctx, client, appIds)
+	if err != nil {
+		return nil, nil, err
+	}
+
+	return secrets, configMaps, nil
+}
+
+// syncSecretsLocked выполняет реконсиляцию секретов; вызывается под s.mu.
+func (s *Service) syncSecretsLocked(ctx context.Context, client kubernetes.Interface, appIds []string) (*SyncResult, error) {
 	result := &SyncResult{}
 
 	desired, err := s.buildDesired(ctx, result, appIds)

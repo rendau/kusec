@@ -13,6 +13,7 @@ import (
 	k8serrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/util/validation"
+	"k8s.io/client-go/kubernetes"
 
 	appModel "github.com/mechta-market/kusec/internal/domain/app/model"
 	configitemModel "github.com/mechta-market/kusec/internal/domain/configitem/model"
@@ -36,6 +37,11 @@ func (s *Service) SyncConfigMaps(ctx context.Context, appIds []string) (*SyncRes
 		return nil, err
 	}
 
+	return s.syncConfigMapsLocked(ctx, client, appIds)
+}
+
+// syncConfigMapsLocked выполняет реконсиляцию configmap-ов; вызывается под s.mu.
+func (s *Service) syncConfigMapsLocked(ctx context.Context, client kubernetes.Interface, appIds []string) (*SyncResult, error) {
 	result := &SyncResult{}
 
 	desired, err := s.buildDesiredConfigMaps(ctx, result, appIds)

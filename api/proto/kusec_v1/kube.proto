@@ -30,6 +30,15 @@ service Kube {
     };
   }
 
+  // Общая синхронизация: и секреты, и configmap-ы за один вызов под единой
+  // блокировкой (только изнутри кластера).
+  rpc Sync(KubeSyncReq) returns (KubeSyncRep) {
+    option (google.api.http) = {
+      post: "/kube/sync"
+      body: "*"
+    };
+  }
+
   rpc ListNamespaces(google.protobuf.Empty) returns (KubeListNamespacesRep) {
     option (google.api.http) = {
       get: "/kube/namespace"
@@ -135,4 +144,15 @@ message KubeSyncConfigMapsRep {
   int64 unchanged = 4;
   // Ошибки по отдельным configmap-ам (sync продолжается для остальных).
   repeated string errors = 5;
+}
+
+message KubeSyncReq {
+  string app_id = 1;
+}
+
+message KubeSyncRep {
+  // Результат синхронизации секретов.
+  KubeSyncSecretsRep secrets = 1;
+  // Результат синхронизации configmap-ов.
+  KubeSyncConfigMapsRep configmaps = 2;
 }

@@ -2,11 +2,28 @@ package kube
 
 import (
 	"context"
+	"slices"
 	"strings"
 	"testing"
 
+	corev1 "k8s.io/api/core/v1"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	k8sfake "k8s.io/client-go/kubernetes/fake"
+
+	appModel "github.com/mechta-market/kusec/internal/domain/app/model"
 	configitemModel "github.com/mechta-market/kusec/internal/domain/configitem/model"
+	configmapModel "github.com/mechta-market/kusec/internal/domain/configmap/model"
+	itemModel "github.com/mechta-market/kusec/internal/domain/item/model"
+	secretModel "github.com/mechta-market/kusec/internal/domain/secret/model"
 )
+
+type configMapSvcStub struct {
+	listFn func(_ context.Context, req *configmapModel.ListReq) ([]*configmapModel.Main, int64, error)
+}
+
+func (s configMapSvcStub) List(ctx context.Context, req *configmapModel.ListReq) ([]*configmapModel.Main, int64, error) {
+	return s.listFn(ctx, req)
+}
 
 type configItemSvcStub struct {
 	listFn func(_ context.Context, req *configitemModel.ListReq) ([]*configitemModel.Main, int64, error)
@@ -46,6 +63,64 @@ func TestBuildConfigMapData_OK(t *testing.T) {
 	}
 	if string(binaryData["BIN"]) != "hello" {
 		t.Fatalf("unexpected BIN value: %q", string(binaryData["BIN"]))
+	}
+}
+
+func TestSync_ReconcilesSecretsAndConfigMaps(t *testing.T) {
+	t.Parallel()
+
+	client := k8sfake.NewSimpleClientset(
+		&corev1.Namespace{ObjectMeta: metav1.ObjectMeta{Name: "team-a"}},
+	)
+
+	svc := &Service{
+		client: client,
+		appSvc: appSvcStub{
+			listFn: func(_ context.Context, _ *appModel.ListReq) ([]*appModel.Main, int64, error) {
+				return []*appModel.Main{{Id: "app-1", Namespace: "team-a", SlugName: "web"}}, 1, nil
+			},
+		},
+		secretSvc: secretSvcStub{
+			listFn: func(_ context.Context, _ *secretModel.ListReq) ([]*secretModel.Main, int64, error) {
+				return []*secretModel.Main{{Id: "sec-1", SlugName: "db"}}, 1, nil
+			},
+		},
+		itemSvc: itemSvcStub{
+			listFn: func(_ context.Context, _ *itemModel.ListReq) ([]*itemModel.Main, int64, error) {
+				return []*itemModel.Main{{Key: "A", Value: "1"}}, 1, nil
+			},
+		},
+		configMapSvc: configMapSvcStub{
+			listFn: func(_ context.Context, _ *configmapModel.ListReq) ([]*configmapModel.Main, int64, error) {
+				return []*configmapModel.Main{{Id: "cm-1", SlugName: "app-config"}}, 1, nil
+			},
+		},
+		configItemSvc: configItemSvcStub{
+			listFn: func(_ context.Context, _ *configitemModel.ListReq) ([]*configitemModel.Main, int64, error) {
+				return []*configitemModel.Main{{Key: "B", Value: "2"}}, 1, nil
+			},
+		},
+	}
+
+	secrets, configMaps, err := svc.Sync(context.Background(), []string{"app-1"})
+	if err != nil {
+		t.Fatalf("Sync() error = %v", err)
+	}
+
+	wantSecret := "team-a/" + SecretName("web", "db")
+	if !slices.Equal(secrets.Created, []string{wantSecret}) {
+		t.Fatalf("unexpected secrets.Created: %#v", secrets.Created)
+	}
+	wantConfigMap := "team-a/" + ConfigMapName("web", "app-config")
+	if !slices.Equal(configMaps.Created, []string{wantConfigMap}) {
+		t.Fatalf("unexpected configMaps.Created: %#v", configMaps.Created)
+	}
+
+	if _, err = client.CoreV1().Secrets("team-a").Get(context.Background(), SecretName("web", "db"), metav1.GetOptions{}); err != nil {
+		t.Fatalf("synced secret must exist: %v", err)
+	}
+	if _, err = client.CoreV1().ConfigMaps("team-a").Get(context.Background(), ConfigMapName("web", "app-config"), metav1.GetOptions{}); err != nil {
+		t.Fatalf("synced configmap must exist: %v", err)
 	}
 }
 
