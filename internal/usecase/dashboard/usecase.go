@@ -8,6 +8,8 @@ import (
 
 	appModel "github.com/mechta-market/kusec/internal/domain/app/model"
 	commonModel "github.com/mechta-market/kusec/internal/domain/common/model"
+	configitemModel "github.com/mechta-market/kusec/internal/domain/configitem/model"
+	configmapModel "github.com/mechta-market/kusec/internal/domain/configmap/model"
 	itemModel "github.com/mechta-market/kusec/internal/domain/item/model"
 	secretModel "github.com/mechta-market/kusec/internal/domain/secret/model"
 	usrModel "github.com/mechta-market/kusec/internal/domain/usr/model"
@@ -17,26 +19,32 @@ import (
 const recentSecretsLimit = 5
 
 type Usecase struct {
-	appSvc     AppServiceI
-	secretSvc  SecretServiceI
-	itemSvc    ItemServiceI
-	usrSvc     UsrServiceI
-	sessionSvc SessionServiceI
+	appSvc        AppServiceI
+	secretSvc     SecretServiceI
+	itemSvc       ItemServiceI
+	configMapSvc  ConfigMapServiceI
+	configItemSvc ConfigItemServiceI
+	usrSvc        UsrServiceI
+	sessionSvc    SessionServiceI
 }
 
 func New(
 	appSvc AppServiceI,
 	secretSvc SecretServiceI,
 	itemSvc ItemServiceI,
+	configMapSvc ConfigMapServiceI,
+	configItemSvc ConfigItemServiceI,
 	usrSvc UsrServiceI,
 	sessionSvc SessionServiceI,
 ) *Usecase {
 	return &Usecase{
-		appSvc:     appSvc,
-		secretSvc:  secretSvc,
-		itemSvc:    itemSvc,
-		usrSvc:     usrSvc,
-		sessionSvc: sessionSvc,
+		appSvc:        appSvc,
+		secretSvc:     secretSvc,
+		itemSvc:       itemSvc,
+		configMapSvc:  configMapSvc,
+		configItemSvc: configItemSvc,
+		usrSvc:        usrSvc,
+		sessionSvc:    sessionSvc,
 	}
 }
 
@@ -52,9 +60,13 @@ func (u *Usecase) Get(ctx context.Context) (*Summary, error) {
 	appScope, all := u.sessionSvc.FromContext(ctx).AccessibleAppIds()
 
 	var err error
-	var secretScope []string
+	var secretScope, configMapScope []string
 	if !all {
 		secretScope, err = u.accessibleSecretIds(ctx, appScope)
+		if err != nil {
+			return nil, err
+		}
+		configMapScope, err = u.accessibleConfigMapIds(ctx, appScope)
 		if err != nil {
 			return nil, err
 		}
@@ -69,6 +81,12 @@ func (u *Usecase) Get(ctx context.Context) (*Summary, error) {
 		return nil, err
 	}
 	if summary.Item, err = u.itemCount(ctx, !all, secretScope); err != nil {
+		return nil, err
+	}
+	if summary.ConfigMap, err = u.configMapCount(ctx, appScope); err != nil {
+		return nil, err
+	}
+	if summary.ConfigItem, err = u.configItemCount(ctx, !all, configMapScope); err != nil {
 		return nil, err
 	}
 	if summary.Usr, err = u.usrCount(ctx); err != nil {
@@ -139,6 +157,52 @@ func (u *Usecase) itemCount(ctx context.Context, scoped bool, secretScope []stri
 	})
 	if err != nil {
 		return Count{}, fmt.Errorf("itemSvc.List(active): %w", err)
+	}
+	return Count{Total: total, Active: active}, nil
+}
+
+func (u *Usecase) accessibleConfigMapIds(ctx context.Context, appScope []string) ([]string, error) {
+	if len(appScope) == 0 {
+		return nil, nil
+	}
+	configMaps, _, err := u.configMapSvc.List(ctx, &configmapModel.ListReq{AppIds: appScope})
+	if err != nil {
+		return nil, fmt.Errorf("configMapSvc.List(ids): %w", err)
+	}
+	return lo.Map(configMaps, func(c *configmapModel.Main, _ int) string { return c.Id }), nil
+}
+
+func (u *Usecase) configMapCount(ctx context.Context, appScope []string) (Count, error) {
+	_, total, err := u.configMapSvc.List(ctx, &configmapModel.ListReq{ListParams: countParams(), AppIds: appScope})
+	if err != nil {
+		return Count{}, fmt.Errorf("configMapSvc.List: %w", err)
+	}
+	_, active, err := u.configMapSvc.List(ctx, &configmapModel.ListReq{
+		ListParams: countParams(),
+		AppIds:     appScope,
+		Active:     lo.ToPtr(true),
+	})
+	if err != nil {
+		return Count{}, fmt.Errorf("configMapSvc.List(active): %w", err)
+	}
+	return Count{Total: total, Active: active}, nil
+}
+
+func (u *Usecase) configItemCount(ctx context.Context, scoped bool, configMapScope []string) (Count, error) {
+	if scoped && len(configMapScope) == 0 {
+		return Count{}, nil
+	}
+	_, total, err := u.configItemSvc.List(ctx, &configitemModel.ListReq{ListParams: countParams(), ConfigMapIds: configMapScope})
+	if err != nil {
+		return Count{}, fmt.Errorf("configItemSvc.List: %w", err)
+	}
+	_, active, err := u.configItemSvc.List(ctx, &configitemModel.ListReq{
+		ListParams:   countParams(),
+		ConfigMapIds: configMapScope,
+		Active:       lo.ToPtr(true),
+	})
+	if err != nil {
+		return Count{}, fmt.Errorf("configItemSvc.List(active): %w", err)
 	}
 	return Count{Total: total, Active: active}, nil
 }

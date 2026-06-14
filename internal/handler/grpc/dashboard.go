@@ -30,6 +30,8 @@ func (h *Dashboard) Get(ctx context.Context, _ *emptypb.Empty) (*proto.Dashboard
 		App:           dto.EncodeDashboardCount(summary.App),
 		Secret:        dto.EncodeDashboardCount(summary.Secret),
 		Item:          dto.EncodeDashboardCount(summary.Item),
+		Configmap:     dto.EncodeDashboardCount(summary.ConfigMap),
+		ConfigItem:    dto.EncodeDashboardCount(summary.ConfigItem),
 		Usr:           dto.EncodeDashboardCount(summary.Usr),
 		RecentSecrets: lo.Map(summary.RecentSecrets, dto.EncodeDashboardRecentSecret),
 	}, nil

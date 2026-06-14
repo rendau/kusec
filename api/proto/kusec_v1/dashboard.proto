@@ -44,4 +44,6 @@ message DashboardRep {
   DashboardCountSt item = 3;
   DashboardCountSt usr = 4;
   repeated DashboardRecentSecretSt recent_secrets = 5;
+  DashboardCountSt configmap = 6;
+  DashboardCountSt config_item = 7;
 }

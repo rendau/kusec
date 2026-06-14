@@ -22,6 +22,8 @@ type Summary struct {
 	App           Count
 	Secret        Count
 	Item          Count
+	ConfigMap     Count
+	ConfigItem    Count
 	Usr           Count
 	RecentSecrets []*RecentSecret
 }

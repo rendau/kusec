@@ -29,16 +29,19 @@ const (
 	managedByLabelValue = "kusec"
 	managedBySelector   = managedByLabelKey + "=" + managedByLabelValue
 
-	appIdAnnotation    = "kusec.io/app-id"
-	secretIdAnnotation = "kusec.io/secret-id"
+	appIdAnnotation       = "kusec.io/app-id"
+	secretIdAnnotation    = "kusec.io/secret-id"
+	configMapIdAnnotation = "kusec.io/configmap-id"
 )
 
 // Service синхронизирует секреты из базы в Kubernetes.
 // Работает только изнутри кластера (in-cluster config + ServiceAccount).
 type Service struct {
-	appSvc    AppServiceI
-	secretSvc SecretServiceI
-	itemSvc   ItemServiceI
+	appSvc        AppServiceI
+	secretSvc     SecretServiceI
+	itemSvc       ItemServiceI
+	configMapSvc  ConfigMapServiceI
+	configItemSvc ConfigItemServiceI
 
 	mu sync.Mutex // один sync одновременно
 
@@ -46,11 +49,19 @@ type Service struct {
 	client   kubernetes.Interface
 }
 
-func New(appSvc AppServiceI, secretSvc SecretServiceI, itemSvc ItemServiceI) *Service {
+func New(
+	appSvc AppServiceI,
+	secretSvc SecretServiceI,
+	itemSvc ItemServiceI,
+	configMapSvc ConfigMapServiceI,
+	configItemSvc ConfigItemServiceI,
+) *Service {
 	return &Service{
-		appSvc:    appSvc,
-		secretSvc: secretSvc,
-		itemSvc:   itemSvc,
+		appSvc:        appSvc,
+		secretSvc:     secretSvc,
+		itemSvc:       itemSvc,
+		configMapSvc:  configMapSvc,
+		configItemSvc: configItemSvc,
 	}
 }
 

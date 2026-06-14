@@ -185,6 +185,8 @@ type DashboardRep struct {
 	Item          *DashboardCountSt          `protobuf:"bytes,3,opt,name=item,proto3" json:"item,omitempty"`
 	Usr           *DashboardCountSt          `protobuf:"bytes,4,opt,name=usr,proto3" json:"usr,omitempty"`
 	RecentSecrets []*DashboardRecentSecretSt `protobuf:"bytes,5,rep,name=recent_secrets,json=recentSecrets,proto3" json:"recent_secrets,omitempty"`
+	Configmap     *DashboardCountSt          `protobuf:"bytes,6,opt,name=configmap,proto3" json:"configmap,omitempty"`
+	ConfigItem    *DashboardCountSt          `protobuf:"bytes,7,opt,name=config_item,json=configItem,proto3" json:"config_item,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -254,6 +256,20 @@ func (x *DashboardRep) GetRecentSecrets() []*DashboardRecentSecretSt {
 	return nil
 }
 
+func (x *DashboardRep) GetConfigmap() *DashboardCountSt {
+	if x != nil {
+		return x.Configmap
+	}
+	return nil
+}
+
+func (x *DashboardRep) GetConfigItem() *DashboardCountSt {
+	if x != nil {
+		return x.ConfigItem
+	}
+	return nil
+}
+
 var File_kusec_v1_dashboard_proto protoreflect.FileDescriptor
 
 const file_kusec_v1_dashboard_proto_rawDesc = "" +
@@ -272,13 +288,16 @@ const file_kusec_v1_dashboard_proto_rawDesc = "" +
 	"\n" +
 	"updated_at\x18\a \x01(\v2\x1a.google.protobuf.TimestampR\tupdatedAt\x12\x1d\n" +
 	"\n" +
-	"item_count\x18\b \x01(\x03R\titemCount\"\x98\x02\n" +
+	"item_count\x18\b \x01(\x03R\titemCount\"\x8f\x03\n" +
 	"\fDashboardRep\x12,\n" +
 	"\x03app\x18\x01 \x01(\v2\x1a.kusec_v1.DashboardCountStR\x03app\x122\n" +
 	"\x06secret\x18\x02 \x01(\v2\x1a.kusec_v1.DashboardCountStR\x06secret\x12.\n" +
 	"\x04item\x18\x03 \x01(\v2\x1a.kusec_v1.DashboardCountStR\x04item\x12,\n" +
 	"\x03usr\x18\x04 \x01(\v2\x1a.kusec_v1.DashboardCountStR\x03usr\x12H\n" +
-	"\x0erecent_secrets\x18\x05 \x03(\v2!.kusec_v1.DashboardRecentSecretStR\rrecentSecrets2V\n" +
+	"\x0erecent_secrets\x18\x05 \x03(\v2!.kusec_v1.DashboardRecentSecretStR\rrecentSecrets\x128\n" +
+	"\tconfigmap\x18\x06 \x01(\v2\x1a.kusec_v1.DashboardCountStR\tconfigmap\x12;\n" +
+	"\vconfig_item\x18\a \x01(\v2\x1a.kusec_v1.DashboardCountStR\n" +
+	"configItem2V\n" +
 	"\tDashboard\x12I\n" +
 	"\x03Get\x12\x16.google.protobuf.Empty\x1a\x16.kusec_v1.DashboardRep\"\x12\x82\xd3\xe4\x93\x02\f\x12\n" +
 	"/dashboardB\vZ\t/kusec_v1b\x06proto3"
@@ -310,13 +329,15 @@ var file_kusec_v1_dashboard_proto_depIdxs = []int32{
 	0, // 3: kusec_v1.DashboardRep.item:type_name -> kusec_v1.DashboardCountSt
 	0, // 4: kusec_v1.DashboardRep.usr:type_name -> kusec_v1.DashboardCountSt
 	1, // 5: kusec_v1.DashboardRep.recent_secrets:type_name -> kusec_v1.DashboardRecentSecretSt
-	4, // 6: kusec_v1.Dashboard.Get:input_type -> google.protobuf.Empty
-	2, // 7: kusec_v1.Dashboard.Get:output_type -> kusec_v1.DashboardRep
-	7, // [7:8] is the sub-list for method output_type
-	6, // [6:7] is the sub-list for method input_type
-	6, // [6:6] is the sub-list for extension type_name
-	6, // [6:6] is the sub-list for extension extendee
-	0, // [0:6] is the sub-list for field type_name
+	0, // 6: kusec_v1.DashboardRep.configmap:type_name -> kusec_v1.DashboardCountSt
+	0, // 7: kusec_v1.DashboardRep.config_item:type_name -> kusec_v1.DashboardCountSt
+	4, // 8: kusec_v1.Dashboard.Get:input_type -> google.protobuf.Empty
+	2, // 9: kusec_v1.Dashboard.Get:output_type -> kusec_v1.DashboardRep
+	9, // [9:10] is the sub-list for method output_type
+	8, // [8:9] is the sub-list for method input_type
+	8, // [8:8] is the sub-list for extension type_name
+	8, // [8:8] is the sub-list for extension extendee
+	0, // [0:8] is the sub-list for field type_name
 }
 
 func init() { file_kusec_v1_dashboard_proto_init() }

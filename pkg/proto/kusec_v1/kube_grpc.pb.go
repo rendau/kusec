@@ -21,6 +21,7 @@ const _ = grpc.SupportPackageIsVersion9
 
 const (
 	Kube_SyncSecrets_FullMethodName        = "/kusec_v1.Kube/SyncSecrets"
+	Kube_SyncConfigMaps_FullMethodName     = "/kusec_v1.Kube/SyncConfigMaps"
 	Kube_ListNamespaces_FullMethodName     = "/kusec_v1.Kube/ListNamespaces"
 	Kube_ListClusterSecrets_FullMethodName = "/kusec_v1.Kube/ListClusterSecrets"
 	Kube_ImportSecrets_FullMethodName      = "/kusec_v1.Kube/ImportSecrets"
@@ -37,6 +38,10 @@ const (
 // удаляются только они.
 type KubeClient interface {
 	SyncSecrets(ctx context.Context, in *KubeSyncSecretsReq, opts ...grpc.CallOption) (*KubeSyncSecretsRep, error)
+	// Синхронизация configmap-ов из базы в Kubernetes (только изнутри кластера).
+	// Имя k8s-configmap: {KUBE_SECRET_NAME_PREFIX}{app.slug_name}-{configmap.slug_name}.
+	// Управляемые configmap-ы помечаются лейблом app.kubernetes.io/managed-by=kusec.
+	SyncConfigMaps(ctx context.Context, in *KubeSyncConfigMapsReq, opts ...grpc.CallOption) (*KubeSyncConfigMapsRep, error)
 	ListNamespaces(ctx context.Context, in *emptypb.Empty, opts ...grpc.CallOption) (*KubeListNamespacesRep, error)
 	// Список секретов кластера для выбора при импорте (только админ).
 	// namespace в query пуст — берутся все namespace-ы без системных kube-*.
@@ -59,6 +64,16 @@ func (c *kubeClient) SyncSecrets(ctx context.Context, in *KubeSyncSecretsReq, op
 	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
 	out := new(KubeSyncSecretsRep)
 	err := c.cc.Invoke(ctx, Kube_SyncSecrets_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *kubeClient) SyncConfigMaps(ctx context.Context, in *KubeSyncConfigMapsReq, opts ...grpc.CallOption) (*KubeSyncConfigMapsRep, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(KubeSyncConfigMapsRep)
+	err := c.cc.Invoke(ctx, Kube_SyncConfigMaps_FullMethodName, in, out, cOpts...)
 	if err != nil {
 		return nil, err
 	}
@@ -106,6 +121,10 @@ func (c *kubeClient) ImportSecrets(ctx context.Context, in *KubeImportSecretsReq
 // удаляются только они.
 type KubeServer interface {
 	SyncSecrets(context.Context, *KubeSyncSecretsReq) (*KubeSyncSecretsRep, error)
+	// Синхронизация configmap-ов из базы в Kubernetes (только изнутри кластера).
+	// Имя k8s-configmap: {KUBE_SECRET_NAME_PREFIX}{app.slug_name}-{configmap.slug_name}.
+	// Управляемые configmap-ы помечаются лейблом app.kubernetes.io/managed-by=kusec.
+	SyncConfigMaps(context.Context, *KubeSyncConfigMapsReq) (*KubeSyncConfigMapsRep, error)
 	ListNamespaces(context.Context, *emptypb.Empty) (*KubeListNamespacesRep, error)
 	// Список секретов кластера для выбора при импорте (только админ).
 	// namespace в query пуст — берутся все namespace-ы без системных kube-*.
@@ -126,6 +145,9 @@ type UnimplementedKubeServer struct{}
 
 func (UnimplementedKubeServer) SyncSecrets(context.Context, *KubeSyncSecretsReq) (*KubeSyncSecretsRep, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method SyncSecrets not implemented")
+}
+func (UnimplementedKubeServer) SyncConfigMaps(context.Context, *KubeSyncConfigMapsReq) (*KubeSyncConfigMapsRep, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method SyncConfigMaps not implemented")
 }
 func (UnimplementedKubeServer) ListNamespaces(context.Context, *emptypb.Empty) (*KubeListNamespacesRep, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method ListNamespaces not implemented")
@@ -171,6 +193,24 @@ func _Kube_SyncSecrets_Handler(srv interface{}, ctx context.Context, dec func(in
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
 		return srv.(KubeServer).SyncSecrets(ctx, req.(*KubeSyncSecretsReq))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _Kube_SyncConfigMaps_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(KubeSyncConfigMapsReq)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(KubeServer).SyncConfigMaps(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: Kube_SyncConfigMaps_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(KubeServer).SyncConfigMaps(ctx, req.(*KubeSyncConfigMapsReq))
 	}
 	return interceptor(ctx, in, info, handler)
 }
@@ -239,6 +279,10 @@ var Kube_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "SyncSecrets",
 			Handler:    _Kube_SyncSecrets_Handler,
+		},
+		{
+			MethodName: "SyncConfigMaps",
+			Handler:    _Kube_SyncConfigMaps_Handler,
 		},
 		{
 			MethodName: "ListNamespaces",

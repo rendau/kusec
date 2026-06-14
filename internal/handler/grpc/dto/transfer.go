@@ -40,6 +40,32 @@ func EncodeTransferTreeApp(v *usecaseModel.TreeApp, _ int) *proto.TransferTreeAp
 			Items:       items,
 		})
 	}
+	configmaps := make([]*proto.TransferTreeConfigMapSt, 0, len(v.ConfigMaps))
+	for _, configMap := range v.ConfigMaps {
+		items := make([]*proto.TransferTreeConfigItemSt, 0, len(configMap.Items))
+		for _, item := range configMap.Items {
+			items = append(items, &proto.TransferTreeConfigItemSt{
+				Id:          item.Id,
+				Key:         item.Key,
+				ValueFormat: item.ValueFormat,
+				Encoding:    item.Encoding,
+				FileName:    item.FileName,
+				ContentType: item.ContentType,
+				Description: item.Description,
+				Active:      item.Active,
+				UpdatedAt:   timestamppb.New(item.UpdatedAt),
+				ValueSize:   item.ValueSize,
+			})
+		}
+		configmaps = append(configmaps, &proto.TransferTreeConfigMapSt{
+			Id:          configMap.Id,
+			SlugName:    configMap.SlugName,
+			Description: configMap.Description,
+			Active:      configMap.Active,
+			UpdatedAt:   timestamppb.New(configMap.UpdatedAt),
+			Items:       items,
+		})
+	}
 	return &proto.TransferTreeAppSt{
 		Id:          v.Id,
 		Namespace:   v.Namespace,
@@ -49,5 +75,6 @@ func EncodeTransferTreeApp(v *usecaseModel.TreeApp, _ int) *proto.TransferTreeAp
 		Active:      v.Active,
 		UpdatedAt:   timestamppb.New(v.UpdatedAt),
 		Secrets:     secrets,
+		Configmaps:  configmaps,
 	}
 }

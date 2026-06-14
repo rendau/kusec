@@ -4,6 +4,8 @@ import (
 	"context"
 
 	appModel "github.com/mechta-market/kusec/internal/domain/app/model"
+	configitemModel "github.com/mechta-market/kusec/internal/domain/configitem/model"
+	configmapModel "github.com/mechta-market/kusec/internal/domain/configmap/model"
 	itemModel "github.com/mechta-market/kusec/internal/domain/item/model"
 	secretModel "github.com/mechta-market/kusec/internal/domain/secret/model"
 	sessionModel "github.com/mechta-market/kusec/internal/domain/session/model"
@@ -21,6 +23,14 @@ type SecretServiceI interface {
 
 type ItemServiceI interface {
 	List(ctx context.Context, pars *itemModel.ListReq) ([]*itemModel.Main, int64, error)
+}
+
+type ConfigMapServiceI interface {
+	List(ctx context.Context, pars *configmapModel.ListReq) ([]*configmapModel.Main, int64, error)
+}
+
+type ConfigItemServiceI interface {
+	List(ctx context.Context, pars *configitemModel.ListReq) ([]*configitemModel.Main, int64, error)
 }
 
 type UsrServiceI interface {

@@ -20,6 +20,16 @@ service Kube {
     };
   }
 
+  // Синхронизация configmap-ов из базы в Kubernetes (только изнутри кластера).
+  // Имя k8s-configmap: {KUBE_SECRET_NAME_PREFIX}{app.slug_name}-{configmap.slug_name}.
+  // Управляемые configmap-ы помечаются лейблом app.kubernetes.io/managed-by=kusec.
+  rpc SyncConfigMaps(KubeSyncConfigMapsReq) returns (KubeSyncConfigMapsRep) {
+    option (google.api.http) = {
+      post: "/kube/sync-configmap"
+      body: "*"
+    };
+  }
+
   rpc ListNamespaces(google.protobuf.Empty) returns (KubeListNamespacesRep) {
     option (google.api.http) = {
       get: "/kube/namespace"
@@ -110,5 +120,19 @@ message KubeSyncSecretsRep {
   repeated string deleted = 3;
   int64 unchanged = 4;
   // Ошибки по отдельным секретам (sync продолжается для остальных).
+  repeated string errors = 5;
+}
+
+message KubeSyncConfigMapsReq {
+  string app_id = 1;
+}
+
+message KubeSyncConfigMapsRep {
+  // Списки в формате "namespace/name".
+  repeated string created = 1;
+  repeated string updated = 2;
+  repeated string deleted = 3;
+  int64 unchanged = 4;
+  // Ошибки по отдельным configmap-ам (sync продолжается для остальных).
   repeated string errors = 5;
 }

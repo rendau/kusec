@@ -69,15 +69,16 @@ func (x *TransferTreeRep) GetApps() []*TransferTreeAppSt {
 }
 
 type TransferTreeAppSt struct {
-	state         protoimpl.MessageState  `protogen:"open.v1"`
-	Id            string                  `protobuf:"bytes,1,opt,name=id,proto3" json:"id,omitempty"`
-	Namespace     string                  `protobuf:"bytes,2,opt,name=namespace,proto3" json:"namespace,omitempty"`
-	Name          string                  `protobuf:"bytes,3,opt,name=name,proto3" json:"name,omitempty"`
-	SlugName      string                  `protobuf:"bytes,4,opt,name=slug_name,json=slugName,proto3" json:"slug_name,omitempty"`
-	Description   string                  `protobuf:"bytes,5,opt,name=description,proto3" json:"description,omitempty"`
-	Active        bool                    `protobuf:"varint,6,opt,name=active,proto3" json:"active,omitempty"`
-	UpdatedAt     *timestamppb.Timestamp  `protobuf:"bytes,7,opt,name=updated_at,json=updatedAt,proto3" json:"updated_at,omitempty"`
-	Secrets       []*TransferTreeSecretSt `protobuf:"bytes,8,rep,name=secrets,proto3" json:"secrets,omitempty"`
+	state         protoimpl.MessageState     `protogen:"open.v1"`
+	Id            string                     `protobuf:"bytes,1,opt,name=id,proto3" json:"id,omitempty"`
+	Namespace     string                     `protobuf:"bytes,2,opt,name=namespace,proto3" json:"namespace,omitempty"`
+	Name          string                     `protobuf:"bytes,3,opt,name=name,proto3" json:"name,omitempty"`
+	SlugName      string                     `protobuf:"bytes,4,opt,name=slug_name,json=slugName,proto3" json:"slug_name,omitempty"`
+	Description   string                     `protobuf:"bytes,5,opt,name=description,proto3" json:"description,omitempty"`
+	Active        bool                       `protobuf:"varint,6,opt,name=active,proto3" json:"active,omitempty"`
+	UpdatedAt     *timestamppb.Timestamp     `protobuf:"bytes,7,opt,name=updated_at,json=updatedAt,proto3" json:"updated_at,omitempty"`
+	Secrets       []*TransferTreeSecretSt    `protobuf:"bytes,8,rep,name=secrets,proto3" json:"secrets,omitempty"`
+	Configmaps    []*TransferTreeConfigMapSt `protobuf:"bytes,9,rep,name=configmaps,proto3" json:"configmaps,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -168,6 +169,214 @@ func (x *TransferTreeAppSt) GetSecrets() []*TransferTreeSecretSt {
 	return nil
 }
 
+func (x *TransferTreeAppSt) GetConfigmaps() []*TransferTreeConfigMapSt {
+	if x != nil {
+		return x.Configmaps
+	}
+	return nil
+}
+
+type TransferTreeConfigMapSt struct {
+	state         protoimpl.MessageState      `protogen:"open.v1"`
+	Id            string                      `protobuf:"bytes,1,opt,name=id,proto3" json:"id,omitempty"`
+	SlugName      string                      `protobuf:"bytes,2,opt,name=slug_name,json=slugName,proto3" json:"slug_name,omitempty"`
+	Description   string                      `protobuf:"bytes,3,opt,name=description,proto3" json:"description,omitempty"`
+	Active        bool                        `protobuf:"varint,4,opt,name=active,proto3" json:"active,omitempty"`
+	UpdatedAt     *timestamppb.Timestamp      `protobuf:"bytes,5,opt,name=updated_at,json=updatedAt,proto3" json:"updated_at,omitempty"`
+	Items         []*TransferTreeConfigItemSt `protobuf:"bytes,6,rep,name=items,proto3" json:"items,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *TransferTreeConfigMapSt) Reset() {
+	*x = TransferTreeConfigMapSt{}
+	mi := &file_kusec_v1_transfer_proto_msgTypes[2]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *TransferTreeConfigMapSt) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*TransferTreeConfigMapSt) ProtoMessage() {}
+
+func (x *TransferTreeConfigMapSt) ProtoReflect() protoreflect.Message {
+	mi := &file_kusec_v1_transfer_proto_msgTypes[2]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use TransferTreeConfigMapSt.ProtoReflect.Descriptor instead.
+func (*TransferTreeConfigMapSt) Descriptor() ([]byte, []int) {
+	return file_kusec_v1_transfer_proto_rawDescGZIP(), []int{2}
+}
+
+func (x *TransferTreeConfigMapSt) GetId() string {
+	if x != nil {
+		return x.Id
+	}
+	return ""
+}
+
+func (x *TransferTreeConfigMapSt) GetSlugName() string {
+	if x != nil {
+		return x.SlugName
+	}
+	return ""
+}
+
+func (x *TransferTreeConfigMapSt) GetDescription() string {
+	if x != nil {
+		return x.Description
+	}
+	return ""
+}
+
+func (x *TransferTreeConfigMapSt) GetActive() bool {
+	if x != nil {
+		return x.Active
+	}
+	return false
+}
+
+func (x *TransferTreeConfigMapSt) GetUpdatedAt() *timestamppb.Timestamp {
+	if x != nil {
+		return x.UpdatedAt
+	}
+	return nil
+}
+
+func (x *TransferTreeConfigMapSt) GetItems() []*TransferTreeConfigItemSt {
+	if x != nil {
+		return x.Items
+	}
+	return nil
+}
+
+type TransferTreeConfigItemSt struct {
+	state       protoimpl.MessageState `protogen:"open.v1"`
+	Id          string                 `protobuf:"bytes,1,opt,name=id,proto3" json:"id,omitempty"`
+	Key         string                 `protobuf:"bytes,2,opt,name=key,proto3" json:"key,omitempty"`
+	ValueFormat string                 `protobuf:"bytes,3,opt,name=value_format,json=valueFormat,proto3" json:"value_format,omitempty"`
+	Encoding    string                 `protobuf:"bytes,4,opt,name=encoding,proto3" json:"encoding,omitempty"`
+	FileName    string                 `protobuf:"bytes,5,opt,name=file_name,json=fileName,proto3" json:"file_name,omitempty"`
+	ContentType string                 `protobuf:"bytes,6,opt,name=content_type,json=contentType,proto3" json:"content_type,omitempty"`
+	Description string                 `protobuf:"bytes,7,opt,name=description,proto3" json:"description,omitempty"`
+	Active      bool                   `protobuf:"varint,8,opt,name=active,proto3" json:"active,omitempty"`
+	UpdatedAt   *timestamppb.Timestamp `protobuf:"bytes,9,opt,name=updated_at,json=updatedAt,proto3" json:"updated_at,omitempty"`
+	// Размер хранимого значения в байтах; само значение не отдаётся.
+	ValueSize     int64 `protobuf:"varint,10,opt,name=value_size,json=valueSize,proto3" json:"value_size,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *TransferTreeConfigItemSt) Reset() {
+	*x = TransferTreeConfigItemSt{}
+	mi := &file_kusec_v1_transfer_proto_msgTypes[3]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *TransferTreeConfigItemSt) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*TransferTreeConfigItemSt) ProtoMessage() {}
+
+func (x *TransferTreeConfigItemSt) ProtoReflect() protoreflect.Message {
+	mi := &file_kusec_v1_transfer_proto_msgTypes[3]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use TransferTreeConfigItemSt.ProtoReflect.Descriptor instead.
+func (*TransferTreeConfigItemSt) Descriptor() ([]byte, []int) {
+	return file_kusec_v1_transfer_proto_rawDescGZIP(), []int{3}
+}
+
+func (x *TransferTreeConfigItemSt) GetId() string {
+	if x != nil {
+		return x.Id
+	}
+	return ""
+}
+
+func (x *TransferTreeConfigItemSt) GetKey() string {
+	if x != nil {
+		return x.Key
+	}
+	return ""
+}
+
+func (x *TransferTreeConfigItemSt) GetValueFormat() string {
+	if x != nil {
+		return x.ValueFormat
+	}
+	return ""
+}
+
+func (x *TransferTreeConfigItemSt) GetEncoding() string {
+	if x != nil {
+		return x.Encoding
+	}
+	return ""
+}
+
+func (x *TransferTreeConfigItemSt) GetFileName() string {
+	if x != nil {
+		return x.FileName
+	}
+	return ""
+}
+
+func (x *TransferTreeConfigItemSt) GetContentType() string {
+	if x != nil {
+		return x.ContentType
+	}
+	return ""
+}
+
+func (x *TransferTreeConfigItemSt) GetDescription() string {
+	if x != nil {
+		return x.Description
+	}
+	return ""
+}
+
+func (x *TransferTreeConfigItemSt) GetActive() bool {
+	if x != nil {
+		return x.Active
+	}
+	return false
+}
+
+func (x *TransferTreeConfigItemSt) GetUpdatedAt() *timestamppb.Timestamp {
+	if x != nil {
+		return x.UpdatedAt
+	}
+	return nil
+}
+
+func (x *TransferTreeConfigItemSt) GetValueSize() int64 {
+	if x != nil {
+		return x.ValueSize
+	}
+	return 0
+}
+
 type TransferTreeSecretSt struct {
 	state       protoimpl.MessageState `protogen:"open.v1"`
 	Id          string                 `protobuf:"bytes,1,opt,name=id,proto3" json:"id,omitempty"`
@@ -184,7 +393,7 @@ type TransferTreeSecretSt struct {
 
 func (x *TransferTreeSecretSt) Reset() {
 	*x = TransferTreeSecretSt{}
-	mi := &file_kusec_v1_transfer_proto_msgTypes[2]
+	mi := &file_kusec_v1_transfer_proto_msgTypes[4]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -196,7 +405,7 @@ func (x *TransferTreeSecretSt) String() string {
 func (*TransferTreeSecretSt) ProtoMessage() {}
 
 func (x *TransferTreeSecretSt) ProtoReflect() protoreflect.Message {
-	mi := &file_kusec_v1_transfer_proto_msgTypes[2]
+	mi := &file_kusec_v1_transfer_proto_msgTypes[4]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -209,7 +418,7 @@ func (x *TransferTreeSecretSt) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use TransferTreeSecretSt.ProtoReflect.Descriptor instead.
 func (*TransferTreeSecretSt) Descriptor() ([]byte, []int) {
-	return file_kusec_v1_transfer_proto_rawDescGZIP(), []int{2}
+	return file_kusec_v1_transfer_proto_rawDescGZIP(), []int{4}
 }
 
 func (x *TransferTreeSecretSt) GetId() string {
@@ -280,7 +489,7 @@ type TransferTreeItemSt struct {
 
 func (x *TransferTreeItemSt) Reset() {
 	*x = TransferTreeItemSt{}
-	mi := &file_kusec_v1_transfer_proto_msgTypes[3]
+	mi := &file_kusec_v1_transfer_proto_msgTypes[5]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -292,7 +501,7 @@ func (x *TransferTreeItemSt) String() string {
 func (*TransferTreeItemSt) ProtoMessage() {}
 
 func (x *TransferTreeItemSt) ProtoReflect() protoreflect.Message {
-	mi := &file_kusec_v1_transfer_proto_msgTypes[3]
+	mi := &file_kusec_v1_transfer_proto_msgTypes[5]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -305,7 +514,7 @@ func (x *TransferTreeItemSt) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use TransferTreeItemSt.ProtoReflect.Descriptor instead.
 func (*TransferTreeItemSt) Descriptor() ([]byte, []int) {
-	return file_kusec_v1_transfer_proto_rawDescGZIP(), []int{3}
+	return file_kusec_v1_transfer_proto_rawDescGZIP(), []int{5}
 }
 
 func (x *TransferTreeItemSt) GetId() string {
@@ -384,7 +593,7 @@ const file_kusec_v1_transfer_proto_rawDesc = "" +
 	"\n" +
 	"\x17kusec_v1/transfer.proto\x12\bkusec_v1\x1a\x1cgoogle/api/annotations.proto\x1a\x1bgoogle/protobuf/empty.proto\x1a\x1fgoogle/protobuf/timestamp.proto\"B\n" +
 	"\x0fTransferTreeRep\x12/\n" +
-	"\x04apps\x18\x01 \x03(\v2\x1b.kusec_v1.TransferTreeAppStR\x04apps\"\xa1\x02\n" +
+	"\x04apps\x18\x01 \x03(\v2\x1b.kusec_v1.TransferTreeAppStR\x04apps\"\xe4\x02\n" +
 	"\x11TransferTreeAppSt\x12\x0e\n" +
 	"\x02id\x18\x01 \x01(\tR\x02id\x12\x1c\n" +
 	"\tnamespace\x18\x02 \x01(\tR\tnamespace\x12\x12\n" +
@@ -394,7 +603,32 @@ const file_kusec_v1_transfer_proto_rawDesc = "" +
 	"\x06active\x18\x06 \x01(\bR\x06active\x129\n" +
 	"\n" +
 	"updated_at\x18\a \x01(\v2\x1a.google.protobuf.TimestampR\tupdatedAt\x128\n" +
-	"\asecrets\x18\b \x03(\v2\x1e.kusec_v1.TransferTreeSecretStR\asecrets\"\x89\x02\n" +
+	"\asecrets\x18\b \x03(\v2\x1e.kusec_v1.TransferTreeSecretStR\asecrets\x12A\n" +
+	"\n" +
+	"configmaps\x18\t \x03(\v2!.kusec_v1.TransferTreeConfigMapStR\n" +
+	"configmaps\"\xf5\x01\n" +
+	"\x17TransferTreeConfigMapSt\x12\x0e\n" +
+	"\x02id\x18\x01 \x01(\tR\x02id\x12\x1b\n" +
+	"\tslug_name\x18\x02 \x01(\tR\bslugName\x12 \n" +
+	"\vdescription\x18\x03 \x01(\tR\vdescription\x12\x16\n" +
+	"\x06active\x18\x04 \x01(\bR\x06active\x129\n" +
+	"\n" +
+	"updated_at\x18\x05 \x01(\v2\x1a.google.protobuf.TimestampR\tupdatedAt\x128\n" +
+	"\x05items\x18\x06 \x03(\v2\".kusec_v1.TransferTreeConfigItemStR\x05items\"\xcf\x02\n" +
+	"\x18TransferTreeConfigItemSt\x12\x0e\n" +
+	"\x02id\x18\x01 \x01(\tR\x02id\x12\x10\n" +
+	"\x03key\x18\x02 \x01(\tR\x03key\x12!\n" +
+	"\fvalue_format\x18\x03 \x01(\tR\vvalueFormat\x12\x1a\n" +
+	"\bencoding\x18\x04 \x01(\tR\bencoding\x12\x1b\n" +
+	"\tfile_name\x18\x05 \x01(\tR\bfileName\x12!\n" +
+	"\fcontent_type\x18\x06 \x01(\tR\vcontentType\x12 \n" +
+	"\vdescription\x18\a \x01(\tR\vdescription\x12\x16\n" +
+	"\x06active\x18\b \x01(\bR\x06active\x129\n" +
+	"\n" +
+	"updated_at\x18\t \x01(\v2\x1a.google.protobuf.TimestampR\tupdatedAt\x12\x1d\n" +
+	"\n" +
+	"value_size\x18\n" +
+	" \x01(\x03R\tvalueSize\"\x89\x02\n" +
 	"\x14TransferTreeSecretSt\x12\x0e\n" +
 	"\x02id\x18\x01 \x01(\tR\x02id\x12\x1b\n" +
 	"\tslug_name\x18\x02 \x01(\tR\bslugName\x12 \n" +
@@ -433,29 +667,35 @@ func file_kusec_v1_transfer_proto_rawDescGZIP() []byte {
 	return file_kusec_v1_transfer_proto_rawDescData
 }
 
-var file_kusec_v1_transfer_proto_msgTypes = make([]protoimpl.MessageInfo, 4)
+var file_kusec_v1_transfer_proto_msgTypes = make([]protoimpl.MessageInfo, 6)
 var file_kusec_v1_transfer_proto_goTypes = []any{
-	(*TransferTreeRep)(nil),       // 0: kusec_v1.TransferTreeRep
-	(*TransferTreeAppSt)(nil),     // 1: kusec_v1.TransferTreeAppSt
-	(*TransferTreeSecretSt)(nil),  // 2: kusec_v1.TransferTreeSecretSt
-	(*TransferTreeItemSt)(nil),    // 3: kusec_v1.TransferTreeItemSt
-	(*timestamppb.Timestamp)(nil), // 4: google.protobuf.Timestamp
-	(*emptypb.Empty)(nil),         // 5: google.protobuf.Empty
+	(*TransferTreeRep)(nil),          // 0: kusec_v1.TransferTreeRep
+	(*TransferTreeAppSt)(nil),        // 1: kusec_v1.TransferTreeAppSt
+	(*TransferTreeConfigMapSt)(nil),  // 2: kusec_v1.TransferTreeConfigMapSt
+	(*TransferTreeConfigItemSt)(nil), // 3: kusec_v1.TransferTreeConfigItemSt
+	(*TransferTreeSecretSt)(nil),     // 4: kusec_v1.TransferTreeSecretSt
+	(*TransferTreeItemSt)(nil),       // 5: kusec_v1.TransferTreeItemSt
+	(*timestamppb.Timestamp)(nil),    // 6: google.protobuf.Timestamp
+	(*emptypb.Empty)(nil),            // 7: google.protobuf.Empty
 }
 var file_kusec_v1_transfer_proto_depIdxs = []int32{
-	1, // 0: kusec_v1.TransferTreeRep.apps:type_name -> kusec_v1.TransferTreeAppSt
-	4, // 1: kusec_v1.TransferTreeAppSt.updated_at:type_name -> google.protobuf.Timestamp
-	2, // 2: kusec_v1.TransferTreeAppSt.secrets:type_name -> kusec_v1.TransferTreeSecretSt
-	4, // 3: kusec_v1.TransferTreeSecretSt.updated_at:type_name -> google.protobuf.Timestamp
-	3, // 4: kusec_v1.TransferTreeSecretSt.items:type_name -> kusec_v1.TransferTreeItemSt
-	4, // 5: kusec_v1.TransferTreeItemSt.updated_at:type_name -> google.protobuf.Timestamp
-	5, // 6: kusec_v1.Transfer.Tree:input_type -> google.protobuf.Empty
-	0, // 7: kusec_v1.Transfer.Tree:output_type -> kusec_v1.TransferTreeRep
-	7, // [7:8] is the sub-list for method output_type
-	6, // [6:7] is the sub-list for method input_type
-	6, // [6:6] is the sub-list for extension type_name
-	6, // [6:6] is the sub-list for extension extendee
-	0, // [0:6] is the sub-list for field type_name
+	1,  // 0: kusec_v1.TransferTreeRep.apps:type_name -> kusec_v1.TransferTreeAppSt
+	6,  // 1: kusec_v1.TransferTreeAppSt.updated_at:type_name -> google.protobuf.Timestamp
+	4,  // 2: kusec_v1.TransferTreeAppSt.secrets:type_name -> kusec_v1.TransferTreeSecretSt
+	2,  // 3: kusec_v1.TransferTreeAppSt.configmaps:type_name -> kusec_v1.TransferTreeConfigMapSt
+	6,  // 4: kusec_v1.TransferTreeConfigMapSt.updated_at:type_name -> google.protobuf.Timestamp
+	3,  // 5: kusec_v1.TransferTreeConfigMapSt.items:type_name -> kusec_v1.TransferTreeConfigItemSt
+	6,  // 6: kusec_v1.TransferTreeConfigItemSt.updated_at:type_name -> google.protobuf.Timestamp
+	6,  // 7: kusec_v1.TransferTreeSecretSt.updated_at:type_name -> google.protobuf.Timestamp
+	5,  // 8: kusec_v1.TransferTreeSecretSt.items:type_name -> kusec_v1.TransferTreeItemSt
+	6,  // 9: kusec_v1.TransferTreeItemSt.updated_at:type_name -> google.protobuf.Timestamp
+	7,  // 10: kusec_v1.Transfer.Tree:input_type -> google.protobuf.Empty
+	0,  // 11: kusec_v1.Transfer.Tree:output_type -> kusec_v1.TransferTreeRep
+	11, // [11:12] is the sub-list for method output_type
+	10, // [10:11] is the sub-list for method input_type
+	10, // [10:10] is the sub-list for extension type_name
+	10, // [10:10] is the sub-list for extension extendee
+	0,  // [0:10] is the sub-list for field type_name
 }
 
 func init() { file_kusec_v1_transfer_proto_init() }
@@ -469,7 +709,7 @@ func file_kusec_v1_transfer_proto_init() {
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_kusec_v1_transfer_proto_rawDesc), len(file_kusec_v1_transfer_proto_rawDesc)),
 			NumEnums:      0,
-			NumMessages:   4,
+			NumMessages:   6,
 			NumExtensions: 0,
 			NumServices:   1,
 		},

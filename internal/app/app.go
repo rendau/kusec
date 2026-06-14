@@ -22,6 +22,10 @@ import (
 
 	appDb "github.com/mechta-market/kusec/internal/domain/app/repo/db"
 	appService "github.com/mechta-market/kusec/internal/domain/app/service"
+	configitemDb "github.com/mechta-market/kusec/internal/domain/configitem/repo/db"
+	configitemService "github.com/mechta-market/kusec/internal/domain/configitem/service"
+	configmapDb "github.com/mechta-market/kusec/internal/domain/configmap/repo/db"
+	configmapService "github.com/mechta-market/kusec/internal/domain/configmap/service"
 	itemDb "github.com/mechta-market/kusec/internal/domain/item/repo/db"
 	itemService "github.com/mechta-market/kusec/internal/domain/item/service"
 	secretDb "github.com/mechta-market/kusec/internal/domain/secret/repo/db"
@@ -35,6 +39,8 @@ import (
 	kubeService "github.com/mechta-market/kusec/internal/service/kube"
 
 	appUsc "github.com/mechta-market/kusec/internal/usecase/app"
+	configitemUsc "github.com/mechta-market/kusec/internal/usecase/configitem"
+	configmapUsc "github.com/mechta-market/kusec/internal/usecase/configmap"
 	dashboardUsc "github.com/mechta-market/kusec/internal/usecase/dashboard"
 	itemUsc "github.com/mechta-market/kusec/internal/usecase/item"
 	kubeUsc "github.com/mechta-market/kusec/internal/usecase/kube"
@@ -95,19 +101,23 @@ func (a *App) Init() {
 	appSvc := appService.New(appDb.New(a.pgpool))
 	secretSvc := secretService.New(secretDb.New(a.pgpool))
 	itemSvc := itemService.New(itemDb.New(a.pgpool))
+	configMapSvc := configmapService.New(configmapDb.New(a.pgpool))
+	configItemSvc := configitemService.New(configitemDb.New(a.pgpool))
 
 	usrHandler := grpcHandler.NewUsr(usrUsc.New(usrSvc, sessionSvc))
 	appHandler := grpcHandler.NewApp(appUsc.New(appSvc, sessionSvc))
 	secretHandler := grpcHandler.NewSecret(secretUsc.New(secretSvc, appSvc, sessionSvc))
 	itemHandler := grpcHandler.NewItem(itemUsc.New(itemSvc, secretSvc, sessionSvc))
+	configMapHandler := grpcHandler.NewConfigMap(configmapUsc.New(configMapSvc, appSvc, sessionSvc))
+	configItemHandler := grpcHandler.NewConfigItem(configitemUsc.New(configItemSvc, configMapSvc, sessionSvc))
 	dashboardHandler := grpcHandler.NewDashboard(
-		dashboardUsc.New(appSvc, secretSvc, itemSvc, usrSvc, sessionSvc),
+		dashboardUsc.New(appSvc, secretSvc, itemSvc, configMapSvc, configItemSvc, usrSvc, sessionSvc),
 	)
 	kubeHandler := grpcHandler.NewKube(
-		kubeUsc.New(kubeService.New(appSvc, secretSvc, itemSvc), sessionSvc),
+		kubeUsc.New(kubeService.New(appSvc, secretSvc, itemSvc, configMapSvc, configItemSvc), sessionSvc),
 	)
 	transferHandler := grpcHandler.NewTransfer(
-		transferUsc.New(appSvc, secretSvc, itemSvc, sessionSvc),
+		transferUsc.New(appSvc, secretSvc, itemSvc, configMapSvc, configItemSvc, sessionSvc),
 	)
 
 	// grpc server
@@ -117,6 +127,8 @@ func (a *App) Init() {
 			proto.RegisterAppServer(server, appHandler)
 			proto.RegisterSecretServer(server, secretHandler)
 			proto.RegisterItemServer(server, itemHandler)
+			proto.RegisterConfigMapServer(server, configMapHandler)
+			proto.RegisterConfigItemServer(server, configItemHandler)
 			proto.RegisterDashboardServer(server, dashboardHandler)
 			proto.RegisterKubeServer(server, kubeHandler)
 			proto.RegisterTransferServer(server, transferHandler)
@@ -140,6 +152,8 @@ func (a *App) Init() {
 				proto.RegisterAppHandler,
 				proto.RegisterSecretHandler,
 				proto.RegisterItemHandler,
+				proto.RegisterConfigMapHandler,
+				proto.RegisterConfigItemHandler,
 				proto.RegisterDashboardHandler,
 				proto.RegisterKubeHandler,
 				proto.RegisterTransferHandler,

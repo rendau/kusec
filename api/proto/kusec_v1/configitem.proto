@@ -1,0 +1,116 @@
+syntax = "proto3";
+
+package kusec_v1;
+
+import "google/api/annotations.proto";
+import "google/protobuf/empty.proto";
+import "google/protobuf/timestamp.proto";
+import "common/common.proto";
+
+option go_package = "/kusec_v1";
+
+service ConfigItem {
+  rpc List(ConfigItemListReq) returns (ConfigItemListRep) {
+    option (google.api.http) = {
+      get: "/config-item"
+    };
+  }
+
+  rpc Get(ConfigItemGetReq) returns (ConfigItemMain) {
+    option (google.api.http) = {
+      get: "/config-item/{id}"
+    };
+  }
+
+  rpc Create(ConfigItemCreateReq) returns (ConfigItemCreateRep) {
+    option (google.api.http) = {
+      post: "/config-item"
+      body: "*"
+    };
+  }
+
+  rpc Update(ConfigItemUpdateReq) returns (google.protobuf.Empty) {
+    option (google.api.http) = {
+      put: "/config-item/{id}"
+      body: "*"
+    };
+  }
+
+  rpc Delete(ConfigItemGetReq) returns (google.protobuf.Empty) {
+    option (google.api.http) = {
+      delete: "/config-item/{id}"
+    };
+  }
+}
+
+// ── Messages ────────────────────────────────────────────
+
+message ConfigItemMain {
+  string id = 1;
+  google.protobuf.Timestamp created_at = 2;
+  google.protobuf.Timestamp updated_at = 3;
+  string configmap_id = 4;
+  bool active = 5;
+  string key = 6;
+  string value = 7;
+  string value_format = 9;
+  string encoding = 10;
+  string file_name = 11;
+  string content_type = 12;
+  string description = 8;
+}
+
+// List
+
+message ConfigItemListReq {
+  common.ListParamsSt list_params = 1;
+  optional string configmap_id = 2;
+  optional bool active = 3;
+  optional string search = 4;
+  // Выборка по нескольким configmap-ам за один запрос (без пагинации).
+  repeated string configmap_ids = 5;
+}
+
+message ConfigItemListRep {
+  common.PaginationInfoSt pagination_info = 1;
+  repeated ConfigItemMain results = 2;
+}
+
+// Get
+
+message ConfigItemGetReq {
+  string id = 1;
+}
+
+// Create
+
+message ConfigItemCreateReq {
+  string configmap_id = 1;
+  optional bool active = 2;
+  string key = 3;
+  string value = 4;
+  optional string value_format = 6;
+  optional string encoding = 7;
+  optional string file_name = 8;
+  optional string content_type = 9;
+  string description = 5;
+}
+
+message ConfigItemCreateRep {
+  string id = 1;
+}
+
+// Update
+
+message ConfigItemUpdateReq {
+  string id = 1;
+  optional string configmap_id = 2;
+  optional bool active = 3;
+  optional string key = 4;
+  optional string value = 5;
+  optional string value_format = 7;
+  optional string encoding = 8;
+  optional string file_name = 9;
+  optional string content_type = 10;
+  optional string description = 6;
+}

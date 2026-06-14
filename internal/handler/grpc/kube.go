@@ -100,3 +100,23 @@ func (h *Kube) SyncSecrets(ctx context.Context, req *proto.KubeSyncSecretsReq) (
 		Errors:    result.Errors,
 	}, nil
 }
+
+func (h *Kube) SyncConfigMaps(ctx context.Context, req *proto.KubeSyncConfigMapsReq) (*proto.KubeSyncConfigMapsRep, error) {
+	var appId *string
+	if req != nil && req.AppId != "" {
+		appId = &req.AppId
+	}
+
+	result, err := h.usecase.SyncConfigMaps(ctx, appId)
+	if err != nil {
+		return nil, err
+	}
+
+	return &proto.KubeSyncConfigMapsRep{
+		Created:   result.Created,
+		Updated:   result.Updated,
+		Deleted:   result.Deleted,
+		Unchanged: result.Unchanged,
+		Errors:    result.Errors,
+	}, nil
+}

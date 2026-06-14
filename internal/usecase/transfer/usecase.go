@@ -8,29 +8,37 @@ import (
 	"github.com/samber/lo"
 
 	appModel "github.com/mechta-market/kusec/internal/domain/app/model"
+	configitemModel "github.com/mechta-market/kusec/internal/domain/configitem/model"
+	configmapModel "github.com/mechta-market/kusec/internal/domain/configmap/model"
 	itemModel "github.com/mechta-market/kusec/internal/domain/item/model"
 	secretModel "github.com/mechta-market/kusec/internal/domain/secret/model"
 	"github.com/mechta-market/kusec/internal/errs"
 )
 
 type Usecase struct {
-	appSvc     AppServiceI
-	secretSvc  SecretServiceI
-	itemSvc    ItemServiceI
-	sessionSvc SessionServiceI
+	appSvc        AppServiceI
+	secretSvc     SecretServiceI
+	itemSvc       ItemServiceI
+	configMapSvc  ConfigMapServiceI
+	configItemSvc ConfigItemServiceI
+	sessionSvc    SessionServiceI
 }
 
 func New(
 	appSvc AppServiceI,
 	secretSvc SecretServiceI,
 	itemSvc ItemServiceI,
+	configMapSvc ConfigMapServiceI,
+	configItemSvc ConfigItemServiceI,
 	sessionSvc SessionServiceI,
 ) *Usecase {
 	return &Usecase{
-		appSvc:     appSvc,
-		secretSvc:  secretSvc,
-		itemSvc:    itemSvc,
-		sessionSvc: sessionSvc,
+		appSvc:        appSvc,
+		secretSvc:     secretSvc,
+		itemSvc:       itemSvc,
+		configMapSvc:  configMapSvc,
+		configItemSvc: configItemSvc,
+		sessionSvc:    sessionSvc,
 	}
 }
 
@@ -113,6 +121,48 @@ func (u *Usecase) Tree(ctx context.Context) ([]*TreeApp, error) {
 				})
 			}
 			treeApp.Secrets = append(treeApp.Secrets, treeSecret)
+		}
+
+		configMaps, _, err := u.configMapSvc.List(ctx, &configmapModel.ListReq{AppId: lo.ToPtr(app.Id)})
+		if err != nil {
+			return nil, fmt.Errorf("configMapSvc.List: %w", err)
+		}
+		sort.Slice(configMaps, func(i, j int) bool {
+			return configMaps[i].SlugName < configMaps[j].SlugName
+		})
+
+		treeApp.ConfigMaps = make([]*TreeConfigMap, 0, len(configMaps))
+		for _, configMap := range configMaps {
+			items, _, err := u.configItemSvc.List(ctx, &configitemModel.ListReq{ConfigMapId: lo.ToPtr(configMap.Id)})
+			if err != nil {
+				return nil, fmt.Errorf("configItemSvc.List: %w", err)
+			}
+			sort.Slice(items, func(i, j int) bool { return items[i].Key < items[j].Key })
+
+			treeConfigMap := &TreeConfigMap{
+				Id:          configMap.Id,
+				SlugName:    configMap.SlugName,
+				Description: configMap.Description,
+				Active:      configMap.Active,
+				UpdatedAt:   configMap.UpdatedAt,
+				Items:       make([]*TreeConfigItem, 0, len(items)),
+			}
+			for _, item := range items {
+				treeConfigMap.Items = append(treeConfigMap.Items, &TreeConfigItem{
+					Id:          item.Id,
+					Key:         item.Key,
+					ValueFormat: item.ValueFormat,
+					Encoding:    item.Encoding,
+					FileName:    item.FileName,
+					ContentType: item.ContentType,
+					Description: item.Description,
+					Active:      item.Active,
+					UpdatedAt:   item.UpdatedAt,
+					// Значение скрыто; размер хранимой строки в байтах.
+					ValueSize: int64(len(item.Value)),
+				})
+			}
+			treeApp.ConfigMaps = append(treeApp.ConfigMaps, treeConfigMap)
 		}
 
 		tree = append(tree, treeApp)

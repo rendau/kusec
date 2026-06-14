@@ -53,3 +53,14 @@ type desiredSecret struct {
 	kubeType string
 	data     map[string][]byte
 }
+
+type desiredConfigMap struct {
+	namespace   string
+	name        string
+	appId       string
+	configMapId string
+	// data — текстовые значения (encoding=plain), binaryData — бинарные
+	// (encoding=base64, декодированы в байты).
+	data       map[string]string
+	binaryData map[string][]byte
+}

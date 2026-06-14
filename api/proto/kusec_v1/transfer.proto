@@ -33,6 +33,30 @@ message TransferTreeAppSt {
   bool active = 6;
   google.protobuf.Timestamp updated_at = 7;
   repeated TransferTreeSecretSt secrets = 8;
+  repeated TransferTreeConfigMapSt configmaps = 9;
+}
+
+message TransferTreeConfigMapSt {
+  string id = 1;
+  string slug_name = 2;
+  string description = 3;
+  bool active = 4;
+  google.protobuf.Timestamp updated_at = 5;
+  repeated TransferTreeConfigItemSt items = 6;
+}
+
+message TransferTreeConfigItemSt {
+  string id = 1;
+  string key = 2;
+  string value_format = 3;
+  string encoding = 4;
+  string file_name = 5;
+  string content_type = 6;
+  string description = 7;
+  bool active = 8;
+  google.protobuf.Timestamp updated_at = 9;
+  // Размер хранимого значения в байтах; само значение не отдаётся.
+  int64 value_size = 10;
 }
 
 message TransferTreeSecretSt {
