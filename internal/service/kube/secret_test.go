@@ -279,6 +279,98 @@ func TestSyncSecrets_ScopedSyncUpdatesAndDeletesOnlyScopedApp(t *testing.T) {
 	}
 }
 
+func TestSyncSecrets_GlobalSyncAdoptsExistingWithoutErrors(t *testing.T) {
+	t.Parallel()
+
+	managedName := SecretName("app1", "main") // уже управляемый — Unchanged
+	adoptName := SecretName("app2", "main")   // существует без лейбла — усыновляется
+
+	client := k8sfake.NewSimpleClientset(
+		&corev1.Namespace{ObjectMeta: metav1.ObjectMeta{Name: "default"}},
+		&corev1.Secret{
+			ObjectMeta: metav1.ObjectMeta{
+				Name:      managedName,
+				Namespace: "default",
+				Labels:    map[string]string{managedByLabelKey: managedByLabelValue},
+				Annotations: map[string]string{
+					appIdAnnotation:    "app-1",
+					secretIdAnnotation: "sec-1",
+				},
+			},
+			Type: corev1.SecretTypeOpaque,
+			Data: map[string][]byte{"A": []byte("val")},
+		},
+		// Предсуществующий секрет без managed-by лейбла (создан вне kusec/старой
+		// версией): не попадёт в list по селектору, поэтому пойдёт через
+		// Create → AlreadyExists → усыновление.
+		&corev1.Secret{
+			ObjectMeta: metav1.ObjectMeta{Name: adoptName, Namespace: "default"},
+			Type:       corev1.SecretTypeOpaque,
+			Data:       map[string][]byte{"A": []byte("val")},
+		},
+	)
+
+	svc := &Service{
+		client: client,
+		appSvc: appSvcStub{
+			listFn: func(_ context.Context, req *appModel.ListReq) ([]*appModel.Main, int64, error) {
+				if len(req.Ids) != 0 {
+					t.Fatalf("global sync must pass empty Ids, got: %#v", req.Ids)
+				}
+				return []*appModel.Main{
+					{Id: "app-1", Namespace: "default", SlugName: "app1"},
+					{Id: "app-2", Namespace: "default", SlugName: "app2"},
+				}, 2, nil
+			},
+		},
+		secretSvc: secretSvcStub{
+			listFn: func(_ context.Context, req *secretModel.ListReq) ([]*secretModel.Main, int64, error) {
+				switch *req.AppId {
+				case "app-1":
+					return []*secretModel.Main{{Id: "sec-1", SlugName: "main"}}, 1, nil
+				case "app-2":
+					return []*secretModel.Main{{Id: "sec-2", SlugName: "main"}}, 1, nil
+				}
+				t.Fatalf("unexpected AppId: %+v", req.AppId)
+				return nil, 0, nil
+			},
+		},
+		itemSvc: itemSvcStub{
+			listFn: func(_ context.Context, _ *itemModel.ListReq) ([]*itemModel.Main, int64, error) {
+				return []*itemModel.Main{{Key: "A", Value: "val"}}, 1, nil
+			},
+		},
+	}
+
+	// Глобальный sync: appIds == nil.
+	result, err := svc.SyncSecrets(context.Background(), nil)
+	if err != nil {
+		t.Fatalf("SyncSecrets() error = %v", err)
+	}
+
+	if len(result.Errors) != 0 {
+		t.Fatalf("global sync of existing secrets must not produce errors, got: %#v", result.Errors)
+	}
+	if result.Unchanged != 1 {
+		t.Fatalf("managed up-to-date secret must be unchanged, got: %d (updated=%#v)", result.Unchanged, result.Updated)
+	}
+	if !slices.Equal(result.Updated, []string{"default/" + adoptName}) {
+		t.Fatalf("unlabeled secret must be adopted (updated), got: %#v", result.Updated)
+	}
+
+	// Усыновлённый секрет теперь помечен managed-by и имеет аннотации kusec.
+	adopted, err := client.CoreV1().Secrets("default").Get(context.Background(), adoptName, metav1.GetOptions{})
+	if err != nil {
+		t.Fatalf("adopted secret must exist: %v", err)
+	}
+	if adopted.Labels[managedByLabelKey] != managedByLabelValue {
+		t.Fatalf("adopted secret must get managed-by label, got: %#v", adopted.Labels)
+	}
+	if adopted.Annotations[appIdAnnotation] != "app-2" {
+		t.Fatalf("adopted secret must get app-id annotation, got: %#v", adopted.Annotations)
+	}
+}
+
 func TestSecretUpToDate(t *testing.T) {
 	t.Parallel()
 

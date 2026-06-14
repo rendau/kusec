@@ -32,6 +32,9 @@ func (s *Service) SyncConfigMaps(ctx context.Context, appIds []string) (*SyncRes
 	}
 	defer s.mu.Unlock()
 
+	ctx, cancel := context.WithTimeout(ctx, syncTimeout)
+	defer cancel()
+
 	client, err := s.getClient()
 	if err != nil {
 		return nil, err
@@ -56,12 +59,16 @@ func (s *Service) syncConfigMapsLocked(ctx context.Context, client kubernetes.In
 		return nil, fmt.Errorf("k8s: list managed configmaps: %w", err)
 	}
 
+	// Пустой appIds означает «все приложения» (симметрично buildDesiredConfigMaps
+	// с Ids: nil): фильтровать существующие по scope в этом случае не нужно,
+	// иначе existing окажется пустым и всё уйдёт в ошибочный повторный Create.
+	all := len(appIds) == 0
 	scopeSet := lo.SliceToMap(appIds, func(appId string) (string, bool) { return appId, true })
 
 	existing := make(map[string]*corev1.ConfigMap, len(existingList.Items))
 	for i := range existingList.Items {
 		configMap := &existingList.Items[i]
-		if !scopeSet[configMap.Annotations[appIdAnnotation]] {
+		if !all && !scopeSet[configMap.Annotations[appIdAnnotation]] {
 			continue
 		}
 		existing[configMap.Namespace+"/"+configMap.Name] = configMap
@@ -78,33 +85,25 @@ func (s *Service) syncConfigMapsLocked(ctx context.Context, client kubernetes.In
 				result.Errors = append(result.Errors, fmt.Sprintf("%s: %v", key, err))
 				continue
 			}
-			if _, err = client.CoreV1().ConfigMaps(want.namespace).Create(ctx, buildConfigMap(want), metav1.CreateOptions{}); err != nil {
+			_, err = client.CoreV1().ConfigMaps(want.namespace).Create(ctx, buildConfigMap(want), metav1.CreateOptions{})
+			if err == nil {
+				result.Created = append(result.Created, key)
+				continue
+			}
+			if !k8serrors.IsAlreadyExists(err) {
 				result.Errors = append(result.Errors, fmt.Sprintf("%s: create: %v", key, err))
 				continue
 			}
-			result.Created = append(result.Created, key)
-			continue
+			// ConfigMap уже есть, но без нашего лейбла (создан вне kusec/старой
+			// версией) — усыновляем: подтягиваем текущий и обновляем.
+			current, err = client.CoreV1().ConfigMaps(want.namespace).Get(ctx, want.name, metav1.GetOptions{})
+			if err != nil {
+				result.Errors = append(result.Errors, fmt.Sprintf("%s: adopt: %v", key, err))
+				continue
+			}
 		}
 
-		if configMapUpToDate(current, want) {
-			result.Unchanged++
-			continue
-		}
-
-		updated := current.DeepCopy()
-		updated.Data = want.data
-		updated.BinaryData = want.binaryData
-		if updated.Annotations == nil {
-			updated.Annotations = map[string]string{}
-		}
-		updated.Annotations[appIdAnnotation] = want.appId
-		updated.Annotations[configMapIdAnnotation] = want.configMapId
-
-		if _, err = client.CoreV1().ConfigMaps(want.namespace).Update(ctx, updated, metav1.UpdateOptions{}); err != nil {
-			result.Errors = append(result.Errors, fmt.Sprintf("%s: update: %v", key, err))
-			continue
-		}
-		result.Updated = append(result.Updated, key)
+		s.reconcileExistingConfigMap(ctx, client, current, want, key, result)
 	}
 
 	// Управляемые configmap-ы, которым больше нет активных записей в базе.
@@ -123,6 +122,43 @@ func (s *Service) syncConfigMapsLocked(ctx context.Context, client kubernetes.In
 	sort.Strings(result.Errors)
 
 	return result, nil
+}
+
+// reconcileExistingConfigMap приводит существующий configmap к желаемому
+// состоянию. Используется и для найденных по лейблу, и для усыновляемых
+// (Create → AlreadyExists), поэтому всегда проставляет managed-by лейбл и
+// аннотации.
+func (s *Service) reconcileExistingConfigMap(
+	ctx context.Context,
+	client kubernetes.Interface,
+	current *corev1.ConfigMap,
+	want *desiredConfigMap,
+	key string,
+	result *SyncResult,
+) {
+	if configMapUpToDate(current, want) {
+		result.Unchanged++
+		return
+	}
+
+	updated := current.DeepCopy()
+	updated.Data = want.data
+	updated.BinaryData = want.binaryData
+	if updated.Labels == nil {
+		updated.Labels = map[string]string{}
+	}
+	updated.Labels[managedByLabelKey] = managedByLabelValue
+	if updated.Annotations == nil {
+		updated.Annotations = map[string]string{}
+	}
+	updated.Annotations[appIdAnnotation] = want.appId
+	updated.Annotations[configMapIdAnnotation] = want.configMapId
+
+	if _, err := client.CoreV1().ConfigMaps(want.namespace).Update(ctx, updated, metav1.UpdateOptions{}); err != nil {
+		result.Errors = append(result.Errors, fmt.Sprintf("%s: update: %v", key, err))
+		return
+	}
+	result.Updated = append(result.Updated, key)
 }
 
 // buildDesiredConfigMaps собирает желаемое состояние из базы: только

@@ -32,6 +32,9 @@ func (s *Service) SyncSecrets(ctx context.Context, appIds []string) (*SyncResult
 	}
 	defer s.mu.Unlock()
 
+	ctx, cancel := context.WithTimeout(ctx, syncTimeout)
+	defer cancel()
+
 	client, err := s.getClient()
 	if err != nil {
 		return nil, err
@@ -56,12 +59,16 @@ func (s *Service) syncSecretsLocked(ctx context.Context, client kubernetes.Inter
 		return nil, fmt.Errorf("k8s: list managed secrets: %w", err)
 	}
 
+	// Пустой appIds означает «все приложения» (симметрично buildDesired с
+	// Ids: nil): фильтровать существующие по scope в этом случае не нужно,
+	// иначе existing окажется пустым и всё уйдёт в ошибочный повторный Create.
+	all := len(appIds) == 0
 	scopeSet := lo.SliceToMap(appIds, func(appId string) (string, bool) { return appId, true })
 
 	existing := make(map[string]*corev1.Secret, len(existingList.Items))
 	for i := range existingList.Items {
 		secret := &existingList.Items[i]
-		if !scopeSet[secret.Annotations[appIdAnnotation]] {
+		if !all && !scopeSet[secret.Annotations[appIdAnnotation]] {
 			continue
 		}
 		existing[secret.Namespace+"/"+secret.Name] = secret
@@ -78,47 +85,25 @@ func (s *Service) syncSecretsLocked(ctx context.Context, client kubernetes.Inter
 				result.Errors = append(result.Errors, fmt.Sprintf("%s: %v", key, err))
 				continue
 			}
-			if _, err = client.CoreV1().Secrets(want.namespace).Create(ctx, buildSecret(want), metav1.CreateOptions{}); err != nil {
+			_, err = client.CoreV1().Secrets(want.namespace).Create(ctx, buildSecret(want), metav1.CreateOptions{})
+			if err == nil {
+				result.Created = append(result.Created, key)
+				continue
+			}
+			if !k8serrors.IsAlreadyExists(err) {
 				result.Errors = append(result.Errors, fmt.Sprintf("%s: create: %v", key, err))
 				continue
 			}
-			result.Created = append(result.Created, key)
-			continue
-		}
-
-		if secretUpToDate(current, want) {
-			result.Unchanged++
-			continue
-		}
-
-		// Тип k8s-секрета immutable: при его смене секрет пересоздаётся.
-		if current.Type != desiredSecretType(want) {
-			if err = client.CoreV1().Secrets(want.namespace).Delete(ctx, want.name, metav1.DeleteOptions{}); err != nil && !k8serrors.IsNotFound(err) {
-				result.Errors = append(result.Errors, fmt.Sprintf("%s: recreate (delete): %v", key, err))
+			// Секрет уже есть, но без нашего лейбла (создан вне kusec/старой
+			// версией) — усыновляем: подтягиваем текущий и обновляем.
+			current, err = client.CoreV1().Secrets(want.namespace).Get(ctx, want.name, metav1.GetOptions{})
+			if err != nil {
+				result.Errors = append(result.Errors, fmt.Sprintf("%s: adopt: %v", key, err))
 				continue
 			}
-			if _, err = client.CoreV1().Secrets(want.namespace).Create(ctx, buildSecret(want), metav1.CreateOptions{}); err != nil {
-				result.Errors = append(result.Errors, fmt.Sprintf("%s: recreate (create): %v", key, err))
-				continue
-			}
-			result.Updated = append(result.Updated, key)
-			continue
 		}
 
-		updated := current.DeepCopy()
-		updated.Data = want.data
-		updated.StringData = nil
-		if updated.Annotations == nil {
-			updated.Annotations = map[string]string{}
-		}
-		updated.Annotations[appIdAnnotation] = want.appId
-		updated.Annotations[secretIdAnnotation] = want.secretId
-
-		if _, err = client.CoreV1().Secrets(want.namespace).Update(ctx, updated, metav1.UpdateOptions{}); err != nil {
-			result.Errors = append(result.Errors, fmt.Sprintf("%s: update: %v", key, err))
-			continue
-		}
-		result.Updated = append(result.Updated, key)
+		s.reconcileExistingSecret(ctx, client, current, want, key, result)
 	}
 
 	// Управляемые секреты, которым больше нет активных записей в базе.
@@ -137,6 +122,56 @@ func (s *Service) syncSecretsLocked(ctx context.Context, client kubernetes.Inter
 	sort.Strings(result.Errors)
 
 	return result, nil
+}
+
+// reconcileExistingSecret приводит существующий секрет к желаемому состоянию.
+// Используется и для найденных по лейблу, и для усыновляемых (Create →
+// AlreadyExists), поэтому всегда проставляет managed-by лейбл и аннотации.
+func (s *Service) reconcileExistingSecret(
+	ctx context.Context,
+	client kubernetes.Interface,
+	current *corev1.Secret,
+	want *desiredSecret,
+	key string,
+	result *SyncResult,
+) {
+	if secretUpToDate(current, want) {
+		result.Unchanged++
+		return
+	}
+
+	// Тип k8s-секрета immutable: при его смене секрет пересоздаётся.
+	if current.Type != desiredSecretType(want) {
+		if err := client.CoreV1().Secrets(want.namespace).Delete(ctx, want.name, metav1.DeleteOptions{}); err != nil && !k8serrors.IsNotFound(err) {
+			result.Errors = append(result.Errors, fmt.Sprintf("%s: recreate (delete): %v", key, err))
+			return
+		}
+		if _, err := client.CoreV1().Secrets(want.namespace).Create(ctx, buildSecret(want), metav1.CreateOptions{}); err != nil {
+			result.Errors = append(result.Errors, fmt.Sprintf("%s: recreate (create): %v", key, err))
+			return
+		}
+		result.Updated = append(result.Updated, key)
+		return
+	}
+
+	updated := current.DeepCopy()
+	updated.Data = want.data
+	updated.StringData = nil
+	if updated.Labels == nil {
+		updated.Labels = map[string]string{}
+	}
+	updated.Labels[managedByLabelKey] = managedByLabelValue
+	if updated.Annotations == nil {
+		updated.Annotations = map[string]string{}
+	}
+	updated.Annotations[appIdAnnotation] = want.appId
+	updated.Annotations[secretIdAnnotation] = want.secretId
+
+	if _, err := client.CoreV1().Secrets(want.namespace).Update(ctx, updated, metav1.UpdateOptions{}); err != nil {
+		result.Errors = append(result.Errors, fmt.Sprintf("%s: update: %v", key, err))
+		return
+	}
+	result.Updated = append(result.Updated, key)
 }
 
 // buildDesired собирает желаемое состояние из базы: только active-записи

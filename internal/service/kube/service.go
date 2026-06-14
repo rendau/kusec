@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"sort"
 	"sync"
+	"time"
 
 	corev1 "k8s.io/api/core/v1"
 	k8serrors "k8s.io/apimachinery/pkg/api/errors"
@@ -25,6 +26,11 @@ const (
 	secretIdAnnotation    = "kusec.io/secret-id"
 	configMapIdAnnotation = "kusec.io/configmap-id"
 )
+
+// syncTimeout — верхняя граница времени одной реконсиляции. Контекст хендлера
+// уже WithoutCancel (разрыв соединения не обрывает деплой), поэтому без дедлайна
+// зависший вызов k8s API держал бы s.mu бесконечно и блокировал все sync.
+const syncTimeout = 5 * time.Minute
 
 // Service синхронизирует секреты из базы в Kubernetes.
 // Работает только изнутри кластера (in-cluster config + ServiceAccount).
@@ -128,6 +134,9 @@ func (s *Service) Sync(ctx context.Context, appIds []string) (*SyncResult, *Sync
 		return nil, nil, errs.SyncInProgress
 	}
 	defer s.mu.Unlock()
+
+	ctx, cancel := context.WithTimeout(ctx, syncTimeout)
+	defer cancel()
 
 	client, err := s.getClient()
 	if err != nil {
