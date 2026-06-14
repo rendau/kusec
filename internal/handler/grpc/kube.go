@@ -6,6 +6,7 @@ import (
 	"github.com/samber/lo"
 	"google.golang.org/protobuf/types/known/emptypb"
 
+	"github.com/mechta-market/kusec/internal/handler/grpc/dto"
 	kubeService "github.com/mechta-market/kusec/internal/service/kube"
 	usecase "github.com/mechta-market/kusec/internal/usecase/kube"
 	proto "github.com/mechta-market/kusec/pkg/proto/kusec_v1"
@@ -45,15 +46,7 @@ func (h *Kube) ListClusterSecrets(ctx context.Context, req *proto.KubeListCluste
 
 	return &proto.KubeListClusterSecretsRep{
 		InCluster: inCluster,
-		Secrets: lo.Map(secrets, func(s *kubeService.ClusterSecret, _ int) *proto.KubeClusterSecretSt {
-			return &proto.KubeClusterSecretSt{
-				Namespace: s.Namespace,
-				Name:      s.Name,
-				Type:      s.Type,
-				Keys:      s.Keys,
-				Managed:   s.Managed,
-			}
-		}),
+		Secrets:   lo.Map(secrets, dto.EncodeKubeClusterSecret),
 	}, nil
 }
 
@@ -62,9 +55,7 @@ func (h *Kube) ImportSecrets(ctx context.Context, req *proto.KubeImportSecretsRe
 	var refs []kubeService.ImportRef
 	if req != nil {
 		appId = req.AppId
-		refs = lo.Map(req.Secrets, func(s *proto.KubeImportSecretRefSt, _ int) kubeService.ImportRef {
-			return kubeService.ImportRef{Namespace: s.Namespace, Name: s.Name}
-		})
+		refs = lo.Map(req.Secrets, dto.DecodeKubeImportRef)
 	}
 
 	result, err := h.usecase.ImportSecrets(ctx, appId, refs)
@@ -72,13 +63,7 @@ func (h *Kube) ImportSecrets(ctx context.Context, req *proto.KubeImportSecretsRe
 		return nil, err
 	}
 
-	return &proto.KubeImportSecretsRep{
-		Imported:       result.Imported,
-		Skipped:        result.Skipped,
-		Errors:         result.Errors,
-		CreatedSecrets: result.CreatedSecrets,
-		CreatedItems:   result.CreatedItems,
-	}, nil
+	return dto.EncodeKubeImportResult(result), nil
 }
 
 func (h *Kube) SyncSecrets(ctx context.Context, req *proto.KubeSyncSecretsReq) (*proto.KubeSyncSecretsRep, error) {
@@ -92,13 +77,7 @@ func (h *Kube) SyncSecrets(ctx context.Context, req *proto.KubeSyncSecretsReq) (
 		return nil, err
 	}
 
-	return &proto.KubeSyncSecretsRep{
-		Created:   result.Created,
-		Updated:   result.Updated,
-		Deleted:   result.Deleted,
-		Unchanged: result.Unchanged,
-		Errors:    result.Errors,
-	}, nil
+	return dto.EncodeKubeSyncSecretsRep(result), nil
 }
 
 func (h *Kube) SyncConfigMaps(ctx context.Context, req *proto.KubeSyncConfigMapsReq) (*proto.KubeSyncConfigMapsRep, error) {
@@ -112,13 +91,7 @@ func (h *Kube) SyncConfigMaps(ctx context.Context, req *proto.KubeSyncConfigMaps
 		return nil, err
 	}
 
-	return &proto.KubeSyncConfigMapsRep{
-		Created:   result.Created,
-		Updated:   result.Updated,
-		Deleted:   result.Deleted,
-		Unchanged: result.Unchanged,
-		Errors:    result.Errors,
-	}, nil
+	return dto.EncodeKubeSyncConfigMapsRep(result), nil
 }
 
 func (h *Kube) Sync(ctx context.Context, req *proto.KubeSyncReq) (*proto.KubeSyncRep, error) {
@@ -133,19 +106,7 @@ func (h *Kube) Sync(ctx context.Context, req *proto.KubeSyncReq) (*proto.KubeSyn
 	}
 
 	return &proto.KubeSyncRep{
-		Secrets: &proto.KubeSyncSecretsRep{
-			Created:   secrets.Created,
-			Updated:   secrets.Updated,
-			Deleted:   secrets.Deleted,
-			Unchanged: secrets.Unchanged,
-			Errors:    secrets.Errors,
-		},
-		Configmaps: &proto.KubeSyncConfigMapsRep{
-			Created:   configMaps.Created,
-			Updated:   configMaps.Updated,
-			Deleted:   configMaps.Deleted,
-			Unchanged: configMaps.Unchanged,
-			Errors:    configMaps.Errors,
-		},
+		Secrets:    dto.EncodeKubeSyncSecretsRep(secrets),
+		Configmaps: dto.EncodeKubeSyncConfigMapsRep(configMaps),
 	}, nil
 }
