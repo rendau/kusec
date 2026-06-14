@@ -47,6 +47,7 @@ import { useAuthStore } from '@/stores/auth'
 
 import AppDeleteModal from '@/components/app/AppDeleteModal.vue'
 import AppFormModal from '@/components/app/AppFormModal.vue'
+import ConfigMapsSection from '@/components/configmap/ConfigMapsSection.vue'
 import SecretDetailDrawer from '@/components/secret/SecretDetailDrawer.vue'
 import SecretFormModal from '@/components/secret/SecretFormModal.vue'
 import SecretItemsPanel from '@/components/secret/SecretItemsPanel.vue'
@@ -631,6 +632,8 @@ watch(apps, () => {
         "
       />
     </NCard>
+
+    <ConfigMapsSection v-if="appId" :app-id="appId" />
 
     <AppFormModal v-model:show="showAppForm" :app="app" @saved="onAppSaved" />
     <AppDeleteModal

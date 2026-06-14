@@ -272,6 +272,10 @@ export interface DashboardRep {
   item: DashboardCount
   usr: DashboardCount
   recent_secrets: DashboardRecentSecret[]
+  /** Config-map counter (sibling of `secret`). */
+  configmap: DashboardCount
+  /** Config-item counter (sibling of `item`). */
+  config_item: DashboardCount
 }
 
 /** `KubeListNamespacesRep` — cluster namespaces for the app form picker. */
@@ -299,6 +303,40 @@ export interface KubeSyncSecretsRep {
   deleted: string[]
   unchanged: number | string
   errors: string[]
+}
+
+/**
+ * `KubeSyncConfigMapsReq` — sync scope for config maps. Same semantics as
+ * `KubeSyncSecretsReq`: empty/omitted `app_id` syncs every accessible app.
+ */
+export interface KubeSyncConfigMapsReq {
+  app_id?: string
+}
+
+/**
+ * Config-map sync result (`KubeSyncConfigMapsRep`). Identical shape to
+ * `KubeSyncSecretsRep`; lists are "namespace/name".
+ */
+export interface KubeSyncConfigMapsRep {
+  created: string[]
+  updated: string[]
+  deleted: string[]
+  unchanged: number | string
+  errors: string[]
+}
+
+/** `KubeSyncReq` — combined secrets + config maps sync scope. */
+export interface KubeSyncReq {
+  app_id?: string
+}
+
+/**
+ * Combined sync result (`KubeSyncRep`) — secrets and config maps reconciled
+ * in a single call under one lock.
+ */
+export interface KubeSyncRep {
+  secrets: KubeSyncSecretsRep
+  configmaps: KubeSyncConfigMapsRep
 }
 
 /**
@@ -405,6 +443,139 @@ export interface ItemCreateRep {
 /** `ItemUpdateReq`. */
 export interface ItemUpdateReq {
   secret_id?: string
+  active?: boolean
+  key?: string
+  value?: string
+  value_format?: ValueFormat
+  encoding?: ValueEncoding
+  file_name?: string
+  content_type?: string
+  description?: string
+}
+
+/**
+ * TypeScript mirrors of the kusec `ConfigMap` proto messages
+ * (see api/proto/kusec_v1/configmap.proto).
+ *
+ * A ConfigMap is the non-sensitive sibling of a Secret: it belongs to an App
+ * via `app_id` (FK, ON DELETE CASCADE) and holds plain config items. Unlike a
+ * Secret it has no k8s type (a k8s ConfigMap is always untyped).
+ */
+
+/** ConfigMap entity (`ConfigMapMain`). */
+export interface ConfigMapMain {
+  id: string
+  created_at: string
+  updated_at: string
+  app_id: string
+  active: boolean
+  slug_name: string
+  description: string
+  /** Full name of the resulting k8s configmap; computed by the backend. */
+  kube_configmap_name: string
+}
+
+/** `ConfigMapListReq` — filters for the list endpoint. */
+export interface ConfigMapListReq {
+  list_params?: ListParams
+  app_id?: string
+  active?: boolean
+  search?: string
+}
+
+/** `ConfigMapListRep`. */
+export interface ConfigMapListRep {
+  pagination_info?: PaginationInfo
+  results: ConfigMapMain[]
+}
+
+/** `ConfigMapCreateReq`. */
+export interface ConfigMapCreateReq {
+  app_id: string
+  active?: boolean
+  slug_name: string
+  description: string
+}
+
+/** `ConfigMapCreateRep`. */
+export interface ConfigMapCreateRep {
+  id: string
+}
+
+/** `ConfigMapUpdateReq`. */
+export interface ConfigMapUpdateReq {
+  app_id?: string
+  active?: boolean
+  slug_name?: string
+  description?: string
+}
+
+/**
+ * TypeScript mirrors of the kusec `ConfigItem` proto messages
+ * (see api/proto/kusec_v1/configitem.proto).
+ *
+ * A ConfigItem belongs to a ConfigMap via `configmap_id` (FK, ON DELETE
+ * CASCADE). `key` is unique per config map (`uq_config_item_configmap_id_key`).
+ * Values are not sensitive, but share the Item value shape (format/encoding).
+ */
+
+/** ConfigItem entity (`ConfigItemMain`). */
+export interface ConfigItemMain {
+  id: string
+  created_at: string
+  updated_at: string
+  configmap_id: string
+  active: boolean
+  key: string
+  value: string
+  /** Editor format of `value` (e.g. "text" | "yaml" | "json"). */
+  value_format: string
+  /** How `value` is stored: "plain" | "base64" (binary/file). */
+  encoding: string
+  /** Original file name when the value was uploaded as a file. */
+  file_name: string
+  /** MIME type of the uploaded file. */
+  content_type: string
+  description: string
+}
+
+/** `ConfigItemListReq` — filters for the list endpoint. */
+export interface ConfigItemListReq {
+  list_params?: ListParams
+  configmap_id?: string
+  /** Fetch items for several config maps in one request (no pagination). */
+  configmap_ids?: string[]
+  active?: boolean
+  search?: string
+}
+
+/** `ConfigItemListRep`. */
+export interface ConfigItemListRep {
+  pagination_info?: PaginationInfo
+  results: ConfigItemMain[]
+}
+
+/** `ConfigItemCreateReq`. */
+export interface ConfigItemCreateReq {
+  configmap_id: string
+  active?: boolean
+  key: string
+  value: string
+  value_format?: ValueFormat
+  encoding?: ValueEncoding
+  file_name?: string
+  content_type?: string
+  description: string
+}
+
+/** `ConfigItemCreateRep`. */
+export interface ConfigItemCreateRep {
+  id: string
+}
+
+/** `ConfigItemUpdateReq`. */
+export interface ConfigItemUpdateReq {
+  configmap_id?: string
   active?: boolean
   key?: string
   value?: string

@@ -16,8 +16,8 @@ import type { AppMain } from '@/api/types'
 
 /**
  * Type-to-confirm deletion of an application. Deleting an app cascades to
- * all of its secrets and items, so a plain "OK" dialog is too easy to
- * misclick — the user must type the application name first.
+ * all of its secrets, config maps and their items, so a plain "OK" dialog is
+ * too easy to misclick — the user must type the application name first.
  */
 const props = defineProps<{
   show: boolean
@@ -84,10 +84,12 @@ async function confirmDelete(): Promise<void> {
         <NText strong>{{ app?.name }}</NText>
         also permanently deletes
         <template v-if="secretCount">
-          its {{ secretCount }} secret{{ secretCount === 1 ? '' : 's' }} and all
-          of their items.
+          its {{ secretCount }} secret{{ secretCount === 1 ? '' : 's' }}, all of
+          their items, and every config map and config item.
         </template>
-        <template v-else> all of its secrets and items. </template>
+        <template v-else>
+          all of its secrets, config maps and their items.
+        </template>
       </NAlert>
 
       <NText depth="3" style="font-size: 13px">

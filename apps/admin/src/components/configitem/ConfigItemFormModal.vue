@@ -1,0 +1,424 @@
+<script setup lang="ts">
+import { computed, defineAsyncComponent, onMounted, reactive, ref } from 'vue'
+import {
+  NButton,
+  NDropdown,
+  NForm,
+  NFormItem,
+  NInput,
+  NModal,
+  NRadioButton,
+  NRadioGroup,
+  NSelect,
+  NSpace,
+  NSwitch,
+  NTag,
+  NText,
+  useMessage,
+} from 'naive-ui'
+import type { FormRules } from 'naive-ui'
+
+import { createConfigItem, updateConfigItem } from '@/api/configitem'
+import type {
+  ConfigItemMain,
+  ConfigItemUpdateReq,
+  ValueEncoding,
+  ValueFormat,
+} from '@/api/types'
+import { useClipboard } from '@/composables/useClipboard'
+import { useEntityForm } from '@/composables/useEntityForm'
+import { useConfigMapOptions } from '@/composables/useConfigMapOptions'
+import {
+  base64ByteSize,
+  base64ToText,
+  bytesToBase64,
+  downloadBase64,
+  formatBytes,
+  isProbablyText,
+  textToBase64,
+} from '@/utils/binary'
+import { normalizeValueFormat, stripCommonIndent } from '@/utils/format'
+
+const MAX_FILE_BYTES = 5 * 1024 * 1024
+
+// Lazy — pulls in the CodeMirror chunk only when the form is opened.
+const ValueEditor = defineAsyncComponent(
+  () => import('@/components/common/ValueEditor.vue'),
+)
+
+const props = defineProps<{
+  show: boolean
+  /** The config item being edited, or `null` when creating a new one. */
+  item: ConfigItemMain | null
+  /** Pre-selected config map id when creating from within a config map context. */
+  defaultConfigMapId?: string | null
+  /** Lock the config map field (the item is bound to its config map). */
+  lockConfigMap?: boolean
+}>()
+
+const emit = defineEmits<{
+  'update:show': [value: boolean]
+  saved: []
+}>()
+
+const message = useMessage()
+const { copy } = useClipboard()
+const {
+  options: configMapOptions,
+  loading: configMapsLoading,
+  search,
+  ensure,
+} = useConfigMapOptions()
+
+// Editor mode for the value (persisted as `value_format`).
+const valueFormat = ref<ValueFormat>('text')
+
+interface FormModel {
+  configmap_id: string | null
+  key: string
+  value: string
+  encoding: ValueEncoding
+  file_name: string
+  content_type: string
+  description: string
+  active: boolean
+}
+
+const model = reactive<FormModel>({
+  configmap_id: null,
+  key: '',
+  value: '',
+  encoding: 'plain',
+  file_name: '',
+  content_type: '',
+  description: '',
+  active: true,
+})
+
+const fileInput = ref<HTMLInputElement | null>(null)
+const isFile = computed(() => model.encoding === 'base64')
+const fileSize = computed(() => formatBytes(base64ByteSize(model.value)))
+
+const rules: FormRules = {
+  configmap_id: [
+    {
+      required: true,
+      message: 'Config map is required',
+      trigger: ['blur', 'change'],
+      validator: (_rule, value: string | null) => value != null && value !== '',
+    },
+  ],
+  key: [{ required: true, message: 'Key is required', trigger: ['blur', 'input'] }],
+}
+
+/**
+ * Значение к сохранению: для yaml/json убираем общий левый отступ
+ * (вставка из вложенной секции другого файла). Файлы (base64) и
+ * неструктурированный text не трогаем — там отступ может быть значимым.
+ */
+function preparedValue(): string {
+  if (model.encoding === 'base64' || valueFormat.value === 'text') {
+    return model.value
+  }
+  return stripCommonIndent(model.value)
+}
+
+const { formRef, submitting, isEdit, submit } = useEntityForm<ConfigItemMain>({
+  show: () => props.show,
+  entity: () => props.item,
+  seed: async (item) => {
+    model.configmap_id = item?.configmap_id ?? props.defaultConfigMapId ?? null
+    model.key = item?.key ?? ''
+    model.value = item?.value ?? ''
+    model.encoding = item?.encoding === 'base64' ? 'base64' : 'plain'
+    model.file_name = item?.file_name ?? ''
+    model.content_type = item?.content_type ?? ''
+    model.description = item?.description ?? ''
+    model.active = item?.active ?? true
+    valueFormat.value = normalizeValueFormat(item?.value_format)
+    if (model.configmap_id) await ensure(model.configmap_id)
+  },
+  create: () =>
+    createConfigItem({
+      configmap_id: model.configmap_id as string,
+      key: model.key,
+      value: preparedValue(),
+      value_format: valueFormat.value,
+      encoding: model.encoding,
+      file_name: model.file_name,
+      content_type: model.content_type,
+      description: model.description,
+      active: model.active,
+    }),
+  update: (item) => {
+    const update: ConfigItemUpdateReq = {
+      key: model.key,
+      value: preparedValue(),
+      value_format: valueFormat.value,
+      encoding: model.encoding,
+      file_name: model.file_name,
+      content_type: model.content_type,
+      description: model.description,
+      active: model.active,
+    }
+    if (model.configmap_id) update.configmap_id = model.configmap_id
+    return updateConfigItem(item.id, update)
+  },
+  messages: { created: 'Config item created', updated: 'Config item updated' },
+  onSaved: () => {
+    emit('saved')
+    close()
+  },
+})
+
+onMounted(() => {
+  void search()
+})
+
+function close(): void {
+  emit('update:show', false)
+}
+
+function encodeBase64(): void {
+  if (!model.value) return
+  model.value = textToBase64(model.value)
+  message.success('Encoded to base64')
+}
+
+function decodeBase64(): void {
+  if (!model.value) return
+  try {
+    model.value = base64ToText(model.value.trim())
+    message.success('Decoded from base64')
+  } catch {
+    message.error('Invalid base64 value')
+  }
+}
+
+function onBase64Select(key: string | number): void {
+  if (key === 'encode') encodeBase64()
+  else if (key === 'decode') decodeBase64()
+}
+
+const base64Options = [
+  { label: 'Encode → base64', key: 'encode' },
+  { label: 'Decode ← base64', key: 'decode' },
+]
+
+function pickFile(): void {
+  fileInput.value?.click()
+}
+
+function formatFromName(name: string): ValueFormat {
+  const ext = name.split('.').pop()?.toLowerCase()
+  if (ext === 'yaml' || ext === 'yml') return 'yaml'
+  if (ext === 'json') return 'json'
+  return 'text'
+}
+
+async function onFileChange(event: Event): Promise<void> {
+  const input = event.target as HTMLInputElement
+  const file = input.files?.[0]
+  input.value = '' // allow re-selecting the same file
+  if (!file) return
+  if (file.size > MAX_FILE_BYTES) {
+    message.error(`File is too large (max ${formatBytes(MAX_FILE_BYTES)})`)
+    return
+  }
+  try {
+    const bytes = new Uint8Array(await file.arrayBuffer())
+    if (!model.key) model.key = file.name
+    if (isProbablyText(bytes)) {
+      // Text file (YAML/JSON/…) — keep editable & viewable as text.
+      model.value = new TextDecoder().decode(bytes)
+      model.encoding = 'plain'
+      model.file_name = ''
+      model.content_type = ''
+      valueFormat.value = formatFromName(file.name)
+      message.success('File loaded as text')
+    } else {
+      // Binary file — store base64, download-only (k8s BinaryData).
+      model.value = bytesToBase64(bytes)
+      model.encoding = 'base64'
+      model.file_name = file.name
+      model.content_type = file.type
+      message.success('Binary file attached')
+    }
+  } catch {
+    message.error('Failed to read file')
+  }
+}
+
+function removeFile(): void {
+  model.value = ''
+  model.encoding = 'plain'
+  model.file_name = ''
+  model.content_type = ''
+}
+
+function downloadFile(): void {
+  try {
+    downloadBase64(model.value, model.file_name || model.key, model.content_type)
+  } catch {
+    message.error('Failed to download file')
+  }
+}
+</script>
+
+<template>
+  <NModal
+    :show="show"
+    preset="card"
+    :title="isEdit ? 'Edit config item' : 'New config item'"
+    style="max-width: 680px"
+    :mask-closable="!submitting"
+    @update:show="emit('update:show', $event)"
+  >
+    <NForm
+      ref="formRef"
+      :model="model"
+      :rules="rules"
+      label-placement="top"
+      :disabled="submitting"
+    >
+      <NFormItem label="Config map" path="configmap_id">
+        <NSelect
+          v-model:value="model.configmap_id"
+          :options="configMapOptions"
+          :loading="configMapsLoading"
+          :disabled="lockConfigMap"
+          :clearable="!lockConfigMap"
+          filterable
+          remote
+          placeholder="Select a config map"
+          @search="search"
+        />
+      </NFormItem>
+      <NFormItem label="Key" path="key">
+        <NInput v-model:value="model.key" placeholder="e.g. LOG_LEVEL" clearable />
+      </NFormItem>
+      <NFormItem label="Value" path="value">
+        <div class="value-field">
+          <input
+            ref="fileInput"
+            type="file"
+            style="display: none"
+            @change="onFileChange"
+          />
+
+          <!-- File / binary value -->
+          <div v-if="isFile" class="value-file">
+            <div class="value-file__info">
+              <NText class="value-file__name">{{ model.file_name || 'file' }}</NText>
+              <NTag size="tiny" :bordered="false">{{ fileSize }}</NTag>
+              <NTag v-if="model.content_type" size="tiny" :bordered="false" type="info">
+                {{ model.content_type }}
+              </NTag>
+            </div>
+            <NSpace :size="8">
+              <NButton size="small" tertiary @click="downloadFile">Download</NButton>
+              <NButton size="small" tertiary @click="pickFile">Replace</NButton>
+              <NButton size="small" tertiary type="error" @click="removeFile">
+                Remove
+              </NButton>
+            </NSpace>
+          </div>
+
+          <!-- Text value -->
+          <template v-else>
+            <div class="value-field__bar">
+              <NRadioGroup v-model:value="valueFormat" size="small">
+                <NRadioButton value="text">Text</NRadioButton>
+                <NRadioButton value="yaml">YAML</NRadioButton>
+                <NRadioButton value="json">JSON</NRadioButton>
+              </NRadioGroup>
+              <NSpace :size="8">
+                <NButton size="small" tertiary @click="pickFile">Upload file</NButton>
+                <NDropdown
+                  trigger="click"
+                  :options="base64Options"
+                  :disabled="!model.value"
+                  @select="onBase64Select"
+                >
+                  <NButton size="small" tertiary :disabled="!model.value">
+                    base64 ▾
+                  </NButton>
+                </NDropdown>
+                <NButton
+                  size="small"
+                  tertiary
+                  :disabled="!model.value"
+                  @click="copy(model.value)"
+                >
+                  Copy
+                </NButton>
+              </NSpace>
+            </div>
+            <ValueEditor v-model:value="model.value" :format="valueFormat" />
+          </template>
+        </div>
+      </NFormItem>
+      <NFormItem label="Description" path="description">
+        <NInput
+          v-model:value="model.description"
+          type="textarea"
+          placeholder="Optional description"
+          :autosize="{ minRows: 2, maxRows: 5 }"
+        />
+      </NFormItem>
+      <NFormItem label="Active" path="active">
+        <NSwitch v-model:value="model.active" />
+      </NFormItem>
+    </NForm>
+
+    <template #footer>
+      <NSpace justify="end">
+        <NButton :disabled="submitting" @click="close">Cancel</NButton>
+        <NButton type="primary" :loading="submitting" @click="submit">
+          {{ isEdit ? 'Save' : 'Create' }}
+        </NButton>
+      </NSpace>
+    </template>
+  </NModal>
+</template>
+
+<style scoped>
+.value-field {
+  width: 100%;
+}
+
+.value-field__bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  margin-bottom: 8px;
+  /* Let the action buttons drop below the format switch on narrow screens. */
+  flex-wrap: wrap;
+}
+
+.value-file {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  flex-wrap: wrap;
+  padding: 12px;
+  border: 1px dashed rgba(128, 128, 128, 0.4);
+  border-radius: 6px;
+}
+
+.value-file__info {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+}
+
+.value-file__name {
+  font-weight: 600;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+</style>

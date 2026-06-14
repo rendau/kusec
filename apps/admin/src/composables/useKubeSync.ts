@@ -2,7 +2,8 @@ import { ref } from 'vue'
 import { useDialog, useMessage, useNotification } from 'naive-ui'
 
 import { ApiError, apiErrorMessage } from '@/api/http'
-import { syncKubeSecrets } from '@/api/kube'
+import { syncKube } from '@/api/kube'
+import type { KubeSyncConfigMapsRep, KubeSyncSecretsRep } from '@/api/types'
 
 /** Human-readable hints for the sentinel error codes the sync may return. */
 const SYNC_ERROR_HINTS: Record<string, string> = {
@@ -24,11 +25,27 @@ interface SyncOptions {
   appName?: string
 }
 
+/** One-line per-kind summary ("created X · updated Y · …"). */
+function summarize(
+  rep: KubeSyncSecretsRep | KubeSyncConfigMapsRep,
+): { line: string; errors: string[] } {
+  return {
+    line: [
+      `created ${rep.created?.length ?? 0}`,
+      `updated ${rep.updated?.length ?? 0}`,
+      `deleted ${rep.deleted?.length ?? 0}`,
+      `unchanged ${toCount(rep.unchanged)}`,
+    ].join(' · '),
+    errors: rep.errors ?? [],
+  }
+}
+
 /**
- * Shared "sync secrets into Kubernetes" flow used by the dashboard (all apps)
- * and the app workspace (one app). Owns the confirm dialog, the request, and
- * the result/error notifications. Scope is enforced by the backend: the sync
- * only touches apps the caller can access.
+ * Shared "sync to Kubernetes" flow used by the dashboard (all apps) and the
+ * app workspace (one app). Reconciles both secrets and config maps in a single
+ * call. Owns the confirm dialog, the request, and the result/error
+ * notifications. Scope is enforced by the backend: the sync only touches apps
+ * the caller can access.
  */
 export function useKubeSync() {
   const message = useMessage()
@@ -42,11 +59,12 @@ export function useKubeSync() {
       ? `application "${options.appName}"`
       : 'all accessible applications'
     dialog.warning({
-      title: 'Sync secrets to Kubernetes',
+      title: 'Sync to Kubernetes',
       content:
-        `Active secrets and items of ${scope} will be applied to the cluster: ` +
-        'missing secrets are created, changed ones updated, and kusec-managed ' +
-        'secrets without active records are deleted. Continue?',
+        `Active secrets, config maps and their items of ${scope} will be ` +
+        'applied to the cluster: missing resources are created, changed ones ' +
+        'updated, and kusec-managed resources without active records are ' +
+        'deleted. Continue?',
       positiveText: 'Sync',
       negativeText: 'Cancel',
       onPositiveClick: () => {
@@ -58,18 +76,16 @@ export function useKubeSync() {
   async function runSync(appId?: string): Promise<void> {
     syncing.value = true
     try {
-      const rep = await syncKubeSecrets(appId)
-      const summary = [
-        `created ${rep.created?.length ?? 0}`,
-        `updated ${rep.updated?.length ?? 0}`,
-        `deleted ${rep.deleted?.length ?? 0}`,
-        `unchanged ${toCount(rep.unchanged)}`,
-      ].join(' · ')
+      const rep = await syncKube(appId)
+      const secrets = summarize(rep.secrets)
+      const configmaps = summarize(rep.configmaps)
+      const summary = `Secrets: ${secrets.line}\nConfig maps: ${configmaps.line}`
+      const errors = [...secrets.errors, ...configmaps.errors]
 
-      if (rep.errors?.length) {
+      if (errors.length) {
         notification.warning({
           title: 'Kubernetes sync finished with errors',
-          content: `${summary}\n\n${rep.errors.join('\n')}`,
+          content: `${summary}\n\n${errors.join('\n')}`,
           // Errors need attention — dismissed manually.
           duration: 0,
         })

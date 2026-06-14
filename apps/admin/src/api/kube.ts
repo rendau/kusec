@@ -5,6 +5,8 @@ import type {
   KubeImportSecretsRep,
   KubeListClusterSecretsRep,
   KubeListNamespacesRep,
+  KubeSyncConfigMapsRep,
+  KubeSyncRep,
   KubeSyncSecretsRep,
 } from './types'
 
@@ -21,6 +23,30 @@ import type {
  */
 export function syncKubeSecrets(appId?: string): Promise<KubeSyncSecretsRep> {
   return apiFetch<KubeSyncSecretsRep>('/kube/sync-secret', {
+    method: 'POST',
+    body: JSON.stringify(appId ? { app_id: appId } : {}),
+  })
+}
+
+/**
+ * Sync managed config maps into the cluster. Pass an `appId` to sync a single
+ * application; omit it to sync every application the caller can access.
+ */
+export function syncKubeConfigMaps(
+  appId?: string,
+): Promise<KubeSyncConfigMapsRep> {
+  return apiFetch<KubeSyncConfigMapsRep>('/kube/sync-configmap', {
+    method: 'POST',
+    body: JSON.stringify(appId ? { app_id: appId } : {}),
+  })
+}
+
+/**
+ * Sync both secrets and config maps into the cluster in a single call (one
+ * lock, no interleaving). Pass an `appId` to scope to one application.
+ */
+export function syncKube(appId?: string): Promise<KubeSyncRep> {
+  return apiFetch<KubeSyncRep>('/kube/sync', {
     method: 'POST',
     body: JSON.stringify(appId ? { app_id: appId } : {}),
   })

@@ -16,7 +16,7 @@ import {
   NThing,
   useMessage,
 } from 'naive-ui'
-import { Apps, Key, Lock, Plus, Users } from '@vicons/tabler'
+import { Adjustments, Apps, FileText, Key, Lock, Plus, Users } from '@vicons/tabler'
 import type { Component } from 'vue'
 
 import { apiErrorMessage } from '@/api/http'
@@ -70,6 +70,8 @@ const stats = computed<StatCard[]>(() => {
     card('apps', 'Applications', Apps, rep?.app),
     card('secrets', 'Secrets', Lock, rep?.secret),
     card('items', 'Items', Key, rep?.item),
+    card('configmaps', 'Config maps', FileText, rep?.configmap),
+    card('config-items', 'Config items', Adjustments, rep?.config_item),
     card('users', 'Users', Users, rep?.usr),
   ]
 })

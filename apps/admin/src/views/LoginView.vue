@@ -203,7 +203,11 @@ onMounted(async () => {
   display: flex;
   align-items: center;
   justify-content: center;
+  /* 100vh — фоллбэк для старых браузеров; 100dvh учитывает сворачиваемый
+     UI мобильного браузера, чтобы карточка центрировалась по видимой
+     области и не появлялся документный скролл «через шапку». */
   min-height: 100vh;
+  min-height: 100dvh;
   padding: 24px;
 }
 

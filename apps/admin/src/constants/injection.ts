@@ -12,3 +12,11 @@ export interface RevealCommand {
 
 export const itemsRevealCommandKey: InjectionKey<Ref<RevealCommand>> =
   Symbol('itemsRevealCommand')
+
+/**
+ * Same one-shot reveal/hide broadcast as `itemsRevealCommandKey`, but for the
+ * ConfigMaps section — kept separate so revealing a secret's items does not
+ * also reveal a config map's, and vice versa.
+ */
+export const configItemsRevealCommandKey: InjectionKey<Ref<RevealCommand>> =
+  Symbol('configItemsRevealCommand')
