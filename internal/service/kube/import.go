@@ -10,7 +10,6 @@ import (
 	"strings"
 	"unicode/utf8"
 
-	"github.com/samber/lo"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/util/validation"
@@ -124,11 +123,11 @@ func (s *Service) ImportSecrets(ctx context.Context, appId string, refs []Import
 		}
 
 		secretId, err := s.secretSvc.Create(ctx, &secretModel.Edit{
-			AppId:       lo.ToPtr(app.Id),
-			Active:      lo.ToPtr(true),
-			SlugName:    lo.ToPtr(slug),
-			Description: lo.ToPtr("Imported from " + key),
-			KubeType:    lo.ToPtr(displaySecretType(ksec.Type)),
+			AppId:       new(app.Id),
+			Active:      new(true),
+			SlugName:    new(slug),
+			Description: new("Imported from " + key),
+			KubeType:    new(displaySecretType(ksec.Type)),
 		})
 		if err != nil {
 			result.Errors = append(result.Errors, fmt.Sprintf("%s: create secret: %v", key, err))
@@ -139,11 +138,11 @@ func (s *Service) ImportSecrets(ctx context.Context, appId string, refs []Import
 		for _, dataKey := range sortedDataKeys(ksec.Data) {
 			value, encoding := encodeImportValue(ksec.Data[dataKey])
 			_, err = s.itemSvc.Create(ctx, &itemModel.Edit{
-				SecretId: lo.ToPtr(secretId),
-				Active:   lo.ToPtr(true),
-				Key:      lo.ToPtr(dataKey),
-				Value:    lo.ToPtr(value),
-				Encoding: lo.ToPtr(encoding),
+				SecretId: new(secretId),
+				Active:   new(true),
+				Key:      new(dataKey),
+				Value:    new(value),
+				Encoding: new(encoding),
 			})
 			if err != nil {
 				result.Errors = append(result.Errors,
@@ -164,7 +163,7 @@ func (s *Service) ImportSecrets(ctx context.Context, appId string, refs []Import
 }
 
 func (s *Service) findSecretBySlug(ctx context.Context, appId, slug string) (*secretModel.Main, error) {
-	secrets, _, err := s.secretSvc.List(ctx, &secretModel.ListReq{AppId: lo.ToPtr(appId)})
+	secrets, _, err := s.secretSvc.List(ctx, &secretModel.ListReq{AppId: new(appId)})
 	if err != nil {
 		return nil, fmt.Errorf("secretSvc.List: %w", err)
 	}

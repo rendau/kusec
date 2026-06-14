@@ -5,8 +5,6 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/samber/lo"
-
 	"github.com/mechta-market/kusec/internal/domain/usr/model"
 	"github.com/mechta-market/kusec/internal/errs"
 )
@@ -196,8 +194,8 @@ func (u *Usecase) Create(ctx context.Context, obj *model.Edit) (int64, error) {
 		if hasAny {
 			return 0, errs.NotAuthorized
 		}
-		obj.IsAdmin = lo.ToPtr(true)
-		obj.Active = lo.ToPtr(true)
+		obj.IsAdmin = new(true)
+		obj.Active = new(true)
 	}
 
 	if err := u.validateEdit(obj, true); err != nil {

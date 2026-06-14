@@ -5,8 +5,6 @@ import (
 	"fmt"
 	"sort"
 
-	"github.com/samber/lo"
-
 	appModel "github.com/mechta-market/kusec/internal/domain/app/model"
 	configitemModel "github.com/mechta-market/kusec/internal/domain/configitem/model"
 	configmapModel "github.com/mechta-market/kusec/internal/domain/configmap/model"
@@ -70,7 +68,7 @@ func (u *Usecase) Tree(ctx context.Context) ([]*TreeApp, error) {
 
 	tree := make([]*TreeApp, 0, len(apps))
 	for _, app := range apps {
-		secrets, _, err := u.secretSvc.List(ctx, &secretModel.ListReq{AppId: lo.ToPtr(app.Id)})
+		secrets, _, err := u.secretSvc.List(ctx, &secretModel.ListReq{AppId: new(app.Id)})
 		if err != nil {
 			return nil, fmt.Errorf("secretSvc.List: %w", err)
 		}
@@ -90,7 +88,7 @@ func (u *Usecase) Tree(ctx context.Context) ([]*TreeApp, error) {
 		}
 
 		for _, secret := range secrets {
-			items, _, err := u.itemSvc.List(ctx, &itemModel.ListReq{SecretId: lo.ToPtr(secret.Id)})
+			items, _, err := u.itemSvc.List(ctx, &itemModel.ListReq{SecretId: new(secret.Id)})
 			if err != nil {
 				return nil, fmt.Errorf("itemSvc.List: %w", err)
 			}
@@ -123,7 +121,7 @@ func (u *Usecase) Tree(ctx context.Context) ([]*TreeApp, error) {
 			treeApp.Secrets = append(treeApp.Secrets, treeSecret)
 		}
 
-		configMaps, _, err := u.configMapSvc.List(ctx, &configmapModel.ListReq{AppId: lo.ToPtr(app.Id)})
+		configMaps, _, err := u.configMapSvc.List(ctx, &configmapModel.ListReq{AppId: new(app.Id)})
 		if err != nil {
 			return nil, fmt.Errorf("configMapSvc.List: %w", err)
 		}
@@ -133,7 +131,7 @@ func (u *Usecase) Tree(ctx context.Context) ([]*TreeApp, error) {
 
 		treeApp.ConfigMaps = make([]*TreeConfigMap, 0, len(configMaps))
 		for _, configMap := range configMaps {
-			items, _, err := u.configItemSvc.List(ctx, &configitemModel.ListReq{ConfigMapId: lo.ToPtr(configMap.Id)})
+			items, _, err := u.configItemSvc.List(ctx, &configitemModel.ListReq{ConfigMapId: new(configMap.Id)})
 			if err != nil {
 				return nil, fmt.Errorf("configItemSvc.List: %w", err)
 			}

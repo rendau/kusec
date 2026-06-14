@@ -5,8 +5,6 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/samber/lo"
-
 	"github.com/mechta-market/kusec/internal/domain/app/model"
 	"github.com/mechta-market/kusec/internal/errs"
 )
@@ -52,7 +50,7 @@ func (s *Service) Create(ctx context.Context, obj *model.Edit) (string, error) {
 }
 
 func (s *Service) Update(ctx context.Context, id string, obj *model.Edit) error {
-	obj.UpdatedAt = lo.ToPtr(time.Now())
+	obj.UpdatedAt = new(time.Now())
 
 	if err := s.repoDb.Update(ctx, id, obj); err != nil {
 		return fmt.Errorf("repoDb.Update: %w", err)

@@ -118,7 +118,7 @@ func (u *Usecase) appCount(ctx context.Context, appScope []string) (Count, error
 	_, active, err := u.appSvc.List(ctx, &appModel.ListReq{
 		ListParams: countParams(),
 		Ids:        appScope,
-		Active:     lo.ToPtr(true),
+		Active:     new(true),
 	})
 	if err != nil {
 		return Count{}, fmt.Errorf("appSvc.List(active): %w", err)
@@ -134,7 +134,7 @@ func (u *Usecase) secretCount(ctx context.Context, appScope []string) (Count, er
 	_, active, err := u.secretSvc.List(ctx, &secretModel.ListReq{
 		ListParams: countParams(),
 		AppIds:     appScope,
-		Active:     lo.ToPtr(true),
+		Active:     new(true),
 	})
 	if err != nil {
 		return Count{}, fmt.Errorf("secretSvc.List(active): %w", err)
@@ -153,7 +153,7 @@ func (u *Usecase) itemCount(ctx context.Context, scoped bool, secretScope []stri
 	_, active, err := u.itemSvc.List(ctx, &itemModel.ListReq{
 		ListParams: countParams(),
 		SecretIds:  secretScope,
-		Active:     lo.ToPtr(true),
+		Active:     new(true),
 	})
 	if err != nil {
 		return Count{}, fmt.Errorf("itemSvc.List(active): %w", err)
@@ -180,7 +180,7 @@ func (u *Usecase) configMapCount(ctx context.Context, appScope []string) (Count,
 	_, active, err := u.configMapSvc.List(ctx, &configmapModel.ListReq{
 		ListParams: countParams(),
 		AppIds:     appScope,
-		Active:     lo.ToPtr(true),
+		Active:     new(true),
 	})
 	if err != nil {
 		return Count{}, fmt.Errorf("configMapSvc.List(active): %w", err)
@@ -199,7 +199,7 @@ func (u *Usecase) configItemCount(ctx context.Context, scoped bool, configMapSco
 	_, active, err := u.configItemSvc.List(ctx, &configitemModel.ListReq{
 		ListParams:   countParams(),
 		ConfigMapIds: configMapScope,
-		Active:       lo.ToPtr(true),
+		Active:       new(true),
 	})
 	if err != nil {
 		return Count{}, fmt.Errorf("configItemSvc.List(active): %w", err)
@@ -214,7 +214,7 @@ func (u *Usecase) usrCount(ctx context.Context) (Count, error) {
 	}
 	_, active, err := u.usrSvc.List(ctx, &usrModel.ListReq{
 		ListParams: countParams(),
-		Active:     lo.ToPtr(true),
+		Active:     new(true),
 	})
 	if err != nil {
 		return Count{}, fmt.Errorf("usrSvc.List(active): %w", err)
@@ -254,7 +254,7 @@ func (u *Usecase) recentSecrets(ctx context.Context, appScope []string) ([]*Rece
 
 		_, itemCount, err := u.itemSvc.List(ctx, &itemModel.ListReq{
 			ListParams: countParams(),
-			SecretId:   lo.ToPtr(secret.Id),
+			SecretId:   new(secret.Id),
 		})
 		if err != nil {
 			return nil, fmt.Errorf("itemSvc.List(count): %w", err)

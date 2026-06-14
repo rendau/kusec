@@ -2,6 +2,7 @@ package kube
 
 import (
 	"context"
+	"errors"
 	"fmt"
 
 	"github.com/mechta-market/kusec/internal/errs"
@@ -77,7 +78,7 @@ func (u *Usecase) ImportSecrets(ctx context.Context, appId string, refs []kubeSe
 	result, err := u.svc.ImportSecrets(ctx, appId, refs)
 	if err != nil {
 		// Сентинельные коды (not_in_cluster, object_not_found) пробрасываем как есть.
-		if _, ok := err.(errs.Err); ok {
+		if _, ok := errors.AsType[errs.Err](err); ok {
 			return nil, err
 		}
 		return nil, fmt.Errorf("svc.ImportSecrets: %w", err)
@@ -100,7 +101,7 @@ func (u *Usecase) SyncSecrets(ctx context.Context, appId *string) (*kubeService.
 	if err != nil {
 		// Сентинельные коды (not_in_cluster, sync_in_progress) пробрасываем
 		// как есть — интерцептор превратит их в осмысленный ответ клиенту.
-		if _, ok := err.(errs.Err); ok {
+		if _, ok := errors.AsType[errs.Err](err); ok {
 			return nil, err
 		}
 		return nil, fmt.Errorf("svc.SyncSecrets: %w", err)
@@ -123,7 +124,7 @@ func (u *Usecase) SyncConfigMaps(ctx context.Context, appId *string) (*kubeServi
 	if err != nil {
 		// Сентинельные коды (not_in_cluster, sync_in_progress) пробрасываем
 		// как есть — интерцептор превратит их в осмысленный ответ клиенту.
-		if _, ok := err.(errs.Err); ok {
+		if _, ok := errors.AsType[errs.Err](err); ok {
 			return nil, err
 		}
 		return nil, fmt.Errorf("svc.SyncConfigMaps: %w", err)
@@ -147,7 +148,7 @@ func (u *Usecase) Sync(ctx context.Context, appId *string) (*kubeService.SyncRes
 	if err != nil {
 		// Сентинельные коды (not_in_cluster, sync_in_progress) пробрасываем
 		// как есть — интерцептор превратит их в осмысленный ответ клиенту.
-		if _, ok := err.(errs.Err); ok {
+		if _, ok := errors.AsType[errs.Err](err); ok {
 			return nil, nil, err
 		}
 		return nil, nil, fmt.Errorf("svc.Sync: %w", err)
