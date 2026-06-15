@@ -55,6 +55,9 @@ message ConfigMapMain {
   string description = 7;
   // Полное имя итогового k8s-configmap; вычисляется бэкендом.
   string kube_configmap_name = 8;
+  // При true имя k8s-configmap = slug_name без префикса и app-slug.
+  // Менять флаг могут только админы.
+  bool exact_slug = 9;
 }
 
 // List
@@ -84,6 +87,8 @@ message ConfigMapCreateReq {
   optional bool active = 2;
   string slug_name = 3;
   string description = 4;
+  // Имя без префикса и app-slug. Установка true доступна только админам.
+  bool exact_slug = 5;
 }
 
 message ConfigMapCreateRep {
@@ -98,4 +103,6 @@ message ConfigMapUpdateReq {
   optional bool active = 3;
   optional string slug_name = 4;
   optional string description = 5;
+  // Изменение флага доступно только админам.
+  optional bool exact_slug = 6;
 }

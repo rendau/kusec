@@ -188,7 +188,7 @@ func (s *Service) buildDesiredConfigMaps(ctx context.Context, result *SyncResult
 		}
 
 		for _, configMap := range configMaps {
-			name := ConfigMapName(app.SlugName, configMap.SlugName)
+			name := ConfigMapName(app.SlugName, configMap.SlugName, configMap.ExactSlug)
 			key := app.Namespace + "/" + name
 
 			if errMsgs := validation.IsDNS1123Subdomain(name); len(errMsgs) > 0 {

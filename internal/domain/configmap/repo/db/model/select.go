@@ -14,6 +14,7 @@ type Select struct {
 	Active      bool
 	SlugName    string
 	Description string
+	ExactSlug   bool
 }
 
 func (m *Select) ListColumnMap() map[string]any {
@@ -25,6 +26,7 @@ func (m *Select) ListColumnMap() map[string]any {
 		"active":      &m.Active,
 		"slug_name":   &m.SlugName,
 		"description": &m.Description,
+		"exact_slug":  &m.ExactSlug,
 	}
 }
 
@@ -47,5 +49,6 @@ func EncodeSelect(v *Select, _ int) *domainModel.Main {
 		Active:      v.Active,
 		SlugName:    v.SlugName,
 		Description: v.Description,
+		ExactSlug:   v.ExactSlug,
 	}
 }

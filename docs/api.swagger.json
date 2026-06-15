@@ -1986,6 +1986,10 @@
         },
         "description": {
           "type": "string"
+        },
+        "exact_slug": {
+          "type": "boolean",
+          "description": "Имя без префикса и app-slug. Установка true доступна только админам."
         }
       }
     },
@@ -2033,6 +2037,10 @@
         "kube_configmap_name": {
           "type": "string",
           "description": "Полное имя итогового k8s-configmap; вычисляется бэкендом."
+        },
+        "exact_slug": {
+          "type": "boolean",
+          "description": "При true имя k8s-configmap = slug_name без префикса и app-slug.\nМенять флаг могут только админы."
         }
       }
     },
@@ -2050,6 +2058,10 @@
         },
         "description": {
           "type": "string"
+        },
+        "exact_slug": {
+          "type": "boolean",
+          "description": "Изменение флага доступно только админам."
         }
       }
     },
@@ -2497,6 +2509,10 @@
         "kube_type": {
           "type": "string",
           "description": "Тип k8s-секрета (пусто = Opaque)."
+        },
+        "exact_slug": {
+          "type": "boolean",
+          "description": "Имя без префикса и app-slug. Установка true доступна только админам."
         }
       }
     },
@@ -2548,6 +2564,10 @@
         "kube_type": {
           "type": "string",
           "description": "Тип k8s-секрета (пусто = Opaque), например kubernetes.io/basic-auth."
+        },
+        "exact_slug": {
+          "type": "boolean",
+          "description": "При true имя k8s-секрета = slug_name без префикса и app-slug.\nМенять флаг могут только админы."
         }
       }
     },
@@ -2568,6 +2588,10 @@
         },
         "kube_type": {
           "type": "string"
+        },
+        "exact_slug": {
+          "type": "boolean",
+          "description": "Изменение флага доступно только админам."
         }
       }
     },

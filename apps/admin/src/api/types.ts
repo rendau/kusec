@@ -187,6 +187,11 @@ export interface SecretMain {
   kube_secret_name: string
   /** K8s secret type (empty = Opaque), e.g. kubernetes.io/basic-auth. */
   kube_type: string
+  /**
+   * When true, the k8s secret name equals `slug_name` (no prefix, no app-slug).
+   * Changing this flag is admin-only (enforced by the backend).
+   */
+  exact_slug: boolean
 }
 
 /** `SecretListReq` — filters for the list endpoint. */
@@ -211,6 +216,8 @@ export interface SecretCreateReq {
   description: string
   /** K8s secret type (empty = Opaque). */
   kube_type?: string
+  /** Name without prefix/app-slug. Setting true is admin-only. */
+  exact_slug?: boolean
 }
 
 /** `SecretCreateRep`. */
@@ -226,6 +233,8 @@ export interface SecretUpdateReq {
   description?: string
   /** K8s secret type (empty = Opaque). */
   kube_type?: string
+  /** Changing this flag is admin-only. */
+  exact_slug?: boolean
 }
 
 /**
@@ -475,6 +484,11 @@ export interface ConfigMapMain {
   description: string
   /** Full name of the resulting k8s configmap; computed by the backend. */
   kube_configmap_name: string
+  /**
+   * When true, the k8s configmap name equals `slug_name` (no prefix, no
+   * app-slug). Changing this flag is admin-only (enforced by the backend).
+   */
+  exact_slug: boolean
 }
 
 /** `ConfigMapListReq` — filters for the list endpoint. */
@@ -497,6 +511,8 @@ export interface ConfigMapCreateReq {
   active?: boolean
   slug_name: string
   description: string
+  /** Name without prefix/app-slug. Setting true is admin-only. */
+  exact_slug?: boolean
 }
 
 /** `ConfigMapCreateRep`. */
@@ -510,6 +526,8 @@ export interface ConfigMapUpdateReq {
   active?: boolean
   slug_name?: string
   description?: string
+  /** Changing this flag is admin-only. */
+  exact_slug?: boolean
 }
 
 /**

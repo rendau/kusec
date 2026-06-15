@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { onMounted, reactive } from 'vue'
+import { storeToRefs } from 'pinia'
 import {
   NButton,
   NForm,
@@ -9,6 +10,7 @@ import {
   NSelect,
   NSpace,
   NSwitch,
+  NText,
 } from 'naive-ui'
 import type { FormRules } from 'naive-ui'
 
@@ -16,6 +18,9 @@ import { createConfigMap, updateConfigMap } from '@/api/configmap'
 import type { ConfigMapMain, ConfigMapUpdateReq } from '@/api/types'
 import { useAppOptions } from '@/composables/useAppOptions'
 import { useEntityForm } from '@/composables/useEntityForm'
+import { useAuthStore } from '@/stores/auth'
+
+const { isAdmin } = storeToRefs(useAuthStore())
 
 const props = defineProps<{
   show: boolean
@@ -39,6 +44,8 @@ interface FormModel {
   slug_name: string
   description: string
   active: boolean
+  /** Use slug_name as the k8s name without prefix/app-slug (admin-only). */
+  exact_slug: boolean
 }
 
 const model = reactive<FormModel>({
@@ -46,6 +53,7 @@ const model = reactive<FormModel>({
   slug_name: '',
   description: '',
   active: true,
+  exact_slug: false,
 })
 
 const rules: FormRules = {
@@ -70,6 +78,7 @@ const { formRef, submitting, isEdit, submit } = useEntityForm<ConfigMapMain>({
     model.slug_name = configMap?.slug_name ?? ''
     model.description = configMap?.description ?? ''
     model.active = configMap?.active ?? true
+    model.exact_slug = configMap?.exact_slug ?? false
     // Make sure the selected app is present in the options list.
     if (model.app_id) await ensure(model.app_id)
   },
@@ -79,6 +88,8 @@ const { formRef, submitting, isEdit, submit } = useEntityForm<ConfigMapMain>({
       slug_name: model.slug_name,
       description: model.description,
       active: model.active,
+      // exact_slug меняют только админы; иначе поле не отправляем.
+      ...(isAdmin.value ? { exact_slug: model.exact_slug } : {}),
     }),
   update: (configMap) => {
     const update: ConfigMapUpdateReq = {
@@ -87,6 +98,8 @@ const { formRef, submitting, isEdit, submit } = useEntityForm<ConfigMapMain>({
       active: model.active,
     }
     if (model.app_id) update.app_id = model.app_id
+    // exact_slug меняют только админы; иначе поле не отправляем.
+    if (isAdmin.value) update.exact_slug = model.exact_slug
     return updateConfigMap(configMap.id, update)
   },
   messages: { created: 'Config map created', updated: 'Config map updated' },
@@ -140,6 +153,15 @@ function close(): void {
           placeholder="e.g. app-config"
           clearable
         />
+      </NFormItem>
+      <NFormItem v-if="isAdmin" label="Exact slug" path="exact_slug">
+        <NSpace vertical size="small">
+          <NSwitch v-model:value="model.exact_slug" />
+          <NText depth="3" style="font-size: 12px">
+            K8s configmap name = slug as-is, without the
+            <code>kusec-&lt;app&gt;-</code> prefix. Admin only.
+          </NText>
+        </NSpace>
       </NFormItem>
       <NFormItem label="Description" path="description">
         <NInput

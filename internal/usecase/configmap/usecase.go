@@ -58,7 +58,7 @@ func (u *Usecase) fillKubeConfigMapName(ctx context.Context, items []*model.Main
 
 	for _, item := range items {
 		if appSlug, ok := appSlugs[item.AppId]; ok {
-			item.KubeConfigMapName = kube.ConfigMapName(appSlug, item.SlugName)
+			item.KubeConfigMapName = kube.ConfigMapName(appSlug, item.SlugName, item.ExactSlug)
 		}
 	}
 
@@ -141,6 +141,10 @@ func (u *Usecase) Create(ctx context.Context, obj *model.Edit) (string, error) {
 	if err := u.requireAppAccess(ctx, *obj.AppId); err != nil {
 		return "", err
 	}
+	// Включение exact_slug при создании = изменение флага, доступно только админам.
+	if obj.ExactSlug != nil && *obj.ExactSlug && !u.sessionSvc.CtxIsAdmin(ctx) {
+		return "", errs.NoPermission
+	}
 	newId, err := u.svc.Create(ctx, obj)
 	if err != nil {
 		return "", fmt.Errorf("svc.Create: %w", err)
@@ -170,6 +174,10 @@ func (u *Usecase) Update(ctx context.Context, id string, obj *model.Edit) error 
 		if err = u.requireAppAccess(ctx, *obj.AppId); err != nil {
 			return err
 		}
+	}
+	// Менять флаг exact_slug могут только админы.
+	if obj.ExactSlug != nil && *obj.ExactSlug != current.ExactSlug && !u.sessionSvc.CtxIsAdmin(ctx) {
+		return errs.NoPermission
 	}
 
 	if err = u.svc.Update(ctx, id, obj); err != nil {

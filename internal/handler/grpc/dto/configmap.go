@@ -22,6 +22,7 @@ func EncodeConfigMapMain(v *domainModel.Main, _ int) *proto.ConfigMapMain {
 		SlugName:          v.SlugName,
 		Description:       v.Description,
 		KubeConfigmapName: v.KubeConfigMapName,
+		ExactSlug:         v.ExactSlug,
 	}
 }
 
@@ -48,6 +49,7 @@ func DecodeConfigMapCreateReq(v *proto.ConfigMapCreateReq) *domainModel.Edit {
 		Active:      v.Active,
 		SlugName:    &v.SlugName,
 		Description: &v.Description,
+		ExactSlug:   &v.ExactSlug,
 	}
 }
 
@@ -60,5 +62,6 @@ func DecodeConfigMapUpdateReq(v *proto.ConfigMapUpdateReq) *domainModel.Edit {
 		Active:      v.Active,
 		SlugName:    v.SlugName,
 		Description: v.Description,
+		ExactSlug:   v.ExactSlug,
 	}
 }

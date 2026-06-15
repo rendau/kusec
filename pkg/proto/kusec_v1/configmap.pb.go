@@ -36,8 +36,11 @@ type ConfigMapMain struct {
 	Description string                 `protobuf:"bytes,7,opt,name=description,proto3" json:"description,omitempty"`
 	// Полное имя итогового k8s-configmap; вычисляется бэкендом.
 	KubeConfigmapName string `protobuf:"bytes,8,opt,name=kube_configmap_name,json=kubeConfigmapName,proto3" json:"kube_configmap_name,omitempty"`
-	unknownFields     protoimpl.UnknownFields
-	sizeCache         protoimpl.SizeCache
+	// При true имя k8s-configmap = slug_name без префикса и app-slug.
+	// Менять флаг могут только админы.
+	ExactSlug     bool `protobuf:"varint,9,opt,name=exact_slug,json=exactSlug,proto3" json:"exact_slug,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
 }
 
 func (x *ConfigMapMain) Reset() {
@@ -124,6 +127,13 @@ func (x *ConfigMapMain) GetKubeConfigmapName() string {
 		return x.KubeConfigmapName
 	}
 	return ""
+}
+
+func (x *ConfigMapMain) GetExactSlug() bool {
+	if x != nil {
+		return x.ExactSlug
+	}
+	return false
 }
 
 type ConfigMapListReq struct {
@@ -291,11 +301,13 @@ func (x *ConfigMapGetReq) GetId() string {
 }
 
 type ConfigMapCreateReq struct {
-	state         protoimpl.MessageState `protogen:"open.v1"`
-	AppId         string                 `protobuf:"bytes,1,opt,name=app_id,json=appId,proto3" json:"app_id,omitempty"`
-	Active        *bool                  `protobuf:"varint,2,opt,name=active,proto3,oneof" json:"active,omitempty"`
-	SlugName      string                 `protobuf:"bytes,3,opt,name=slug_name,json=slugName,proto3" json:"slug_name,omitempty"`
-	Description   string                 `protobuf:"bytes,4,opt,name=description,proto3" json:"description,omitempty"`
+	state       protoimpl.MessageState `protogen:"open.v1"`
+	AppId       string                 `protobuf:"bytes,1,opt,name=app_id,json=appId,proto3" json:"app_id,omitempty"`
+	Active      *bool                  `protobuf:"varint,2,opt,name=active,proto3,oneof" json:"active,omitempty"`
+	SlugName    string                 `protobuf:"bytes,3,opt,name=slug_name,json=slugName,proto3" json:"slug_name,omitempty"`
+	Description string                 `protobuf:"bytes,4,opt,name=description,proto3" json:"description,omitempty"`
+	// Имя без префикса и app-slug. Установка true доступна только админам.
+	ExactSlug     bool `protobuf:"varint,5,opt,name=exact_slug,json=exactSlug,proto3" json:"exact_slug,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -358,6 +370,13 @@ func (x *ConfigMapCreateReq) GetDescription() string {
 	return ""
 }
 
+func (x *ConfigMapCreateReq) GetExactSlug() bool {
+	if x != nil {
+		return x.ExactSlug
+	}
+	return false
+}
+
 type ConfigMapCreateRep struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
 	Id            string                 `protobuf:"bytes,1,opt,name=id,proto3" json:"id,omitempty"`
@@ -403,12 +422,14 @@ func (x *ConfigMapCreateRep) GetId() string {
 }
 
 type ConfigMapUpdateReq struct {
-	state         protoimpl.MessageState `protogen:"open.v1"`
-	Id            string                 `protobuf:"bytes,1,opt,name=id,proto3" json:"id,omitempty"`
-	AppId         *string                `protobuf:"bytes,2,opt,name=app_id,json=appId,proto3,oneof" json:"app_id,omitempty"`
-	Active        *bool                  `protobuf:"varint,3,opt,name=active,proto3,oneof" json:"active,omitempty"`
-	SlugName      *string                `protobuf:"bytes,4,opt,name=slug_name,json=slugName,proto3,oneof" json:"slug_name,omitempty"`
-	Description   *string                `protobuf:"bytes,5,opt,name=description,proto3,oneof" json:"description,omitempty"`
+	state       protoimpl.MessageState `protogen:"open.v1"`
+	Id          string                 `protobuf:"bytes,1,opt,name=id,proto3" json:"id,omitempty"`
+	AppId       *string                `protobuf:"bytes,2,opt,name=app_id,json=appId,proto3,oneof" json:"app_id,omitempty"`
+	Active      *bool                  `protobuf:"varint,3,opt,name=active,proto3,oneof" json:"active,omitempty"`
+	SlugName    *string                `protobuf:"bytes,4,opt,name=slug_name,json=slugName,proto3,oneof" json:"slug_name,omitempty"`
+	Description *string                `protobuf:"bytes,5,opt,name=description,proto3,oneof" json:"description,omitempty"`
+	// Изменение флага доступно только админам.
+	ExactSlug     *bool `protobuf:"varint,6,opt,name=exact_slug,json=exactSlug,proto3,oneof" json:"exact_slug,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -478,11 +499,18 @@ func (x *ConfigMapUpdateReq) GetDescription() string {
 	return ""
 }
 
+func (x *ConfigMapUpdateReq) GetExactSlug() bool {
+	if x != nil && x.ExactSlug != nil {
+		return *x.ExactSlug
+	}
+	return false
+}
+
 var File_kusec_v1_configmap_proto protoreflect.FileDescriptor
 
 const file_kusec_v1_configmap_proto_rawDesc = "" +
 	"\n" +
-	"\x18kusec_v1/configmap.proto\x12\bkusec_v1\x1a\x1cgoogle/api/annotations.proto\x1a\x1bgoogle/protobuf/empty.proto\x1a\x1fgoogle/protobuf/timestamp.proto\x1a\x13common/common.proto\"\xb3\x02\n" +
+	"\x18kusec_v1/configmap.proto\x12\bkusec_v1\x1a\x1cgoogle/api/annotations.proto\x1a\x1bgoogle/protobuf/empty.proto\x1a\x1fgoogle/protobuf/timestamp.proto\x1a\x13common/common.proto\"\xd2\x02\n" +
 	"\rConfigMapMain\x12\x0e\n" +
 	"\x02id\x18\x01 \x01(\tR\x02id\x129\n" +
 	"\n" +
@@ -493,7 +521,9 @@ const file_kusec_v1_configmap_proto_rawDesc = "" +
 	"\x06active\x18\x05 \x01(\bR\x06active\x12\x1b\n" +
 	"\tslug_name\x18\x06 \x01(\tR\bslugName\x12 \n" +
 	"\vdescription\x18\a \x01(\tR\vdescription\x12.\n" +
-	"\x13kube_configmap_name\x18\b \x01(\tR\x11kubeConfigmapName\"\xc0\x01\n" +
+	"\x13kube_configmap_name\x18\b \x01(\tR\x11kubeConfigmapName\x12\x1d\n" +
+	"\n" +
+	"exact_slug\x18\t \x01(\bR\texactSlug\"\xc0\x01\n" +
 	"\x10ConfigMapListReq\x125\n" +
 	"\vlist_params\x18\x01 \x01(\v2\x14.common.ListParamsStR\n" +
 	"listParams\x12\x1a\n" +
@@ -507,26 +537,31 @@ const file_kusec_v1_configmap_proto_rawDesc = "" +
 	"\x0fpagination_info\x18\x01 \x01(\v2\x18.common.PaginationInfoStR\x0epaginationInfo\x121\n" +
 	"\aresults\x18\x02 \x03(\v2\x17.kusec_v1.ConfigMapMainR\aresults\"!\n" +
 	"\x0fConfigMapGetReq\x12\x0e\n" +
-	"\x02id\x18\x01 \x01(\tR\x02id\"\x92\x01\n" +
+	"\x02id\x18\x01 \x01(\tR\x02id\"\xb1\x01\n" +
 	"\x12ConfigMapCreateReq\x12\x15\n" +
 	"\x06app_id\x18\x01 \x01(\tR\x05appId\x12\x1b\n" +
 	"\x06active\x18\x02 \x01(\bH\x00R\x06active\x88\x01\x01\x12\x1b\n" +
 	"\tslug_name\x18\x03 \x01(\tR\bslugName\x12 \n" +
-	"\vdescription\x18\x04 \x01(\tR\vdescriptionB\t\n" +
+	"\vdescription\x18\x04 \x01(\tR\vdescription\x12\x1d\n" +
+	"\n" +
+	"exact_slug\x18\x05 \x01(\bR\texactSlugB\t\n" +
 	"\a_active\"$\n" +
 	"\x12ConfigMapCreateRep\x12\x0e\n" +
-	"\x02id\x18\x01 \x01(\tR\x02id\"\xda\x01\n" +
+	"\x02id\x18\x01 \x01(\tR\x02id\"\x8d\x02\n" +
 	"\x12ConfigMapUpdateReq\x12\x0e\n" +
 	"\x02id\x18\x01 \x01(\tR\x02id\x12\x1a\n" +
 	"\x06app_id\x18\x02 \x01(\tH\x00R\x05appId\x88\x01\x01\x12\x1b\n" +
 	"\x06active\x18\x03 \x01(\bH\x01R\x06active\x88\x01\x01\x12 \n" +
 	"\tslug_name\x18\x04 \x01(\tH\x02R\bslugName\x88\x01\x01\x12%\n" +
-	"\vdescription\x18\x05 \x01(\tH\x03R\vdescription\x88\x01\x01B\t\n" +
+	"\vdescription\x18\x05 \x01(\tH\x03R\vdescription\x88\x01\x01\x12\"\n" +
+	"\n" +
+	"exact_slug\x18\x06 \x01(\bH\x04R\texactSlug\x88\x01\x01B\t\n" +
 	"\a_app_idB\t\n" +
 	"\a_activeB\f\n" +
 	"\n" +
 	"_slug_nameB\x0e\n" +
-	"\f_description2\xc2\x03\n" +
+	"\f_descriptionB\r\n" +
+	"\v_exact_slug2\xc2\x03\n" +
 	"\tConfigMap\x12R\n" +
 	"\x04List\x12\x1a.kusec_v1.ConfigMapListReq\x1a\x1a.kusec_v1.ConfigMapListRep\"\x12\x82\xd3\xe4\x93\x02\f\x12\n" +
 	"/configmap\x12R\n" +

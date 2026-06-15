@@ -159,7 +159,7 @@ func TestBuildDesired_NameCollisionAndInvalidNamespace(t *testing.T) {
 	if len(desired) != 1 {
 		t.Fatalf("unexpected desired size: %d", len(desired))
 	}
-	if _, ok := desired["team-a/"+SecretName("web", "db")]; !ok {
+	if _, ok := desired["team-a/"+SecretName("web", "db", false)]; !ok {
 		t.Fatalf("expected desired secret key missing")
 	}
 
@@ -174,7 +174,7 @@ func TestBuildDesired_NameCollisionAndInvalidNamespace(t *testing.T) {
 func TestSyncSecrets_ScopedSyncUpdatesAndDeletesOnlyScopedApp(t *testing.T) {
 	t.Parallel()
 
-	existingScopedName := SecretName("app1", "main")
+	existingScopedName := SecretName("app1", "main", false)
 	client := k8sfake.NewSimpleClientset(
 		&corev1.Namespace{ObjectMeta: metav1.ObjectMeta{Name: "team-a"}},
 		&corev1.Secret{
@@ -282,8 +282,8 @@ func TestSyncSecrets_ScopedSyncUpdatesAndDeletesOnlyScopedApp(t *testing.T) {
 func TestSyncSecrets_GlobalSyncAdoptsExistingWithoutErrors(t *testing.T) {
 	t.Parallel()
 
-	managedName := SecretName("app1", "main") // уже управляемый — Unchanged
-	adoptName := SecretName("app2", "main")   // существует без лейбла — усыновляется
+	managedName := SecretName("app1", "main", false) // уже управляемый — Unchanged
+	adoptName := SecretName("app2", "main", false)   // существует без лейбла — усыновляется
 
 	client := k8sfake.NewSimpleClientset(
 		&corev1.Namespace{ObjectMeta: metav1.ObjectMeta{Name: "default"}},

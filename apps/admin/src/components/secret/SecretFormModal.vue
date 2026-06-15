@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { onMounted, reactive } from 'vue'
+import { storeToRefs } from 'pinia'
 import {
   NButton,
   NForm,
@@ -9,6 +10,7 @@ import {
   NSelect,
   NSpace,
   NSwitch,
+  NText,
 } from 'naive-ui'
 import type { FormRules } from 'naive-ui'
 
@@ -16,6 +18,9 @@ import { createSecret, updateSecret } from '@/api/secret'
 import type { SecretMain, SecretUpdateReq } from '@/api/types'
 import { useAppOptions } from '@/composables/useAppOptions'
 import { useEntityForm } from '@/composables/useEntityForm'
+import { useAuthStore } from '@/stores/auth'
+
+const { isAdmin } = storeToRefs(useAuthStore())
 
 const props = defineProps<{
   show: boolean
@@ -43,6 +48,8 @@ interface FormModel {
   active: boolean
   /** K8s secret type; null/empty = Opaque (backend default). */
   kube_type: string | null
+  /** Use slug_name as the k8s name without prefix/app-slug (admin-only). */
+  exact_slug: boolean
 }
 
 const model = reactive<FormModel>({
@@ -51,6 +58,7 @@ const model = reactive<FormModel>({
   description: '',
   active: true,
   kube_type: null,
+  exact_slug: false,
 })
 
 /** Well-known k8s secret types; custom values can be typed in (tag mode). */
@@ -85,6 +93,7 @@ const { formRef, submitting, isEdit, submit } = useEntityForm<SecretMain>({
     model.description = secret?.description ?? ''
     model.active = secret?.active ?? true
     model.kube_type = secret?.kube_type || null
+    model.exact_slug = secret?.exact_slug ?? false
     // Make sure the selected app is present in the options list.
     if (model.app_id) await ensure(model.app_id)
   },
@@ -95,6 +104,8 @@ const { formRef, submitting, isEdit, submit } = useEntityForm<SecretMain>({
       description: model.description,
       active: model.active,
       kube_type: model.kube_type ?? '',
+      // exact_slug меняют только админы; иначе поле не отправляем.
+      ...(isAdmin.value ? { exact_slug: model.exact_slug } : {}),
     }),
   update: (secret) => {
     const update: SecretUpdateReq = {
@@ -104,6 +115,8 @@ const { formRef, submitting, isEdit, submit } = useEntityForm<SecretMain>({
       kube_type: model.kube_type ?? '',
     }
     if (model.app_id) update.app_id = model.app_id
+    // exact_slug меняют только админы; иначе поле не отправляем.
+    if (isAdmin.value) update.exact_slug = model.exact_slug
     return updateSecret(secret.id, update)
   },
   messages: { created: 'Secret created', updated: 'Secret updated' },
@@ -167,6 +180,15 @@ function close(): void {
           clearable
           placeholder="Opaque (default)"
         />
+      </NFormItem>
+      <NFormItem v-if="isAdmin" label="Exact slug" path="exact_slug">
+        <NSpace vertical size="small">
+          <NSwitch v-model:value="model.exact_slug" />
+          <NText depth="3" style="font-size: 12px">
+            K8s secret name = slug as-is, without the
+            <code>kusec-&lt;app&gt;-</code> prefix. Admin only.
+          </NText>
+        </NSpace>
       </NFormItem>
       <NFormItem label="Description" path="description">
         <NInput

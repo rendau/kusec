@@ -15,6 +15,7 @@ type Upsert struct {
 	Active      *bool
 	SlugName    *string
 	Description *string
+	ExactSlug   *bool
 }
 
 func (m *Upsert) CreateColumnMap() map[string]any {
@@ -33,6 +34,9 @@ func (m *Upsert) CreateColumnMap() map[string]any {
 	}
 	if m.Description != nil {
 		result["description"] = *m.Description
+	}
+	if m.ExactSlug != nil {
+		result["exact_slug"] = *m.ExactSlug
 	}
 	return result
 }
@@ -58,5 +62,6 @@ func DecodeUpsert(v *domainModel.Edit) *Upsert {
 		Active:      v.Active,
 		SlugName:    v.SlugName,
 		Description: v.Description,
+		ExactSlug:   v.ExactSlug,
 	}
 }

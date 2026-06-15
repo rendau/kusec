@@ -15,6 +15,9 @@ type Main struct {
 	Active      bool
 	SlugName    string
 	Description string
+	// При true имя k8s-configmap = SlugName без префикса и app-slug.
+	// Менять флаг могут только админы.
+	ExactSlug bool
 
 	// Вычисляемое поле: не хранится в базе, заполняется в usecase.
 	KubeConfigMapName string
@@ -27,6 +30,7 @@ type Edit struct {
 	Active      *bool
 	SlugName    *string
 	Description *string
+	ExactSlug   *bool
 }
 
 // ListReq — параметры выборки

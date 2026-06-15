@@ -107,19 +107,19 @@ func TestSync_ReconcilesSecretsAndConfigMaps(t *testing.T) {
 		t.Fatalf("Sync() error = %v", err)
 	}
 
-	wantSecret := "team-a/" + SecretName("web", "db")
+	wantSecret := "team-a/" + SecretName("web", "db", false)
 	if !slices.Equal(secrets.Created, []string{wantSecret}) {
 		t.Fatalf("unexpected secrets.Created: %#v", secrets.Created)
 	}
-	wantConfigMap := "team-a/" + ConfigMapName("web", "app-config")
+	wantConfigMap := "team-a/" + ConfigMapName("web", "app-config", false)
 	if !slices.Equal(configMaps.Created, []string{wantConfigMap}) {
 		t.Fatalf("unexpected configMaps.Created: %#v", configMaps.Created)
 	}
 
-	if _, err = client.CoreV1().Secrets("team-a").Get(context.Background(), SecretName("web", "db"), metav1.GetOptions{}); err != nil {
+	if _, err = client.CoreV1().Secrets("team-a").Get(context.Background(), SecretName("web", "db", false), metav1.GetOptions{}); err != nil {
 		t.Fatalf("synced secret must exist: %v", err)
 	}
-	if _, err = client.CoreV1().ConfigMaps("team-a").Get(context.Background(), ConfigMapName("web", "app-config"), metav1.GetOptions{}); err != nil {
+	if _, err = client.CoreV1().ConfigMaps("team-a").Get(context.Background(), ConfigMapName("web", "app-config", false), metav1.GetOptions{}); err != nil {
 		t.Fatalf("synced configmap must exist: %v", err)
 	}
 }

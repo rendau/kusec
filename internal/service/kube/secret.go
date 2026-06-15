@@ -200,7 +200,7 @@ func (s *Service) buildDesired(ctx context.Context, result *SyncResult, appIds [
 		}
 
 		for _, secret := range secrets {
-			name := SecretName(app.SlugName, secret.SlugName)
+			name := SecretName(app.SlugName, secret.SlugName, secret.ExactSlug)
 			key := app.Namespace + "/" + name
 
 			if errMsgs := validation.IsDNS1123Subdomain(name); len(errMsgs) > 0 {
