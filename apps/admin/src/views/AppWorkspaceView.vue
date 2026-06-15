@@ -647,6 +647,7 @@ watch(apps, () => {
       v-model:show="showForm"
       :secret="editing"
       :default-app-id="appId"
+      :default-slug="rows.length === 0 ? 'main' : null"
       lock-app
       @saved="fetchSecrets"
     />

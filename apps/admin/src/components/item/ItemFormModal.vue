@@ -33,6 +33,7 @@ import {
   textToBase64,
 } from '@/utils/binary'
 import { normalizeValueFormat, stripCommonIndent } from '@/utils/format'
+import { randomHex } from '@/utils/random'
 
 const MAX_FILE_BYTES = 5 * 1024 * 1024
 
@@ -198,6 +199,22 @@ function onBase64Select(key: string | number): void {
   else if (key === 'decode') decodeBase64()
 }
 
+// Варианты длины генерируемой строки (в hex-символах).
+const generateOptions = [
+  { label: '16 chars', key: 16 },
+  { label: '24 chars', key: 24 },
+  { label: '32 chars', key: 32 },
+  { label: '48 chars', key: 48 },
+  { label: '64 chars', key: 64 },
+]
+
+function onGenerateSelect(key: string | number): void {
+  const chars = Number(key)
+  model.value = randomHex(chars / 2)
+  valueFormat.value = 'text'
+  message.success(`Random value generated (${chars} chars)`)
+}
+
 const base64Options = [
   { label: 'Encode → base64', key: 'encode' },
   { label: 'Decode ← base64', key: 'decode' },
@@ -331,6 +348,13 @@ function downloadFile(): void {
                 <NRadioButton value="json">JSON</NRadioButton>
               </NRadioGroup>
               <NSpace :size="8">
+                <NDropdown
+                  trigger="click"
+                  :options="generateOptions"
+                  @select="onGenerateSelect"
+                >
+                  <NButton size="small" tertiary>Generate ▾</NButton>
+                </NDropdown>
                 <NButton size="small" tertiary @click="pickFile">Upload file</NButton>
                 <NDropdown
                   trigger="click"

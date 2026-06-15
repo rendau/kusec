@@ -23,6 +23,8 @@ const props = defineProps<{
   secret: SecretMain | null
   /** Pre-selected app id when creating from within an app context. */
   defaultAppId?: string | null
+  /** Pre-filled slug for a new secret (e.g. "main" for the app's first secret). */
+  defaultSlug?: string | null
   /** Lock the application field (the secret is bound to its app). */
   lockApp?: boolean
 }>()
@@ -78,7 +80,8 @@ const { formRef, submitting, isEdit, submit } = useEntityForm<SecretMain>({
   entity: () => props.secret,
   seed: async (secret) => {
     model.app_id = secret?.app_id ?? props.defaultAppId ?? null
-    model.slug_name = secret?.slug_name ?? ''
+    // Имя нового секрета: defaultSlug (напр. "main" для первого секрета app).
+    model.slug_name = secret?.slug_name ?? props.defaultSlug ?? ''
     model.description = secret?.description ?? ''
     model.active = secret?.active ?? true
     model.kube_type = secret?.kube_type || null
