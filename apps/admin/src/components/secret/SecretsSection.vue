@@ -2,7 +2,6 @@
 import { computed, h, provide, ref, watch } from 'vue'
 import {
   NButton,
-  NCard,
   NDataTable,
   NEllipsis,
   NEmpty,
@@ -27,23 +26,20 @@ import {
 } from '@vicons/tabler'
 
 import { apiErrorMessage } from '@/api/http'
-import { deleteConfigMap, listConfigMaps } from '@/api/configmap'
-import type { ConfigMapMain } from '@/api/types'
+import { deleteSecret, listSecrets } from '@/api/secret'
+import type { SecretMain } from '@/api/types'
 import { useBreakpoint } from '@/composables/useBreakpoint'
 import { useClipboard } from '@/composables/useClipboard'
-import { configItemsRevealCommandKey } from '@/constants/injection'
+import { itemsRevealCommandKey } from '@/constants/injection'
 import type { RevealCommand } from '@/constants/injection'
-import {
-  configItemsKey,
-  createConfigItemsStore,
-} from '@/composables/useConfigItems'
+import { createSecretItemsStore, secretItemsKey } from '@/composables/useSecretItems'
 
-import ConfigMapDetailDrawer from '@/components/configmap/ConfigMapDetailDrawer.vue'
-import ConfigMapFormModal from '@/components/configmap/ConfigMapFormModal.vue'
-import ConfigMapItemsPanel from '@/components/configmap/ConfigMapItemsPanel.vue'
+import SecretDetailDrawer from '@/components/secret/SecretDetailDrawer.vue'
+import SecretFormModal from '@/components/secret/SecretFormModal.vue'
+import SecretItemsPanel from '@/components/secret/SecretItemsPanel.vue'
 
 const props = defineProps<{
-  /** Application whose config maps are shown. */
+  /** Application whose secrets are shown. */
   appId: string
 }>()
 
@@ -51,10 +47,10 @@ const message = useMessage()
 const { copy } = useClipboard()
 const { isMobile } = useBreakpoint()
 
-// Auto-expand every config map on load when there are at most this many.
+// Auto-expand every secret on load when there are at most this many.
 const AUTO_EXPAND_MAX = 5
 
-const rows = ref<ConfigMapMain[]>([])
+const rows = ref<SecretMain[]>([])
 const loading = ref(false)
 const expandedKeys = ref<string[]>([])
 
@@ -62,15 +58,16 @@ function isExpanded(id: string): boolean {
   return expandedKeys.value.includes(id)
 }
 
-// Broadcast a one-shot reveal/hide command (separate from the secrets section).
+// Broadcast a one-shot reveal/hide command; each items panel applies it to its
+// own per-row flags, so individual rows stay togglable afterwards.
 const showAll = ref(false)
 const revealCommand = ref<RevealCommand>({ action: 'hide', seq: 0 })
-provide(configItemsRevealCommandKey, revealCommand)
+provide(itemsRevealCommandKey, revealCommand)
 
-// Shared items cache for all panels: loads several config maps' items in a
+// Shared items cache for all panels: lets us load several secrets' items in a
 // single request instead of one request per expanded panel.
-const itemsStore = createConfigItemsStore()
-provide(configItemsKey, itemsStore)
+const itemsStore = createSecretItemsStore()
+provide(secretItemsKey, itemsStore)
 
 const allExpanded = computed(
   () => rows.value.length > 0 && expandedKeys.value.length === rows.value.length,
@@ -86,10 +83,12 @@ function broadcastReveal(show: boolean): void {
 
 function toggleExpandAll(): void {
   if (allExpanded.value) {
+    // Collapsing all secrets also hides all revealed values.
     expandedKeys.value = []
     broadcastReveal(false)
   } else {
     const ids = rows.value.map((r) => r.id)
+    // One batch request for all secrets instead of one per opened panel.
     void itemsStore.prefetch(ids)
     expandedKeys.value = ids
   }
@@ -99,35 +98,36 @@ function toggleRevealAll(): void {
   broadcastReveal(!showAll.value)
 }
 
-const editing = ref<ConfigMapMain | null>(null)
+const editing = ref<SecretMain | null>(null)
 const showForm = ref(false)
 
 const detailId = ref<string | null>(null)
 const showDetail = ref(false)
 
-function openDetail(row: ConfigMapMain): void {
+function openDetail(row: SecretMain): void {
   detailId.value = row.id
   showDetail.value = true
 }
 
-function toggleExpand(row: ConfigMapMain): void {
+function toggleExpand(row: SecretMain): void {
   const set = new Set(expandedKeys.value)
   if (set.has(row.id)) set.delete(row.id)
   else set.add(row.id)
   expandedKeys.value = [...set]
 }
 
-async function fetchConfigMaps(): Promise<void> {
+async function fetchSecrets(): Promise<void> {
   if (!props.appId) {
     rows.value = []
     return
   }
   loading.value = true
   try {
-    const rep = await listConfigMaps({ app_id: props.appId })
+    // Scoped by app_id → backend returns all secrets, no pagination needed.
+    const rep = await listSecrets({ app_id: props.appId })
     rows.value = rep.results ?? []
   } catch (error) {
-    message.error(apiErrorMessage(error, 'Failed to load config maps'))
+    message.error(apiErrorMessage(error, 'Failed to load secrets'))
   } finally {
     loading.value = false
   }
@@ -138,18 +138,18 @@ function openCreate(): void {
   showForm.value = true
 }
 
-function openEdit(row: ConfigMapMain): void {
+function openEdit(row: SecretMain): void {
   editing.value = row
   showForm.value = true
 }
 
-async function removeConfigMap(row: ConfigMapMain): Promise<void> {
+async function removeSecret(row: SecretMain): Promise<void> {
   try {
-    await deleteConfigMap(row.id)
-    message.success('Config map deleted')
-    await fetchConfigMaps()
+    await deleteSecret(row.id)
+    message.success('Secret deleted')
+    await fetchSecrets()
   } catch (error) {
-    message.error(apiErrorMessage(error, 'Failed to delete config map'))
+    message.error(apiErrorMessage(error, 'Failed to delete secret'))
   }
 }
 
@@ -179,10 +179,10 @@ function iconButton(
   )
 }
 
-const columns = computed<DataTableColumns<ConfigMapMain>>(() => [
+const columns = computed<DataTableColumns<SecretMain>>(() => [
   {
     type: 'expand',
-    renderExpand: (row) => h(ConfigMapItemsPanel, { configmapId: row.id }),
+    renderExpand: (row) => h(SecretItemsPanel, { secretId: row.id }),
   },
   {
     title: 'Slug',
@@ -194,6 +194,7 @@ const columns = computed<DataTableColumns<ConfigMapMain>>(() => [
           text: true,
           type: 'primary',
           block: true,
+          // Click the name to expand/collapse the row (View has its own button).
           style:
             'justify-content: flex-start; padding: 10px 0;' +
             'font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;',
@@ -203,10 +204,10 @@ const columns = computed<DataTableColumns<ConfigMapMain>>(() => [
       ),
   },
   {
-    title: 'K8s configmap',
-    key: 'kube_configmap_name',
+    title: 'K8s secret',
+    key: 'kube_secret_name',
     render: (row) =>
-      row.kube_configmap_name
+      row.kube_secret_name
         ? h(
             NTooltip,
             {},
@@ -218,14 +219,22 @@ const columns = computed<DataTableColumns<ConfigMapMain>>(() => [
                     code: true,
                     style: 'cursor: pointer',
                     onClick: () =>
-                      copy(row.kube_configmap_name, 'K8s configmap name copied'),
+                      copy(row.kube_secret_name, 'K8s secret name copied'),
                   },
-                  { default: () => row.kube_configmap_name },
+                  { default: () => row.kube_secret_name },
                 ),
               default: () => 'Copy',
             },
           )
         : h(NText, { depth: 3 }, { default: () => '—' }),
+  },
+  {
+    title: 'K8s type',
+    key: 'kube_type',
+    render: (row) =>
+      row.kube_type
+        ? h(NText, { code: true }, { default: () => row.kube_type })
+        : h(NText, { depth: 3 }, { default: () => 'Opaque' }),
   },
   {
     title: 'Description',
@@ -260,7 +269,7 @@ const columns = computed<DataTableColumns<ConfigMapMain>>(() => [
         iconButton(Pencil, 'Edit', () => openEdit(row)),
         h(
           NPopconfirm,
-          { onPositiveClick: () => removeConfigMap(row) },
+          { onPositiveClick: () => removeSecret(row) },
           {
             trigger: () =>
               h(
@@ -270,12 +279,11 @@ const columns = computed<DataTableColumns<ConfigMapMain>>(() => [
                   circle: true,
                   size: 'small',
                   type: 'error',
-                  'aria-label': 'Delete config map',
+                  'aria-label': 'Delete secret',
                 },
                 { icon: () => h(NIcon, { component: Trash }) },
               ),
-            default: () =>
-              `Delete "${row.slug_name}"? This also deletes its items.`,
+            default: () => `Delete "${row.slug_name}"? This also deletes its items.`,
           },
         ),
       ]),
@@ -288,8 +296,9 @@ watch(
     expandedKeys.value = []
     itemsStore.reset()
     broadcastReveal(false)
-    await fetchConfigMaps()
-    // Few config maps → expand them all by default for a quicker overview.
+    await fetchSecrets()
+    // Few secrets → expand them all by default for quicker overview. Their
+    // items are fetched in a single batch request (not one per panel).
     if (rows.value.length && rows.value.length <= AUTO_EXPAND_MAX) {
       const ids = rows.value.map((r) => r.id)
       void itemsStore.prefetch(ids)
@@ -299,12 +308,12 @@ watch(
   { immediate: true },
 )
 
-defineExpose({ refresh: fetchConfigMaps, count: computed(() => rows.value.length) })
+defineExpose({ refresh: fetchSecrets, count: computed(() => rows.value.length) })
 </script>
 
 <template>
-  <div class="cm-section">
-    <NSpace :size="8" align="center" justify="end" class="cm-section__actions">
+  <div class="secrets-section">
+    <NSpace :size="8" align="center" justify="end" class="secrets-section__actions">
       <NButton v-if="rows.length" size="small" tertiary @click="toggleExpandAll">
         <template #icon>
           <NIcon :component="allExpanded ? ChevronUp : ChevronDown" />
@@ -327,29 +336,29 @@ defineExpose({ refresh: fetchConfigMaps, count: computed(() => rows.value.length
         <template #icon>
           <NIcon :component="Plus" />
         </template>
-        New config map
+        New secret
       </NButton>
     </NSpace>
 
     <!-- Mobile: stacked cards instead of a horizontally scrolling table. -->
-    <div v-if="isMobile" class="cm-cards">
+    <div v-if="isMobile" class="secret-cards">
       <NEmpty
         v-if="!rows.length && !loading"
-        description="No config maps yet"
+        description="No secrets yet"
         style="padding: 24px 0"
       />
       <NCard
         v-for="row in rows"
         :key="row.id"
         size="small"
-        class="cm-card stack-header"
+        class="secret-card stack-header"
         :segmented="{ content: true }"
       >
         <template #header>
           <NButton
             text
             type="primary"
-            class="cm-card__title"
+            class="secret-card__title"
             @click="toggleExpand(row)"
           >
             {{ row.slug_name }}
@@ -362,15 +371,20 @@ defineExpose({ refresh: fetchConfigMaps, count: computed(() => rows.value.length
         </template>
 
         <NSpace vertical :size="6">
-          <div v-if="row.kube_configmap_name" class="cm-card__field">
-            <NText depth="3" class="cm-card__label">K8s configmap</NText>
+          <div v-if="row.kube_secret_name" class="secret-card__field">
+            <NText depth="3" class="secret-card__label">K8s secret</NText>
             <NText
               code
-              class="cm-card__mono"
-              @click="copy(row.kube_configmap_name, 'K8s configmap name copied')"
+              class="secret-card__mono"
+              @click="copy(row.kube_secret_name, 'K8s secret name copied')"
             >
-              {{ row.kube_configmap_name }}
+              {{ row.kube_secret_name }}
             </NText>
+          </div>
+          <div class="secret-card__field">
+            <NText depth="3" class="secret-card__label">K8s type</NText>
+            <NText v-if="row.kube_type" code>{{ row.kube_type }}</NText>
+            <NText v-else :depth="3">Opaque</NText>
           </div>
           <NText v-if="row.description" depth="3" style="font-size: 13px">
             {{ row.description }}
@@ -401,21 +415,21 @@ defineExpose({ refresh: fetchConfigMaps, count: computed(() => rows.value.length
                 quaternary
                 circle
                 size="small"
-                aria-label="Edit config map"
+                aria-label="Edit secret"
                 @click="openEdit(row)"
               >
                 <template #icon>
                   <NIcon :component="Pencil" />
                 </template>
               </NButton>
-              <NPopconfirm @positive-click="removeConfigMap(row)">
+              <NPopconfirm @positive-click="removeSecret(row)">
                 <template #trigger>
                   <NButton
                     quaternary
                     circle
                     size="small"
                     type="error"
-                    aria-label="Delete config map"
+                    aria-label="Delete secret"
                   >
                     <template #icon>
                       <NIcon :component="Trash" />
@@ -426,7 +440,7 @@ defineExpose({ refresh: fetchConfigMaps, count: computed(() => rows.value.length
               </NPopconfirm>
             </NSpace>
           </NSpace>
-          <ConfigMapItemsPanel v-if="isExpanded(row.id)" :configmap-id="row.id" />
+          <SecretItemsPanel v-if="isExpanded(row.id)" :secret-id="row.id" />
         </template>
       </NCard>
     </div>
@@ -436,7 +450,7 @@ defineExpose({ refresh: fetchConfigMaps, count: computed(() => rows.value.length
       :columns="columns"
       :data="rows"
       :loading="loading"
-      :row-key="(row: ConfigMapMain) => row.id"
+      :row-key="(row: SecretMain) => row.id"
       :pagination="false"
       :theme-overrides="{ tdColorHover: 'transparent' }"
       :expanded-row-keys="expandedKeys"
@@ -445,61 +459,62 @@ defineExpose({ refresh: fetchConfigMaps, count: computed(() => rows.value.length
       "
     />
 
-    <ConfigMapDetailDrawer v-model:show="showDetail" :config-map-id="detailId" />
-    <ConfigMapFormModal
+    <SecretDetailDrawer v-model:show="showDetail" :secret-id="detailId" />
+    <SecretFormModal
       v-model:show="showForm"
-      :config-map="editing"
+      :secret="editing"
       :default-app-id="appId"
+      :default-slug="rows.length === 0 ? 'main' : null"
       lock-app
-      @saved="fetchConfigMaps"
+      @saved="fetchSecrets"
     />
   </div>
 </template>
 
 <style scoped>
-.cm-section {
+.secrets-section {
   display: flex;
   flex-direction: column;
   gap: 12px;
 }
 
-.cm-section__actions {
-  /* Keep the action row from collapsing when there are no config maps yet. */
+.secrets-section__actions {
+  /* Keep the action row from collapsing when there are no secrets yet. */
   min-height: 34px;
 }
 
-.cm-cards {
+.secret-cards {
   display: flex;
   flex-direction: column;
   gap: 12px;
 }
 
-.cm-card__title {
+.secret-card__title {
   font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
   font-weight: 600;
   max-width: 100%;
 }
 
 /* Let a long slug wrap instead of overflowing the card (no horizontal scroll). */
-.cm-card__title :deep(.n-button__content) {
+.secret-card__title :deep(.n-button__content) {
   white-space: normal;
   word-break: break-word;
   text-align: left;
 }
 
-.cm-card__field {
+.secret-card__field {
   display: flex;
   flex-direction: column;
   gap: 2px;
 }
 
-.cm-card__label {
+.secret-card__label {
   font-size: 11px;
   text-transform: uppercase;
   letter-spacing: 0.04em;
 }
 
-.cm-card__mono {
+.secret-card__mono {
   cursor: pointer;
   word-break: break-all;
 }
