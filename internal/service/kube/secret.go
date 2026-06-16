@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"sort"
 	"strings"
+	"unicode/utf8"
 
 	"github.com/samber/lo"
 	corev1 "k8s.io/api/core/v1"
@@ -259,14 +260,31 @@ func (s *Service) buildSecretData(ctx context.Context, secretId string) (map[str
 			if err != nil {
 				return nil, fmt.Errorf("key %q: invalid base64 value: %w", item.Key, err)
 			}
-			data[item.Key] = raw
+			data[item.Key] = sanitizeSecretValue(raw)
 			continue
 		}
 
-		data[item.Key] = []byte(item.Value)
+		data[item.Key] = sanitizeSecretValue([]byte(item.Value))
 	}
 
 	return data, nil
+}
+
+// sanitizeSecretValue убирает NUL-байты (\x00) из текстовых значений. Kubernetes
+// отказывается инжектить env-переменную, чьё значение содержит NUL ("value
+// contains nul byte"), а NUL в UTF-8 тексте всегда мусорный (напр. нуль-
+// терминированный экспорт cert/PEM-файла). Истинно бинарные данные (после
+// удаления NUL уже не валидный UTF-8) остаются нетронутыми — их можно
+// монтировать только как файл, где NUL-байты допустимы.
+func sanitizeSecretValue(raw []byte) []byte {
+	if bytes.IndexByte(raw, 0) < 0 {
+		return raw
+	}
+	stripped := bytes.ReplaceAll(raw, []byte{0}, nil)
+	if utf8.Valid(stripped) {
+		return stripped
+	}
+	return raw
 }
 
 // desiredSecretType — тип k8s-секрета из записи базы; пусто = Opaque.

@@ -1,6 +1,7 @@
 package kube
 
 import (
+	"bytes"
 	"context"
 	"errors"
 	"slices"
@@ -407,6 +408,33 @@ func TestBuildDesired_PropagatesServiceError(t *testing.T) {
 	_, err := svc.buildDesired(context.Background(), &SyncResult{}, nil)
 	if err == nil || !strings.Contains(err.Error(), "appSvc.List") {
 		t.Fatalf("expected wrapped appSvc.List error, got: %v", err)
+	}
+}
+
+func TestSanitizeSecretValue(t *testing.T) {
+	t.Parallel()
+
+	cases := []struct {
+		name string
+		in   []byte
+		want []byte
+	}{
+		{"plain text untouched", []byte("hello"), []byte("hello")},
+		{"trailing nul stripped from text", []byte("cert\x00"), []byte("cert")},
+		{"embedded nul stripped from text", []byte("a\x00b\x00"), []byte("ab")},
+		{"empty stays empty", []byte(""), []byte("")},
+		{"binary with nul kept intact", []byte{0x89, 0x50, 0x00, 0xFF}, []byte{0x89, 0x50, 0x00, 0xFF}},
+	}
+
+	for _, c := range cases {
+		c := c
+		t.Run(c.name, func(t *testing.T) {
+			t.Parallel()
+			got := sanitizeSecretValue(c.in)
+			if !bytes.Equal(got, c.want) {
+				t.Fatalf("sanitizeSecretValue(%v) = %v, want %v", c.in, got, c.want)
+			}
+		})
 	}
 }
 
