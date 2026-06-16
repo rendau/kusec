@@ -7,7 +7,6 @@ import (
 	"fmt"
 	"sort"
 	"strings"
-	"unicode/utf8"
 
 	"github.com/samber/lo"
 	corev1 "k8s.io/api/core/v1"
@@ -260,11 +259,11 @@ func (s *Service) buildSecretData(ctx context.Context, secretId string) (map[str
 			if err != nil {
 				return nil, fmt.Errorf("key %q: invalid base64 value: %w", item.Key, err)
 			}
-			data[item.Key] = sanitizeSecretValue(raw)
+			data[item.Key] = raw
 			continue
 		}
 
-		data[item.Key] = sanitizeSecretValue([]byte(item.Value))
+		data[item.Key] = []byte(item.Value)
 	}
 
 	return data, nil
@@ -276,16 +275,16 @@ func (s *Service) buildSecretData(ctx context.Context, secretId string) (map[str
 // терминированный экспорт cert/PEM-файла). Истинно бинарные данные (после
 // удаления NUL уже не валидный UTF-8) остаются нетронутыми — их можно
 // монтировать только как файл, где NUL-байты допустимы.
-func sanitizeSecretValue(raw []byte) []byte {
-	if bytes.IndexByte(raw, 0) < 0 {
-		return raw
-	}
-	stripped := bytes.ReplaceAll(raw, []byte{0}, nil)
-	if utf8.Valid(stripped) {
-		return stripped
-	}
-	return raw
-}
+// func sanitizeSecretValue(raw []byte) []byte {
+// 	if bytes.IndexByte(raw, 0) < 0 {
+// 		return raw
+// 	}
+// 	stripped := bytes.ReplaceAll(raw, []byte{0}, nil)
+// 	if utf8.Valid(stripped) {
+// 		return stripped
+// 	}
+// 	return raw
+// }
 
 // desiredSecretType — тип k8s-секрета из записи базы; пусто = Opaque.
 func desiredSecretType(want *desiredSecret) corev1.SecretType {
