@@ -10,14 +10,26 @@ import (
 )
 
 type Usecase struct {
-	svc        KubeServiceI
-	sessionSvc SessionServiceI
+	svc          KubeServiceI
+	appSvc       AppServiceI
+	secretSvc    SecretServiceI
+	configMapSvc ConfigMapServiceI
+	sessionSvc   SessionServiceI
 }
 
-func New(svc KubeServiceI, sessionSvc SessionServiceI) *Usecase {
+func New(
+	svc KubeServiceI,
+	appSvc AppServiceI,
+	secretSvc SecretServiceI,
+	configMapSvc ConfigMapServiceI,
+	sessionSvc SessionServiceI,
+) *Usecase {
 	return &Usecase{
-		svc:        svc,
-		sessionSvc: sessionSvc,
+		svc:          svc,
+		appSvc:       appSvc,
+		secretSvc:    secretSvc,
+		configMapSvc: configMapSvc,
+		sessionSvc:   sessionSvc,
 	}
 }
 
@@ -92,6 +104,87 @@ func (u *Usecase) ImportSecret(ctx context.Context, appId string, ref kubeServic
 	}
 
 	return result, nil
+}
+
+// GetClusterSecret отдаёт живой k8s-secret из кластера для сверки с записью
+// kusec. Доступ — по своим app (HasAppAccess на app секрета), не только админ.
+func (u *Usecase) GetClusterSecret(ctx context.Context, secretId string) (*kubeService.ClusterResource, bool, bool, error) {
+	if !u.sessionSvc.CtxIsAuthorized(ctx) {
+		return nil, false, false, errs.NotAuthorized
+	}
+	if secretId == "" {
+		return nil, false, false, errs.IdRequired
+	}
+
+	secret, _, err := u.secretSvc.Get(ctx, secretId, true)
+	if err != nil {
+		// ObjectNotFound пробрасываем как сентинель.
+		if _, ok := errors.AsType[errs.Err](err); ok {
+			return nil, false, false, err
+		}
+		return nil, false, false, fmt.Errorf("secretSvc.Get: %w", err)
+	}
+
+	if !u.sessionSvc.FromContext(ctx).HasAppAccess(secret.AppId) {
+		return nil, false, false, errs.NoPermission
+	}
+
+	app, _, err := u.appSvc.Get(ctx, secret.AppId, true)
+	if err != nil {
+		if _, ok := errors.AsType[errs.Err](err); ok {
+			return nil, false, false, err
+		}
+		return nil, false, false, fmt.Errorf("appSvc.Get: %w", err)
+	}
+
+	name := kubeService.SecretName(app.SlugName, secret.SlugName, secret.ExactSlug)
+
+	resource, inCluster, found, err := u.svc.GetClusterSecret(ctx, app.Namespace, name)
+	if err != nil {
+		return nil, false, false, fmt.Errorf("svc.GetClusterSecret: %w", err)
+	}
+
+	return resource, inCluster, found, nil
+}
+
+// GetClusterConfigMap отдаёт живой k8s-configmap из кластера для сверки.
+// Доступ — по своим app (HasAppAccess на app configmap-а).
+func (u *Usecase) GetClusterConfigMap(ctx context.Context, configMapId string) (*kubeService.ClusterResource, bool, bool, error) {
+	if !u.sessionSvc.CtxIsAuthorized(ctx) {
+		return nil, false, false, errs.NotAuthorized
+	}
+	if configMapId == "" {
+		return nil, false, false, errs.IdRequired
+	}
+
+	configMap, _, err := u.configMapSvc.Get(ctx, configMapId, true)
+	if err != nil {
+		if _, ok := errors.AsType[errs.Err](err); ok {
+			return nil, false, false, err
+		}
+		return nil, false, false, fmt.Errorf("configMapSvc.Get: %w", err)
+	}
+
+	if !u.sessionSvc.FromContext(ctx).HasAppAccess(configMap.AppId) {
+		return nil, false, false, errs.NoPermission
+	}
+
+	app, _, err := u.appSvc.Get(ctx, configMap.AppId, true)
+	if err != nil {
+		if _, ok := errors.AsType[errs.Err](err); ok {
+			return nil, false, false, err
+		}
+		return nil, false, false, fmt.Errorf("appSvc.Get: %w", err)
+	}
+
+	name := kubeService.ConfigMapName(app.SlugName, configMap.SlugName, configMap.ExactSlug)
+
+	resource, inCluster, found, err := u.svc.GetClusterConfigMap(ctx, app.Namespace, name)
+	if err != nil {
+		return nil, false, false, fmt.Errorf("svc.GetClusterConfigMap: %w", err)
+	}
+
+	return resource, inCluster, found, nil
 }
 
 func (u *Usecase) SyncSecrets(ctx context.Context, appId *string) (*kubeService.SyncResult, error) {

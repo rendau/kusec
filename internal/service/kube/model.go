@@ -25,6 +25,28 @@ type ClusterSecret struct {
 	Managed bool
 }
 
+// ClusterResource — живой k8s-объект (secret или configmap) из кластера,
+// прочитанный для сверки с записью kusec.
+type ClusterResource struct {
+	Namespace string
+	Name      string
+	// Тип k8s-секрета (для secret; пусто для configmap и для Opaque).
+	Type string
+	// true — объект под управлением kusec (лейбл managed-by=kusec).
+	Managed bool
+	// Ключи data (отсортированы) со значениями.
+	Items []ClusterResourceItem
+}
+
+// ClusterResourceItem — пара ключ/значение из живого k8s-объекта. Значение —
+// текст (encoding=plain) либо base64 для бинарных (encoding=base64),
+// зеркально encodeImportValue.
+type ClusterResourceItem struct {
+	Key      string
+	Value    string
+	Encoding string
+}
+
 // ImportRef — ссылка на импортируемый секрет кластера.
 type ImportRef struct {
 	Namespace string

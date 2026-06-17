@@ -20,6 +20,31 @@ func EncodeKubeClusterSecret(v *kubeService.ClusterSecret, _ int) *proto.KubeClu
 	}
 }
 
+func EncodeKubeClusterResource(v *kubeService.ClusterResource, inCluster, found bool) *proto.KubeClusterResourceRep {
+	rep := &proto.KubeClusterResourceRep{
+		InCluster: inCluster,
+		Found:     found,
+	}
+	if v == nil {
+		return rep
+	}
+
+	rep.Namespace = v.Namespace
+	rep.Name = v.Name
+	rep.Type = v.Type
+	rep.Managed = v.Managed
+	rep.Items = make([]*proto.KubeClusterResourceItemSt, 0, len(v.Items))
+	for _, item := range v.Items {
+		rep.Items = append(rep.Items, &proto.KubeClusterResourceItemSt{
+			Key:      item.Key,
+			Value:    item.Value,
+			Encoding: item.Encoding,
+		})
+	}
+
+	return rep
+}
+
 func EncodeKubeImportResult(v *kubeService.ImportResult) *proto.KubeImportSecretRep {
 	if v == nil {
 		return nil

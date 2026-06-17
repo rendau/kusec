@@ -397,6 +397,32 @@ export interface KubeImportSecretRep {
   updated_items: number | string
 }
 
+/**
+ * One key/value pair from a live cluster object (`KubeClusterResourceItemSt`).
+ * `encoding` is 'plain' for text or 'base64' for binary values.
+ */
+export interface KubeClusterResourceItemSt {
+  key: string
+  value: string
+  encoding: string
+}
+
+/**
+ * Live k8s object (secret or config map) read from the cluster for comparison
+ * (`KubeClusterResourceRep`). `in_cluster` is false when the backend runs
+ * outside a cluster; `found` is false when the object is not synced yet.
+ */
+export interface KubeClusterResourceRep {
+  in_cluster: boolean
+  found: boolean
+  namespace: string
+  name: string
+  /** k8s secret type (empty for config maps and Opaque secrets). */
+  type: string
+  managed: boolean
+  items: KubeClusterResourceItemSt[]
+}
+
 /** Item entity (`ItemMain`). */
 export interface ItemMain {
   id: string

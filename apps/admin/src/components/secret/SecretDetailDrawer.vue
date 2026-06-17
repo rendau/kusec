@@ -1,7 +1,9 @@
 <script setup lang="ts">
+import { computed, ref, watch } from 'vue'
 import {
   NDescriptions,
   NDescriptionsItem,
+  NDivider,
   NDrawer,
   NDrawerContent,
   NSpin,
@@ -10,11 +12,18 @@ import {
   NTooltip,
 } from 'naive-ui'
 
+import { getClusterSecret } from '@/api/kube'
+import { listItems } from '@/api/item'
 import { getSecret } from '@/api/secret'
+import type { ItemMain } from '@/api/types'
 import { useAppOptions } from '@/composables/useAppOptions'
 import { useClipboard } from '@/composables/useClipboard'
 import { useDrawerResource } from '@/composables/useDrawerResource'
 import { formatDate } from '@/utils/format'
+import type { ExportPair } from '@/utils/export'
+
+import ClusterResourcePanel from '@/components/kube/ClusterResourcePanel.vue'
+import ResourceExportPanel from '@/components/kube/ResourceExportPanel.vue'
 
 const props = defineProps<{
   show: boolean
@@ -36,6 +45,38 @@ const { loading, item: secret } = useDrawerResource({
   onLoaded: (loaded) => ensure(loaded.app_id),
   onError: () => emit('update:show', false),
 })
+
+// Items power the key/value export; loaded alongside the secret details.
+const items = ref<ItemMain[]>([])
+
+watch(
+  [() => props.show, () => props.secretId],
+  async ([show, id]) => {
+    if (!show || !id) {
+      items.value = []
+      return
+    }
+    try {
+      const rep = await listItems({ secret_id: id })
+      items.value = rep.results ?? []
+    } catch {
+      items.value = []
+    }
+  },
+  { immediate: true },
+)
+
+const exportPairs = computed<ExportPair[]>(() =>
+  items.value.map((item) => ({ key: item.key, value: item.value })),
+)
+
+const exportBaseName = computed(
+  () => secret.value?.kube_secret_name || secret.value?.slug_name || 'secret',
+)
+
+function loadCluster() {
+  return getClusterSecret(props.secretId!)
+}
 </script>
 
 <template>
@@ -98,6 +139,13 @@ const { loading, item: secret } = useDrawerResource({
         </NDescriptions>
         <div v-else style="min-height: 120px" />
       </NSpin>
+
+      <template v-if="secret">
+        <NDivider style="margin: 16px 0 12px" />
+        <ResourceExportPanel :pairs="exportPairs" :base-name="exportBaseName" />
+        <NDivider style="margin: 16px 0 12px" />
+        <ClusterResourcePanel :loader="loadCluster" kind="secret" />
+      </template>
     </NDrawerContent>
   </NDrawer>
 </template>

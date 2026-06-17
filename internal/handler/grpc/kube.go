@@ -67,6 +67,34 @@ func (h *Kube) ImportSecret(ctx context.Context, req *proto.KubeImportSecretReq)
 	return dto.EncodeKubeImportResult(result), nil
 }
 
+func (h *Kube) GetClusterSecret(ctx context.Context, req *proto.KubeGetClusterSecretReq) (*proto.KubeClusterResourceRep, error) {
+	var secretId string
+	if req != nil {
+		secretId = req.SecretId
+	}
+
+	resource, inCluster, found, err := h.usecase.GetClusterSecret(ctx, secretId)
+	if err != nil {
+		return nil, err
+	}
+
+	return dto.EncodeKubeClusterResource(resource, inCluster, found), nil
+}
+
+func (h *Kube) GetClusterConfigMap(ctx context.Context, req *proto.KubeGetClusterConfigMapReq) (*proto.KubeClusterResourceRep, error) {
+	var configMapId string
+	if req != nil {
+		configMapId = req.ConfigmapId
+	}
+
+	resource, inCluster, found, err := h.usecase.GetClusterConfigMap(ctx, configMapId)
+	if err != nil {
+		return nil, err
+	}
+
+	return dto.EncodeKubeClusterResource(resource, inCluster, found), nil
+}
+
 func (h *Kube) SyncSecrets(ctx context.Context, req *proto.KubeSyncSecretsReq) (*proto.KubeSyncSecretsRep, error) {
 	var appId *string
 	if req != nil && req.AppId != "" {

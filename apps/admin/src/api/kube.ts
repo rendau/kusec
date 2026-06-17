@@ -1,6 +1,7 @@
 import { apiFetch } from './http'
 import { buildListQuery } from './query'
 import type {
+  KubeClusterResourceRep,
   KubeImportSecretRep,
   KubeListClusterSecretsRep,
   KubeListNamespacesRep,
@@ -31,9 +32,7 @@ export function syncKubeSecrets(appId?: string): Promise<KubeSyncSecretsRep> {
  * Sync managed config maps into the cluster. Pass an `appId` to sync a single
  * application; omit it to sync every application the caller can access.
  */
-export function syncKubeConfigMaps(
-  appId?: string,
-): Promise<KubeSyncConfigMapsRep> {
+export function syncKubeConfigMaps(appId?: string): Promise<KubeSyncConfigMapsRep> {
   return apiFetch<KubeSyncConfigMapsRep>('/kube/sync-configmap', {
     method: 'POST',
     body: JSON.stringify(appId ? { app_id: appId } : {}),
@@ -53,6 +52,30 @@ export function syncKube(appId?: string): Promise<KubeSyncRep> {
 
 export function listKubeNamespaces(): Promise<KubeListNamespacesRep> {
   return apiFetch<KubeListNamespacesRep>('/kube/namespace')
+}
+
+/**
+ * Read the live k8s secret backing kusec secret `secretId` for comparison.
+ * Access is scoped to the caller's apps. `in_cluster` is false outside a
+ * cluster; `found` is false when the secret has not been synced yet.
+ */
+export function getClusterSecret(secretId: string): Promise<KubeClusterResourceRep> {
+  return apiFetch<KubeClusterResourceRep>(
+    `/kube/secret/${encodeURIComponent(secretId)}/cluster`,
+  )
+}
+
+/**
+ * Read the live k8s config map backing kusec config map `configMapId` for
+ * comparison. Same access and `in_cluster`/`found` semantics as
+ * {@link getClusterSecret}.
+ */
+export function getClusterConfigMap(
+  configMapId: string,
+): Promise<KubeClusterResourceRep> {
+  return apiFetch<KubeClusterResourceRep>(
+    `/kube/configmap/${encodeURIComponent(configMapId)}/cluster`,
+  )
 }
 
 /**

@@ -20,12 +20,14 @@ import (
 const _ = grpc.SupportPackageIsVersion9
 
 const (
-	Kube_SyncSecrets_FullMethodName        = "/kusec_v1.Kube/SyncSecrets"
-	Kube_SyncConfigMaps_FullMethodName     = "/kusec_v1.Kube/SyncConfigMaps"
-	Kube_Sync_FullMethodName               = "/kusec_v1.Kube/Sync"
-	Kube_ListNamespaces_FullMethodName     = "/kusec_v1.Kube/ListNamespaces"
-	Kube_ListClusterSecrets_FullMethodName = "/kusec_v1.Kube/ListClusterSecrets"
-	Kube_ImportSecret_FullMethodName       = "/kusec_v1.Kube/ImportSecret"
+	Kube_SyncSecrets_FullMethodName         = "/kusec_v1.Kube/SyncSecrets"
+	Kube_SyncConfigMaps_FullMethodName      = "/kusec_v1.Kube/SyncConfigMaps"
+	Kube_Sync_FullMethodName                = "/kusec_v1.Kube/Sync"
+	Kube_ListNamespaces_FullMethodName      = "/kusec_v1.Kube/ListNamespaces"
+	Kube_ListClusterSecrets_FullMethodName  = "/kusec_v1.Kube/ListClusterSecrets"
+	Kube_ImportSecret_FullMethodName        = "/kusec_v1.Kube/ImportSecret"
+	Kube_GetClusterSecret_FullMethodName    = "/kusec_v1.Kube/GetClusterSecret"
+	Kube_GetClusterConfigMap_FullMethodName = "/kusec_v1.Kube/GetClusterConfigMap"
 )
 
 // KubeClient is the client API for Kube service.
@@ -57,6 +59,13 @@ type KubeClient interface {
 	// создаются, совпавшие — перезаписываются значением из кластера. Источник в
 	// кластере не меняется.
 	ImportSecret(ctx context.Context, in *KubeImportSecretReq, opts ...grpc.CallOption) (*KubeImportSecretRep, error)
+	// Живой k8s-secret из кластера для сверки с записью kusec. Доступ — только
+	// по своим app (HasAppAccess на app секрета), не только админ. Значения
+	// отдаются (текст или base64 для бинарных), namespace/имя/тип/managed — для
+	// контекста.
+	GetClusterSecret(ctx context.Context, in *KubeGetClusterSecretReq, opts ...grpc.CallOption) (*KubeClusterResourceRep, error)
+	// Живой k8s-configmap из кластера для сверки. Доступ — только по своим app.
+	GetClusterConfigMap(ctx context.Context, in *KubeGetClusterConfigMapReq, opts ...grpc.CallOption) (*KubeClusterResourceRep, error)
 }
 
 type kubeClient struct {
@@ -127,6 +136,26 @@ func (c *kubeClient) ImportSecret(ctx context.Context, in *KubeImportSecretReq, 
 	return out, nil
 }
 
+func (c *kubeClient) GetClusterSecret(ctx context.Context, in *KubeGetClusterSecretReq, opts ...grpc.CallOption) (*KubeClusterResourceRep, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(KubeClusterResourceRep)
+	err := c.cc.Invoke(ctx, Kube_GetClusterSecret_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *kubeClient) GetClusterConfigMap(ctx context.Context, in *KubeGetClusterConfigMapReq, opts ...grpc.CallOption) (*KubeClusterResourceRep, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(KubeClusterResourceRep)
+	err := c.cc.Invoke(ctx, Kube_GetClusterConfigMap_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
 // KubeServer is the server API for Kube service.
 // All implementations must embed UnimplementedKubeServer
 // for forward compatibility.
@@ -156,6 +185,13 @@ type KubeServer interface {
 	// создаются, совпавшие — перезаписываются значением из кластера. Источник в
 	// кластере не меняется.
 	ImportSecret(context.Context, *KubeImportSecretReq) (*KubeImportSecretRep, error)
+	// Живой k8s-secret из кластера для сверки с записью kusec. Доступ — только
+	// по своим app (HasAppAccess на app секрета), не только админ. Значения
+	// отдаются (текст или base64 для бинарных), namespace/имя/тип/managed — для
+	// контекста.
+	GetClusterSecret(context.Context, *KubeGetClusterSecretReq) (*KubeClusterResourceRep, error)
+	// Живой k8s-configmap из кластера для сверки. Доступ — только по своим app.
+	GetClusterConfigMap(context.Context, *KubeGetClusterConfigMapReq) (*KubeClusterResourceRep, error)
 	mustEmbedUnimplementedKubeServer()
 }
 
@@ -183,6 +219,12 @@ func (UnimplementedKubeServer) ListClusterSecrets(context.Context, *KubeListClus
 }
 func (UnimplementedKubeServer) ImportSecret(context.Context, *KubeImportSecretReq) (*KubeImportSecretRep, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method ImportSecret not implemented")
+}
+func (UnimplementedKubeServer) GetClusterSecret(context.Context, *KubeGetClusterSecretReq) (*KubeClusterResourceRep, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method GetClusterSecret not implemented")
+}
+func (UnimplementedKubeServer) GetClusterConfigMap(context.Context, *KubeGetClusterConfigMapReq) (*KubeClusterResourceRep, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method GetClusterConfigMap not implemented")
 }
 func (UnimplementedKubeServer) mustEmbedUnimplementedKubeServer() {}
 func (UnimplementedKubeServer) testEmbeddedByValue()              {}
@@ -313,6 +355,42 @@ func _Kube_ImportSecret_Handler(srv interface{}, ctx context.Context, dec func(i
 	return interceptor(ctx, in, info, handler)
 }
 
+func _Kube_GetClusterSecret_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(KubeGetClusterSecretReq)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(KubeServer).GetClusterSecret(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: Kube_GetClusterSecret_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(KubeServer).GetClusterSecret(ctx, req.(*KubeGetClusterSecretReq))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _Kube_GetClusterConfigMap_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(KubeGetClusterConfigMapReq)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(KubeServer).GetClusterConfigMap(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: Kube_GetClusterConfigMap_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(KubeServer).GetClusterConfigMap(ctx, req.(*KubeGetClusterConfigMapReq))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
 // Kube_ServiceDesc is the grpc.ServiceDesc for Kube service.
 // It's only intended for direct use with grpc.RegisterService,
 // and not to be introspected or modified (even as a copy)
@@ -343,6 +421,14 @@ var Kube_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "ImportSecret",
 			Handler:    _Kube_ImportSecret_Handler,
+		},
+		{
+			MethodName: "GetClusterSecret",
+			Handler:    _Kube_GetClusterSecret_Handler,
+		},
+		{
+			MethodName: "GetClusterConfigMap",
+			Handler:    _Kube_GetClusterConfigMap_Handler,
 		},
 	},
 	Streams:  []grpc.StreamDesc{},

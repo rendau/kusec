@@ -114,7 +114,13 @@ func (a *App) Init() {
 		dashboardUsc.New(appSvc, secretSvc, itemSvc, configMapSvc, configItemSvc, usrSvc, sessionSvc),
 	)
 	kubeHandler := grpcHandler.NewKube(
-		kubeUsc.New(kubeService.New(appSvc, secretSvc, itemSvc, configMapSvc, configItemSvc), sessionSvc),
+		kubeUsc.New(
+			kubeService.New(appSvc, secretSvc, itemSvc, configMapSvc, configItemSvc),
+			appSvc,
+			secretSvc,
+			configMapSvc,
+			sessionSvc,
+		),
 	)
 	transferHandler := grpcHandler.NewTransfer(
 		transferUsc.New(appSvc, secretSvc, itemSvc, configMapSvc, configItemSvc, sessionSvc),

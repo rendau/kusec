@@ -1,7 +1,9 @@
 <script setup lang="ts">
+import { computed, ref, watch } from 'vue'
 import {
   NDescriptions,
   NDescriptionsItem,
+  NDivider,
   NDrawer,
   NDrawerContent,
   NSpin,
@@ -11,10 +13,17 @@ import {
 } from 'naive-ui'
 
 import { getConfigMap } from '@/api/configmap'
+import { listConfigItems } from '@/api/configitem'
+import { getClusterConfigMap } from '@/api/kube'
+import type { ConfigItemMain } from '@/api/types'
 import { useAppOptions } from '@/composables/useAppOptions'
 import { useClipboard } from '@/composables/useClipboard'
 import { useDrawerResource } from '@/composables/useDrawerResource'
 import { formatDate } from '@/utils/format'
+import type { ExportPair } from '@/utils/export'
+
+import ClusterResourcePanel from '@/components/kube/ClusterResourcePanel.vue'
+import ResourceExportPanel from '@/components/kube/ResourceExportPanel.vue'
 
 const props = defineProps<{
   show: boolean
@@ -36,6 +45,39 @@ const { loading, item: configMap } = useDrawerResource({
   onLoaded: (loaded) => ensure(loaded.app_id),
   onError: () => emit('update:show', false),
 })
+
+// Config items power the key/value export; loaded alongside the details.
+const items = ref<ConfigItemMain[]>([])
+
+watch(
+  [() => props.show, () => props.configMapId],
+  async ([show, id]) => {
+    if (!show || !id) {
+      items.value = []
+      return
+    }
+    try {
+      const rep = await listConfigItems({ configmap_id: id })
+      items.value = rep.results ?? []
+    } catch {
+      items.value = []
+    }
+  },
+  { immediate: true },
+)
+
+const exportPairs = computed<ExportPair[]>(() =>
+  items.value.map((item) => ({ key: item.key, value: item.value })),
+)
+
+const exportBaseName = computed(
+  () =>
+    configMap.value?.kube_configmap_name || configMap.value?.slug_name || 'configmap',
+)
+
+function loadCluster() {
+  return getClusterConfigMap(props.configMapId!)
+}
 </script>
 
 <template>
@@ -66,7 +108,9 @@ const { loading, item: configMap } = useDrawerResource({
                 <NText
                   code
                   style="cursor: pointer"
-                  @click="copy(configMap!.kube_configmap_name, 'K8s configmap name copied')"
+                  @click="
+                    copy(configMap!.kube_configmap_name, 'K8s configmap name copied')
+                  "
                 >
                   {{ configMap.kube_configmap_name }}
                 </NText>
@@ -95,6 +139,13 @@ const { loading, item: configMap } = useDrawerResource({
         </NDescriptions>
         <div v-else style="min-height: 120px" />
       </NSpin>
+
+      <template v-if="configMap">
+        <NDivider style="margin: 16px 0 12px" />
+        <ResourceExportPanel :pairs="exportPairs" :base-name="exportBaseName" />
+        <NDivider style="margin: 16px 0 12px" />
+        <ClusterResourcePanel :loader="loadCluster" kind="config map" />
+      </template>
     </NDrawerContent>
   </NDrawer>
 </template>

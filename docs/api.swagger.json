@@ -956,6 +956,37 @@
         ]
       }
     },
+    "/kube/configmap/{configmap_id}/cluster": {
+      "get": {
+        "summary": "Живой k8s-configmap из кластера для сверки. Доступ — только по своим app.",
+        "operationId": "Kube_GetClusterConfigMap",
+        "responses": {
+          "200": {
+            "description": "A successful response.",
+            "schema": {
+              "$ref": "#/definitions/kusec_v1KubeClusterResourceRep"
+            }
+          },
+          "default": {
+            "description": "An unexpected error response.",
+            "schema": {
+              "$ref": "#/definitions/rpcStatus"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "configmap_id",
+            "in": "path",
+            "required": true,
+            "type": "string"
+          }
+        ],
+        "tags": [
+          "Kube"
+        ]
+      }
+    },
     "/kube/import-secret": {
       "post": {
         "summary": "Импорт одного секрета кластера в указанное приложение (только админ).\nСекрет кластера становится записью secret в app_id с item-ами по ключам\ndata. Имя посадочного секрета (slug) обязательно. Если секрет с таким slug\nв приложении уже есть — выполняется дозаполнение: недостающие ключи\nсоздаются, совпавшие — перезаписываются значением из кластера. Источник в\nкластере не меняется.",
@@ -1006,6 +1037,37 @@
             }
           }
         },
+        "tags": [
+          "Kube"
+        ]
+      }
+    },
+    "/kube/secret/{secret_id}/cluster": {
+      "get": {
+        "summary": "Живой k8s-secret из кластера для сверки с записью kusec. Доступ — только\nпо своим app (HasAppAccess на app секрета), не только админ. Значения\nотдаются (текст или base64 для бинарных), namespace/имя/тип/managed — для\nконтекста.",
+        "operationId": "Kube_GetClusterSecret",
+        "responses": {
+          "200": {
+            "description": "A successful response.",
+            "schema": {
+              "$ref": "#/definitions/kusec_v1KubeClusterResourceRep"
+            }
+          },
+          "default": {
+            "description": "An unexpected error response.",
+            "schema": {
+              "$ref": "#/definitions/rpcStatus"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "secret_id",
+            "in": "path",
+            "required": true,
+            "type": "string"
+          }
+        ],
         "tags": [
           "Kube"
         ]
@@ -2270,6 +2332,57 @@
           "type": "string"
         }
       }
+    },
+    "kusec_v1KubeClusterResourceItemSt": {
+      "type": "object",
+      "properties": {
+        "key": {
+          "type": "string"
+        },
+        "value": {
+          "type": "string",
+          "description": "Значение из кластера: текст (encoding=plain) или base64 для бинарных\n(encoding=base64)."
+        },
+        "encoding": {
+          "type": "string"
+        }
+      }
+    },
+    "kusec_v1KubeClusterResourceRep": {
+      "type": "object",
+      "properties": {
+        "in_cluster": {
+          "type": "boolean",
+          "description": "false — сервис запущен вне кластера (остальные поля пусты)."
+        },
+        "found": {
+          "type": "boolean",
+          "description": "false — объект в кластере не найден (ещё не синхронизирован)."
+        },
+        "namespace": {
+          "type": "string"
+        },
+        "name": {
+          "type": "string"
+        },
+        "type": {
+          "type": "string",
+          "description": "Тип k8s-секрета (для secret; пусто для configmap и для Opaque)."
+        },
+        "managed": {
+          "type": "boolean",
+          "description": "true — объект под управлением kusec (лейбл managed-by=kusec)."
+        },
+        "items": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "$ref": "#/definitions/kusec_v1KubeClusterResourceItemSt"
+          },
+          "description": "Ключи data (отсортированы) со значениями."
+        }
+      },
+      "description": "Живой k8s-объект (secret или configmap) из кластера."
     },
     "kusec_v1KubeClusterSecretSt": {
       "type": "object",

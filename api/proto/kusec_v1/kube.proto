@@ -65,6 +65,23 @@ service Kube {
       body: "*"
     };
   }
+
+  // Живой k8s-secret из кластера для сверки с записью kusec. Доступ — только
+  // по своим app (HasAppAccess на app секрета), не только админ. Значения
+  // отдаются (текст или base64 для бинарных), namespace/имя/тип/managed — для
+  // контекста.
+  rpc GetClusterSecret(KubeGetClusterSecretReq) returns (KubeClusterResourceRep) {
+    option (google.api.http) = {
+      get: "/kube/secret/{secret_id}/cluster"
+    };
+  }
+
+  // Живой k8s-configmap из кластера для сверки. Доступ — только по своим app.
+  rpc GetClusterConfigMap(KubeGetClusterConfigMapReq) returns (KubeClusterResourceRep) {
+    option (google.api.http) = {
+      get: "/kube/configmap/{configmap_id}/cluster"
+    };
+  }
 }
 
 // ── Messages ────────────────────────────────────────────
@@ -147,6 +164,40 @@ message KubeSyncConfigMapsRep {
   int64 unchanged = 4;
   // Ошибки по отдельным configmap-ам (sync продолжается для остальных).
   repeated string errors = 5;
+}
+
+// Запрос живого k8s-secret из кластера по id записи kusec.
+message KubeGetClusterSecretReq {
+  string secret_id = 1;
+}
+
+// Запрос живого k8s-configmap из кластера по id записи kusec.
+message KubeGetClusterConfigMapReq {
+  string configmap_id = 1;
+}
+
+message KubeClusterResourceItemSt {
+  string key = 1;
+  // Значение из кластера: текст (encoding=plain) или base64 для бинарных
+  // (encoding=base64).
+  string value = 2;
+  string encoding = 3;
+}
+
+// Живой k8s-объект (secret или configmap) из кластера.
+message KubeClusterResourceRep {
+  // false — сервис запущен вне кластера (остальные поля пусты).
+  bool in_cluster = 1;
+  // false — объект в кластере не найден (ещё не синхронизирован).
+  bool found = 2;
+  string namespace = 3;
+  string name = 4;
+  // Тип k8s-секрета (для secret; пусто для configmap и для Opaque).
+  string type = 5;
+  // true — объект под управлением kusec (лейбл managed-by=kusec).
+  bool managed = 6;
+  // Ключи data (отсортированы) со значениями.
+  repeated KubeClusterResourceItemSt items = 7;
 }
 
 message KubeSyncReq {
