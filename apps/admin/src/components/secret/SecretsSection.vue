@@ -2,6 +2,7 @@
 import { computed, h, provide, ref, watch } from 'vue'
 import {
   NButton,
+  NCard,
   NDataTable,
   NEllipsis,
   NEmpty,
