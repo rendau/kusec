@@ -19,7 +19,12 @@ import { useDrawerResource } from '@/composables/useDrawerResource'
 import { useConfigMapOptions } from '@/composables/useConfigMapOptions'
 import ValueEditor from '@/components/common/ValueEditor.vue'
 import ValueFormatChip from '@/components/common/ValueFormatChip.vue'
-import { base64ByteSize, base64ToText, downloadBase64, formatBytes } from '@/utils/binary'
+import {
+  base64ByteSize,
+  base64ToText,
+  downloadBase64,
+  formatBytes,
+} from '@/utils/binary'
 import { formatDate, normalizeValueFormat } from '@/utils/format'
 
 const props = defineProps<{
@@ -36,7 +41,6 @@ const message = useMessage()
 const { copy } = useClipboard()
 const { nameOf, ensure } = useConfigMapOptions()
 
-const revealed = ref(false)
 // Local copy so "Decode base64" can transform the shown value non-destructively.
 const displayValue = ref('')
 
@@ -45,7 +49,6 @@ const { loading, item } = useDrawerResource({
   id: () => props.itemId,
   fetch: getConfigItem,
   onLoaded: async (loaded) => {
-    revealed.value = false
     displayValue.value = loaded.value
     await ensure(loaded.configmap_id)
   },
@@ -75,7 +78,6 @@ function downloadFile(): void {
 function decodeBase64(): void {
   try {
     displayValue.value = base64ToText(displayValue.value.trim())
-    revealed.value = true
     message.success('Decoded from base64')
   } catch {
     message.error('Invalid base64 value')
@@ -126,9 +128,6 @@ function decodeBase64(): void {
                 <NButton size="tiny" tertiary @click="downloadFile">Download</NButton>
               </NSpace>
               <NSpace v-else :size="8">
-                <NButton size="tiny" tertiary @click="revealed = !revealed">
-                  {{ revealed ? 'Hide' : 'Show' }}
-                </NButton>
                 <NButton size="tiny" tertiary @click="decodeBase64">Decode</NButton>
                 <NButton size="tiny" tertiary @click="copy(displayValue)">Copy</NButton>
               </NSpace>
@@ -137,29 +136,21 @@ function decodeBase64(): void {
             <div v-if="isFile" class="value-file">
               <NText class="value-file__name">{{ item.file_name || 'file' }}</NText>
               <NTag size="tiny" :bordered="false">{{ fileSize }}</NTag>
-              <NTag
-                v-if="item.content_type"
-                size="tiny"
-                :bordered="false"
-                type="info"
-              >
+              <NTag v-if="item.content_type" size="tiny" :bordered="false" type="info">
                 {{ item.content_type }}
               </NTag>
             </div>
 
-            <template v-else>
-              <div v-if="revealed" class="value-box">
-                <ValueFormatChip :format="item.value_format" />
-                <ValueEditor
-                  :value="displayValue"
-                  :format="valueFormat"
-                  readonly
-                  min-height="80px"
-                  max-height="60vh"
-                />
-              </div>
-              <NText v-else code class="value-section__masked">••••••••</NText>
-            </template>
+            <div v-else class="value-box">
+              <ValueFormatChip :format="item.value_format" />
+              <ValueEditor
+                :value="displayValue"
+                :format="valueFormat"
+                readonly
+                min-height="80px"
+                max-height="60vh"
+              />
+            </div>
           </div>
         </template>
         <div v-else style="min-height: 120px" />
@@ -184,11 +175,6 @@ function decodeBase64(): void {
 
 .value-box {
   position: relative;
-}
-
-.value-section__masked {
-  display: block;
-  padding: 8px 0;
 }
 
 .value-file {

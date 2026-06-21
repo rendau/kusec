@@ -15,28 +15,14 @@ import {
   useMessage,
 } from 'naive-ui'
 import type { DataTableColumns } from 'naive-ui'
-import {
-  ChevronDown,
-  ChevronUp,
-  Eye,
-  EyeOff,
-  InfoCircle,
-  Pencil,
-  Plus,
-  Trash,
-} from '@vicons/tabler'
+import { ChevronDown, ChevronUp, InfoCircle, Pencil, Plus, Trash } from '@vicons/tabler'
 
 import { apiErrorMessage } from '@/api/http'
 import { deleteConfigMap, listConfigMaps } from '@/api/configmap'
 import type { ConfigMapMain } from '@/api/types'
 import { useBreakpoint } from '@/composables/useBreakpoint'
 import { useClipboard } from '@/composables/useClipboard'
-import { configItemsRevealCommandKey } from '@/constants/injection'
-import type { RevealCommand } from '@/constants/injection'
-import {
-  configItemsKey,
-  createConfigItemsStore,
-} from '@/composables/useConfigItems'
+import { configItemsKey, createConfigItemsStore } from '@/composables/useConfigItems'
 
 import ConfigMapDetailDrawer from '@/components/configmap/ConfigMapDetailDrawer.vue'
 import ConfigMapFormModal from '@/components/configmap/ConfigMapFormModal.vue'
@@ -62,11 +48,6 @@ function isExpanded(id: string): boolean {
   return expandedKeys.value.includes(id)
 }
 
-// Broadcast a one-shot reveal/hide command (separate from the secrets section).
-const showAll = ref(false)
-const revealCommand = ref<RevealCommand>({ action: 'hide', seq: 0 })
-provide(configItemsRevealCommandKey, revealCommand)
-
 // Shared items cache for all panels: loads several config maps' items in a
 // single request instead of one request per expanded panel.
 const itemsStore = createConfigItemsStore()
@@ -76,27 +57,14 @@ const allExpanded = computed(
   () => rows.value.length > 0 && expandedKeys.value.length === rows.value.length,
 )
 
-function broadcastReveal(show: boolean): void {
-  showAll.value = show
-  revealCommand.value = {
-    action: show ? 'show' : 'hide',
-    seq: revealCommand.value.seq + 1,
-  }
-}
-
 function toggleExpandAll(): void {
   if (allExpanded.value) {
     expandedKeys.value = []
-    broadcastReveal(false)
   } else {
     const ids = rows.value.map((r) => r.id)
     void itemsStore.prefetch(ids)
     expandedKeys.value = ids
   }
-}
-
-function toggleRevealAll(): void {
-  broadcastReveal(!showAll.value)
 }
 
 const editing = ref<ConfigMapMain | null>(null)
@@ -153,11 +121,7 @@ async function removeConfigMap(row: ConfigMapMain): Promise<void> {
   }
 }
 
-function iconButton(
-  icon: typeof Eye,
-  tooltip: string,
-  onClick: () => void,
-) {
+function iconButton(icon: typeof InfoCircle, tooltip: string, onClick: () => void) {
   return h(
     NTooltip,
     {},
@@ -274,8 +238,7 @@ const columns = computed<DataTableColumns<ConfigMapMain>>(() => [
                 },
                 { icon: () => h(NIcon, { component: Trash }) },
               ),
-            default: () =>
-              `Delete "${row.slug_name}"? This also deletes its items.`,
+            default: () => `Delete "${row.slug_name}"? This also deletes its items.`,
           },
         ),
       ]),
@@ -287,7 +250,6 @@ watch(
   async () => {
     expandedKeys.value = []
     itemsStore.reset()
-    broadcastReveal(false)
     await fetchConfigMaps()
     // Few config maps → expand them all by default for a quicker overview.
     if (rows.value.length && rows.value.length <= AUTO_EXPAND_MAX) {
@@ -310,18 +272,6 @@ defineExpose({ refresh: fetchConfigMaps, count: computed(() => rows.value.length
           <NIcon :component="allExpanded ? ChevronUp : ChevronDown" />
         </template>
         {{ allExpanded ? 'Collapse all' : 'Expand all' }}
-      </NButton>
-      <NButton
-        v-if="rows.length"
-        size="small"
-        tertiary
-        :type="showAll ? 'warning' : 'default'"
-        @click="toggleRevealAll"
-      >
-        <template #icon>
-          <NIcon :component="showAll ? EyeOff : Eye" />
-        </template>
-        {{ showAll ? 'Hide all' : 'Show all' }}
       </NButton>
       <NButton type="primary" @click="openCreate">
         <template #icon>

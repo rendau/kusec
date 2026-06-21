@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, inject, onMounted, ref, watch } from 'vue'
+import { computed, inject, onMounted, ref } from 'vue'
 import {
   NButton,
   NFlex,
@@ -12,22 +12,11 @@ import {
   NTooltip,
   useMessage,
 } from 'naive-ui'
-import {
-  Binary,
-  Clipboard,
-  Copy,
-  Download,
-  Eye,
-  EyeOff,
-  Pencil,
-  Plus,
-  Trash,
-} from '@vicons/tabler'
+import { Binary, Clipboard, Copy, Download, Pencil, Plus, Trash } from '@vicons/tabler'
 
 import { apiErrorMessage } from '@/api/http'
 import { deleteConfigItem } from '@/api/configitem'
 import type { ConfigItemMain } from '@/api/types'
-import { configItemsRevealCommandKey } from '@/constants/injection'
 import { useBreakpoint } from '@/composables/useBreakpoint'
 import { useClipboard } from '@/composables/useClipboard'
 import { createConfigItemsStore, configItemsKey } from '@/composables/useConfigItems'
@@ -86,39 +75,6 @@ function downloadFile(row: ConfigItemMain): void {
     message.error('Failed to download file')
   }
 }
-
-// Ids whose value block is revealed (shown under the row).
-const opened = ref(new Set<string>())
-
-function isOpen(id: string): boolean {
-  return opened.value.has(id)
-}
-
-function toggleReveal(id: string): void {
-  const next = new Set(opened.value)
-  if (next.has(id)) next.delete(id)
-  else next.add(id)
-  opened.value = next
-}
-
-// Section "Show all / Hide all" broadcasts a command that sets our per-row
-// flags — rows stay individually togglable afterwards.
-const revealCommand = inject(
-  configItemsRevealCommandKey,
-  ref({ action: 'hide' as const, seq: 0 }),
-)
-
-function applyRevealCommand(): void {
-  opened.value =
-    revealCommand.value.action === 'show'
-      ? new Set(rows.value.map((r) => r.id))
-      : new Set()
-}
-
-watch(() => revealCommand.value.seq, applyRevealCommand)
-// Items arrive asynchronously from the shared store — apply the current
-// reveal state once they load (or reload).
-watch(rows, applyRevealCommand)
 
 const detailId = ref<string | null>(null)
 const showDetail = ref(false)
@@ -208,7 +164,12 @@ onMounted(() => {
           <div v-if="i > 0" class="items__sep" />
 
           <div class="items__cell items__key">
-            <NButton text type="primary" class="items__key-btn" @click="openDetail(row)">
+            <NButton
+              text
+              type="primary"
+              class="items__key-btn"
+              @click="openDetail(row)"
+            >
               {{ row.key }}
             </NButton>
           </div>
@@ -238,22 +199,6 @@ onMounted(() => {
                 </NTooltip>
               </template>
               <template v-else>
-                <NTooltip>
-                  <template #trigger>
-                    <NButton
-                      quaternary
-                      circle
-                      size="tiny"
-                      :aria-label="isOpen(row.id) ? 'Hide value' : 'Show value'"
-                      @click="toggleReveal(row.id)"
-                    >
-                      <template #icon>
-                        <NIcon :component="isOpen(row.id) ? EyeOff : Eye" />
-                      </template>
-                    </NButton>
-                  </template>
-                  {{ isOpen(row.id) ? 'Hide value' : 'Show value' }}
-                </NTooltip>
                 <NTooltip>
                   <template #trigger>
                     <NButton
@@ -333,18 +278,16 @@ onMounted(() => {
             </NSpace>
           </div>
 
-          <Transition name="value">
-            <div v-if="!isFileRow(row) && isOpen(row.id)" class="items__value">
-              <ValueFormatChip :format="row.value_format" />
-              <ValueEditor
-                :value="row.value"
-                :format="normalizeValueFormat(row.value_format)"
-                readonly
-                min-height="0"
-                max-height="320px"
-              />
-            </div>
-          </Transition>
+          <div v-if="!isFileRow(row)" class="items__value">
+            <ValueFormatChip :format="row.value_format" />
+            <ValueEditor
+              :value="row.value"
+              :format="normalizeValueFormat(row.value_format)"
+              readonly
+              min-height="0"
+              max-height="320px"
+            />
+          </div>
         </template>
       </div>
 
@@ -384,17 +327,6 @@ onMounted(() => {
               </NButton>
             </template>
             <template v-else>
-              <NButton
-                quaternary
-                circle
-                size="tiny"
-                :aria-label="isOpen(row.id) ? 'Hide value' : 'Show value'"
-                @click="toggleReveal(row.id)"
-              >
-                <template #icon>
-                  <NIcon :component="isOpen(row.id) ? EyeOff : Eye" />
-                </template>
-              </NButton>
               <NButton
                 quaternary
                 circle
@@ -451,18 +383,16 @@ onMounted(() => {
             </NPopconfirm>
           </div>
 
-          <Transition name="value">
-            <div v-if="!isFileRow(row) && isOpen(row.id)" class="item-m__value">
-              <ValueFormatChip :format="row.value_format" />
-              <ValueEditor
-                :value="row.value"
-                :format="normalizeValueFormat(row.value_format)"
-                readonly
-                min-height="0"
-                max-height="320px"
-              />
-            </div>
-          </Transition>
+          <div v-if="!isFileRow(row)" class="item-m__value">
+            <ValueFormatChip :format="row.value_format" />
+            <ValueEditor
+              :value="row.value"
+              :format="normalizeValueFormat(row.value_format)"
+              readonly
+              min-height="0"
+              max-height="320px"
+            />
+          </div>
         </div>
       </div>
     </NSpin>
@@ -604,35 +534,5 @@ onMounted(() => {
   position: relative;
   grid-column: 2 / -1;
   margin: 2px 0 6px;
-}
-
-/* Reveal animation. */
-.value-enter-active,
-.value-leave-active {
-  overflow: hidden;
-  transition:
-    opacity 0.2s ease,
-    max-height 0.2s ease,
-    transform 0.2s ease;
-}
-
-.value-enter-from,
-.value-leave-to {
-  opacity: 0;
-  max-height: 0;
-  transform: translateY(-4px);
-}
-
-.value-enter-to,
-.value-leave-from {
-  opacity: 1;
-  max-height: 360px;
-}
-
-@media (prefers-reduced-motion: reduce) {
-  .value-enter-active,
-  .value-leave-active {
-    transition: none;
-  }
 }
 </style>
