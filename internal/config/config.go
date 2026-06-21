@@ -15,6 +15,11 @@ var Conf = struct {
 	GrpcPort string `env:"GRPC_PORT" envDefault:"5050"`
 	HttpPort string `env:"HTTP_PORT" envDefault:"80"`
 	HttpCors bool   `env:"HTTP_CORS" envDefault:"false"`
+	// HttpCorsAllowedOrigins — белый список Origin для CORS (через запятую).
+	// Поддерживаются wildcard-шаблоны вида https://*.example.com. Действует
+	// только при HTTP_CORS=true. Если список пуст или содержит "*" —
+	// разрешаются любые Origin (нерекомендуемый режим, пишется warning).
+	HttpCorsAllowedOrigins []string `env:"HTTP_CORS_ALLOWED_ORIGINS" envSeparator:","`
 
 	PgDsn string `env:"PG_DSN"`
 

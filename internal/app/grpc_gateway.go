@@ -8,6 +8,7 @@ import (
 	"log/slog"
 	"net/http"
 	"runtime/debug"
+	"slices"
 
 	"github.com/mechta-market/kusec/internal/errs"
 
@@ -88,8 +89,7 @@ func GrpcGatewayCreateHandler(muxHook func(*runtime.ServeMux) error) (http.Handl
 
 	// add cors middleware
 	if config.Conf.HttpCors {
-		handler = cors.New(cors.Options{
-			AllowOriginFunc: func(origin string) bool { return true },
+		corsOptions := cors.Options{
 			AllowedMethods: []string{
 				http.MethodGet,
 				http.MethodPut,
@@ -104,7 +104,20 @@ func GrpcGatewayCreateHandler(muxHook func(*runtime.ServeMux) error) (http.Handl
 			},
 			AllowCredentials: true,
 			MaxAge:           604800,
-		}).Handler(handler)
+		}
+
+		origins := config.Conf.HttpCorsAllowedOrigins
+		if len(origins) == 0 || slices.Contains(origins, "*") {
+			// Белый список не задан — разрешаем любой Origin (старое
+			// поведение). Небезопасно при AllowCredentials: задайте
+			// HTTP_CORS_ALLOWED_ORIGINS, чтобы ограничить источники.
+			corsOptions.AllowOriginFunc = func(string) bool { return true }
+			slog.Warn("CORS: all origins allowed; set HTTP_CORS_ALLOWED_ORIGINS to restrict")
+		} else {
+			corsOptions.AllowedOrigins = origins
+		}
+
+		handler = cors.New(corsOptions).Handler(handler)
 	}
 
 	// add recover middleware
