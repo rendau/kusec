@@ -14,7 +14,20 @@ import {
 interface LoginPayload {
   username: string
   password: string
+  totpCode?: string
 }
+
+/**
+ * Outcome of a login attempt:
+ *   - `ok`: a session was established;
+ *   - `totp_required`: password accepted, re-submit with a TOTP code;
+ *   - `totp_setup_required`: (admin) must enable 2FA first; `setupToken`
+ *     authorises the enroll/confirm endpoints.
+ */
+export type LoginOutcome =
+  | { status: 'ok' }
+  | { status: 'totp_required' }
+  | { status: 'totp_setup_required'; setupToken: string }
 
 export const useAuthStore = defineStore('auth', () => {
   const token = ref(getToken())
@@ -47,16 +60,34 @@ export const useAuthStore = defineStore('auth', () => {
     }
   }
 
-  async function login(payload: LoginPayload): Promise<void> {
+  /** Load the profile from a freshly persisted token pair. */
+  async function completeSession(): Promise<void> {
+    syncToken()
+    profile.value = await getProfile()
+    initialized.value = true
+  }
+
+  async function login(payload: LoginPayload): Promise<LoginOutcome> {
     loading.value = true
     try {
-      await apiLogin(payload.username, payload.password)
-      syncToken()
-      profile.value = await getProfile()
-      initialized.value = true
+      const rep = await apiLogin(payload.username, payload.password, payload.totpCode)
+      if (rep.totp_setup_required) {
+        return { status: 'totp_setup_required', setupToken: rep.setup_token ?? '' }
+      }
+      if (rep.totp_required) {
+        return { status: 'totp_required' }
+      }
+      await completeSession()
+      return { status: 'ok' }
     } finally {
       loading.value = false
     }
+  }
+
+  // Finish a 2FA enrolment confirmed elsewhere (TotpSetupCard already persisted
+  // a fresh token pair) — just load the profile to open the session.
+  async function completeTotpSetup(): Promise<void> {
+    await completeSession()
   }
 
   async function refreshProfile(): Promise<void> {
@@ -87,6 +118,7 @@ export const useAuthStore = defineStore('auth', () => {
     isAdmin,
     initialize,
     login,
+    completeTotpSetup,
     refreshProfile,
     updateProfile,
     logout,

@@ -1656,6 +1656,103 @@
         ]
       }
     },
+    "/usr/totp/confirm": {
+      "post": {
+        "operationId": "Usr_ConfirmTotp",
+        "responses": {
+          "200": {
+            "description": "A successful response.",
+            "schema": {
+              "$ref": "#/definitions/kusec_v1UsrLoginRep"
+            }
+          },
+          "default": {
+            "description": "An unexpected error response.",
+            "schema": {
+              "$ref": "#/definitions/rpcStatus"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "body",
+            "in": "body",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/kusec_v1UsrConfirmTotpReq"
+            }
+          }
+        ],
+        "tags": [
+          "Usr"
+        ]
+      }
+    },
+    "/usr/totp/disable": {
+      "post": {
+        "operationId": "Usr_DisableTotp",
+        "responses": {
+          "200": {
+            "description": "A successful response.",
+            "schema": {
+              "type": "object",
+              "properties": {}
+            }
+          },
+          "default": {
+            "description": "An unexpected error response.",
+            "schema": {
+              "$ref": "#/definitions/rpcStatus"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "body",
+            "in": "body",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/kusec_v1UsrDisableTotpReq"
+            }
+          }
+        ],
+        "tags": [
+          "Usr"
+        ]
+      }
+    },
+    "/usr/totp/enroll": {
+      "post": {
+        "operationId": "Usr_EnrollTotp",
+        "responses": {
+          "200": {
+            "description": "A successful response.",
+            "schema": {
+              "$ref": "#/definitions/kusec_v1UsrEnrollTotpRep"
+            }
+          },
+          "default": {
+            "description": "An unexpected error response.",
+            "schema": {
+              "$ref": "#/definitions/rpcStatus"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "body",
+            "in": "body",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/kusec_v1UsrEnrollTotpReq"
+            }
+          }
+        ],
+        "tags": [
+          "Usr"
+        ]
+      }
+    },
     "/usr/{id}": {
       "get": {
         "operationId": "Usr_Get",
@@ -1748,6 +1845,38 @@
             "schema": {
               "$ref": "#/definitions/kusec_v1UsrUpdateBody"
             }
+          }
+        ],
+        "tags": [
+          "Usr"
+        ]
+      }
+    },
+    "/usr/{id}/totp/reset": {
+      "post": {
+        "operationId": "Usr_ResetTotp",
+        "responses": {
+          "200": {
+            "description": "A successful response.",
+            "schema": {
+              "type": "object",
+              "properties": {}
+            }
+          },
+          "default": {
+            "description": "An unexpected error response.",
+            "schema": {
+              "$ref": "#/definitions/rpcStatus"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "type": "string",
+            "format": "int64"
           }
         ],
         "tags": [
@@ -2905,6 +3034,17 @@
         }
       }
     },
+    "kusec_v1UsrConfirmTotpReq": {
+      "type": "object",
+      "properties": {
+        "setup_token": {
+          "type": "string"
+        },
+        "code": {
+          "type": "string"
+        }
+      }
+    },
     "kusec_v1UsrCreateRep": {
       "type": "object",
       "properties": {
@@ -2940,6 +3080,34 @@
         }
       }
     },
+    "kusec_v1UsrDisableTotpReq": {
+      "type": "object",
+      "properties": {
+        "code": {
+          "type": "string"
+        }
+      }
+    },
+    "kusec_v1UsrEnrollTotpRep": {
+      "type": "object",
+      "properties": {
+        "secret": {
+          "type": "string"
+        },
+        "otpauth_url": {
+          "type": "string"
+        }
+      }
+    },
+    "kusec_v1UsrEnrollTotpReq": {
+      "type": "object",
+      "properties": {
+        "setup_token": {
+          "type": "string",
+          "description": "setup_token нужен, если привязка выполняется по enroll-токену (админ сразу\nпосле логина). Для уже авторизованного пользователя поле можно не слать."
+        }
+      }
+    },
     "kusec_v1UsrListRep": {
       "type": "object",
       "properties": {
@@ -2963,6 +3131,17 @@
         },
         "refresh_token": {
           "type": "string"
+        },
+        "totp_required": {
+          "type": "boolean",
+          "description": "totp_required — пароль верный, но требуется код 2FA (повторить логин с totp_code)."
+        },
+        "totp_setup_required": {
+          "type": "boolean",
+          "description": "totp_setup_required — админ без настроенной 2FA обязан её привязать;\nsetup_token годится только для эндпоинтов настройки 2FA."
+        },
+        "setup_token": {
+          "type": "string"
         }
       }
     },
@@ -2973,6 +3152,9 @@
           "type": "string"
         },
         "password": {
+          "type": "string"
+        },
+        "totp_code": {
           "type": "string"
         }
       }
@@ -3001,6 +3183,9 @@
           "items": {
             "type": "string"
           }
+        },
+        "totp_enabled": {
+          "type": "boolean"
         }
       }
     },

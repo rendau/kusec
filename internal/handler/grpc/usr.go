@@ -72,11 +72,11 @@ func (h *Usr) Delete(ctx context.Context, req *proto.UsrGetReq) (*emptypb.Empty,
 }
 
 func (h *Usr) Login(ctx context.Context, req *proto.UsrLoginReq) (*proto.UsrLoginRep, error) {
-	accessToken, refreshToken, err := h.usecase.Login(ctx, req.Username, req.Password)
+	res, err := h.usecase.Login(ctx, req.Username, req.Password, req.TotpCode)
 	if err != nil {
 		return nil, err
 	}
-	return &proto.UsrLoginRep{Jwt: accessToken, RefreshToken: refreshToken}, nil
+	return dto.EncodeUsrLoginResult(res), nil
 }
 
 func (h *Usr) RefreshToken(ctx context.Context, req *proto.UsrRefreshTokenReq) (*proto.UsrLoginRep, error) {
@@ -105,6 +105,36 @@ func (h *Usr) GetProfile(ctx context.Context, _ *emptypb.Empty) (*proto.UsrMain,
 
 func (h *Usr) UpdateProfile(ctx context.Context, req *proto.UsrUpdateProfileReq) (*emptypb.Empty, error) {
 	if err := h.usecase.UpdateProfile(ctx, dto.DecodeUsrUpdateProfileReq(req)); err != nil {
+		return nil, err
+	}
+	return &emptypb.Empty{}, nil
+}
+
+func (h *Usr) EnrollTotp(ctx context.Context, req *proto.UsrEnrollTotpReq) (*proto.UsrEnrollTotpRep, error) {
+	secret, url, err := h.usecase.EnrollTotp(ctx, req.SetupToken)
+	if err != nil {
+		return nil, err
+	}
+	return &proto.UsrEnrollTotpRep{Secret: secret, OtpauthUrl: url}, nil
+}
+
+func (h *Usr) ConfirmTotp(ctx context.Context, req *proto.UsrConfirmTotpReq) (*proto.UsrLoginRep, error) {
+	res, err := h.usecase.ConfirmTotp(ctx, req.SetupToken, req.Code)
+	if err != nil {
+		return nil, err
+	}
+	return dto.EncodeUsrLoginResult(res), nil
+}
+
+func (h *Usr) DisableTotp(ctx context.Context, req *proto.UsrDisableTotpReq) (*emptypb.Empty, error) {
+	if err := h.usecase.DisableTotp(ctx, req.Code); err != nil {
+		return nil, err
+	}
+	return &emptypb.Empty{}, nil
+}
+
+func (h *Usr) ResetTotp(ctx context.Context, req *proto.UsrGetReq) (*emptypb.Empty, error) {
+	if err := h.usecase.ResetTotp(ctx, req.Id); err != nil {
 		return nil, err
 	}
 	return &emptypb.Empty{}, nil

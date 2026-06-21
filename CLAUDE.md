@@ -12,6 +12,9 @@
 ### Верхний уровень
 - `cmd/main.go` — entrypoint, поднимает `internal/app.App`.
 - `internal/` — бизнес-логика и инфраструктура (закрытые пакеты).
+- `apps/admin/` — фронтенд админки (Vue 3 SPA). Конвенции и тонкости — в
+  `apps/admin/CLAUDE.md` (пакетный менеджер pnpm, обработка ошибок API,
+  сессии/2FA, адаптив).
 - `api/proto/` — исходные `.proto` данного сервиса.
 - `pkg/proto/` — сгенерированный код protobuf/grpc/gateway (**не редактировать вручную**).
 - `migrations/` — SQL миграции Postgres.

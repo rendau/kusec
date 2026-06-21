@@ -15,6 +15,12 @@ type ServiceI interface {
 	Create(ctx context.Context, obj *model.Edit) (int64, error)
 	Update(ctx context.Context, id int64, obj *model.Edit) error
 	Delete(ctx context.Context, id int64) error
+
+	ValidateTotpCode(secret, code string) bool
+	EnrollTotp(ctx context.Context, usrId int64) (secret, url string, err error)
+	ConfirmTotp(ctx context.Context, usrId int64, code string) (*model.Main, error)
+	DisableTotp(ctx context.Context, usrId int64, code string) error
+	ResetTotp(ctx context.Context, usrId int64) error
 }
 
 type SessionServiceI interface {
@@ -25,4 +31,6 @@ type SessionServiceI interface {
 	CreateRefreshToken(usrId int64, passwordHash string) (string, error)
 	ParseRefreshToken(tokenStr, currentPasswordHash string) (int64, error)
 	RefreshTokenUserId(tokenStr string) (int64, error)
+	CreateEnrollToken(usrId int64) (string, error)
+	ParseEnrollToken(tokenStr string) (int64, error)
 }

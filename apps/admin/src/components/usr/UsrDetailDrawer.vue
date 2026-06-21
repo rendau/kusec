@@ -75,6 +75,11 @@ watch(user, (value) => {
               {{ user.active ? 'Active' : 'Inactive' }}
             </NTag>
           </NDescriptionsItem>
+          <NDescriptionsItem label="Two-factor auth">
+            <NTag :type="user.totp_enabled ? 'success' : 'default'" size="small">
+              {{ user.totp_enabled ? 'Enabled' : 'Disabled' }}
+            </NTag>
+          </NDescriptionsItem>
           <NDescriptionsItem label="Application access">
             <NText v-if="user.is_admin || !user.app_ids?.length" :depth="3">
               All applications

@@ -8,6 +8,8 @@ import { apiErrorMessage } from '@/api/http'
 import { createUser, getBootstrapStatus } from '@/api/usr'
 import { useAuthStore } from '@/stores/auth'
 
+import TotpSetupCard from '@/components/usr/TotpSetupCard.vue'
+
 const authStore = useAuthStore()
 const route = useRoute()
 const router = useRouter()
@@ -20,6 +22,7 @@ const model = reactive({
   name: '',
   username: '',
   password: '',
+  totpCode: '',
 })
 
 const errorMessage = ref('')
@@ -28,6 +31,11 @@ const successMessage = ref('')
 const statusLoading = ref(true)
 const bootstrapAvailable = ref(false)
 const bootstrapLoading = ref(false)
+
+// Шаги логина: пароль → (код 2FA | обязательная привязка 2FA).
+type Step = 'credentials' | 'totp' | 'setup'
+const step = ref<Step>('credentials')
+const setupToken = ref('')
 
 const loginRules: FormRules = {
   username: [
@@ -43,6 +51,11 @@ const bootstrapRules: FormRules = {
   name: [{ required: true, message: 'Name is required', trigger: ['blur', 'input'] }],
 }
 
+function goAfterAuth(): Promise<unknown> {
+  const redirect = typeof route.query.redirect === 'string' ? route.query.redirect : '/'
+  return router.push(redirect)
+}
+
 async function submitLogin(): Promise<void> {
   try {
     await formRef.value?.validate()
@@ -52,16 +65,59 @@ async function submitLogin(): Promise<void> {
   errorMessage.value = ''
   successMessage.value = ''
   try {
-    await authStore.login({
+    const outcome = await authStore.login({
       username: model.username,
       password: model.password,
     })
-    const redirect =
-      typeof route.query.redirect === 'string' ? route.query.redirect : '/'
-    await router.push(redirect)
+    if (outcome.status === 'ok') {
+      await goAfterAuth()
+    } else if (outcome.status === 'totp_required') {
+      step.value = 'totp'
+    } else {
+      setupToken.value = outcome.setupToken
+      step.value = 'setup'
+    }
   } catch (error) {
     errorMessage.value = apiErrorMessage(error, 'Unable to sign in')
   }
+}
+
+async function submitTotp(): Promise<void> {
+  if (!model.totpCode.trim()) {
+    errorMessage.value = 'Enter the 6-digit code'
+    return
+  }
+  errorMessage.value = ''
+  try {
+    const outcome = await authStore.login({
+      username: model.username,
+      password: model.password,
+      totpCode: model.totpCode.trim(),
+    })
+    if (outcome.status === 'ok') {
+      await goAfterAuth()
+    } else {
+      // Маловероятно (код устарел между шагами) — просим ввести заново.
+      errorMessage.value = 'Invalid code, try again'
+      model.totpCode = ''
+    }
+  } catch (error) {
+    errorMessage.value = apiErrorMessage(error, 'Invalid code, try again')
+    model.totpCode = ''
+  }
+}
+
+async function onTotpEnabled(): Promise<void> {
+  await authStore.completeTotpSetup()
+  await goAfterAuth()
+}
+
+function backToCredentials(): void {
+  step.value = 'credentials'
+  setupToken.value = ''
+  model.password = ''
+  model.totpCode = ''
+  errorMessage.value = ''
 }
 
 async function submitBootstrap(): Promise<void> {
@@ -155,8 +211,9 @@ onMounted(async () => {
         <p class="login-hint">Available only on first setup, while no users exist.</p>
       </NForm>
 
+      <!-- Step: enter username + password. -->
       <NForm
-        v-else
+        v-else-if="step === 'credentials'"
         ref="formRef"
         :model="model"
         :rules="loginRules"
@@ -182,6 +239,44 @@ onMounted(async () => {
           Sign in
         </NButton>
       </NForm>
+
+      <!-- Step: enter the TOTP code (2FA already enabled). -->
+      <form v-else-if="step === 'totp'" @submit.prevent="submitTotp">
+        <p class="login-hint login-hint--lead">
+          Enter the 6-digit code from your authenticator app.
+        </p>
+        <NInput
+          v-model:value="model.totpCode"
+          placeholder="123456"
+          maxlength="6"
+          autofocus
+          :input-props="{ inputmode: 'numeric', autocomplete: 'one-time-code' }"
+        />
+        <NButton
+          :loading="authStore.loading"
+          type="primary"
+          attr-type="submit"
+          block
+          class="login-spaced"
+        >
+          Verify
+        </NButton>
+        <NButton text block class="login-spaced" @click="backToCredentials">
+          Back
+        </NButton>
+      </form>
+
+      <!-- Step: mandatory 2FA enrolment (admin without 2FA). -->
+      <div v-else>
+        <p class="login-hint login-hint--lead">
+          Two-factor authentication is required for administrators. Set it up to
+          continue.
+        </p>
+        <TotpSetupCard :setup-token="setupToken" @confirmed="onTotpEnabled" />
+        <NButton text block class="login-spaced" @click="backToCredentials">
+          Cancel
+        </NButton>
+      </div>
 
       <NAlert v-if="errorMessage" class="login-alert" type="error" :show-icon="false">
         {{ errorMessage }}
@@ -247,5 +342,15 @@ onMounted(async () => {
   margin: 12px 0 0;
   font-size: 12px;
   opacity: 0.7;
+}
+
+.login-hint--lead {
+  margin: 0 0 16px;
+  font-size: 13px;
+  opacity: 0.8;
+}
+
+.login-spaced {
+  margin-top: 12px;
 }
 </style>

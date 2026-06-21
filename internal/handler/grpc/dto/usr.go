@@ -13,12 +13,26 @@ func EncodeUsrMain(v *domainModel.Main, _ int) *proto.UsrMain {
 		return nil
 	}
 	return &proto.UsrMain{
-		Id:       v.Id,
-		Active:   v.Active,
-		IsAdmin:  v.IsAdmin,
-		Name:     v.Name,
-		Username: v.Username,
-		AppIds:   v.AppIds,
+		Id:          v.Id,
+		Active:      v.Active,
+		IsAdmin:     v.IsAdmin,
+		Name:        v.Name,
+		Username:    v.Username,
+		AppIds:      v.AppIds,
+		TotpEnabled: v.TotpEnabled,
+	}
+}
+
+func EncodeUsrLoginResult(v *usecase.LoginResult) *proto.UsrLoginRep {
+	if v == nil {
+		return &proto.UsrLoginRep{}
+	}
+	return &proto.UsrLoginRep{
+		Jwt:               v.Jwt,
+		RefreshToken:      v.RefreshToken,
+		TotpRequired:      v.TotpRequired,
+		TotpSetupRequired: v.TotpSetupRequired,
+		SetupToken:        v.SetupToken,
 	}
 }
 

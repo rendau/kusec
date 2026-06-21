@@ -63,6 +63,8 @@ type App struct {
 	ctx       context.Context
 	ctxCancel context.CancelFunc
 
+	usrSvc *usrService.Service
+
 	exitCode int
 }
 
@@ -98,6 +100,7 @@ func (a *App) Init() {
 
 	// dependency graph
 	usrSvc := usrService.New(usrDb.New(a.pgpool))
+	a.usrSvc = usrSvc
 	appSvc := appService.New(appDb.New(a.pgpool))
 	secretSvc := secretService.New(secretDb.New(a.pgpool))
 	itemSvc := itemService.New(itemDb.New(a.pgpool))

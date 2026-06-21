@@ -32,6 +32,7 @@ type UsrMain struct {
 	Name          string                 `protobuf:"bytes,4,opt,name=name,proto3" json:"name,omitempty"`
 	Username      string                 `protobuf:"bytes,5,opt,name=username,proto3" json:"username,omitempty"`
 	AppIds        []string               `protobuf:"bytes,6,rep,name=app_ids,json=appIds,proto3" json:"app_ids,omitempty"`
+	TotpEnabled   bool                   `protobuf:"varint,7,opt,name=totp_enabled,json=totpEnabled,proto3" json:"totp_enabled,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -106,6 +107,13 @@ func (x *UsrMain) GetAppIds() []string {
 		return x.AppIds
 	}
 	return nil
+}
+
+func (x *UsrMain) GetTotpEnabled() bool {
+	if x != nil {
+		return x.TotpEnabled
+	}
+	return false
 }
 
 type UsrListReq struct {
@@ -496,6 +504,7 @@ type UsrLoginReq struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
 	Username      string                 `protobuf:"bytes,1,opt,name=username,proto3" json:"username,omitempty"`
 	Password      string                 `protobuf:"bytes,2,opt,name=password,proto3" json:"password,omitempty"`
+	TotpCode      string                 `protobuf:"bytes,3,opt,name=totp_code,json=totpCode,proto3" json:"totp_code,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -544,12 +553,25 @@ func (x *UsrLoginReq) GetPassword() string {
 	return ""
 }
 
+func (x *UsrLoginReq) GetTotpCode() string {
+	if x != nil {
+		return x.TotpCode
+	}
+	return ""
+}
+
 type UsrLoginRep struct {
-	state         protoimpl.MessageState `protogen:"open.v1"`
-	Jwt           string                 `protobuf:"bytes,1,opt,name=jwt,proto3" json:"jwt,omitempty"`
-	RefreshToken  string                 `protobuf:"bytes,2,opt,name=refresh_token,json=refreshToken,proto3" json:"refresh_token,omitempty"`
-	unknownFields protoimpl.UnknownFields
-	sizeCache     protoimpl.SizeCache
+	state        protoimpl.MessageState `protogen:"open.v1"`
+	Jwt          string                 `protobuf:"bytes,1,opt,name=jwt,proto3" json:"jwt,omitempty"`
+	RefreshToken string                 `protobuf:"bytes,2,opt,name=refresh_token,json=refreshToken,proto3" json:"refresh_token,omitempty"`
+	// totp_required — пароль верный, но требуется код 2FA (повторить логин с totp_code).
+	TotpRequired bool `protobuf:"varint,3,opt,name=totp_required,json=totpRequired,proto3" json:"totp_required,omitempty"`
+	// totp_setup_required — админ без настроенной 2FA обязан её привязать;
+	// setup_token годится только для эндпоинтов настройки 2FA.
+	TotpSetupRequired bool   `protobuf:"varint,4,opt,name=totp_setup_required,json=totpSetupRequired,proto3" json:"totp_setup_required,omitempty"`
+	SetupToken        string `protobuf:"bytes,5,opt,name=setup_token,json=setupToken,proto3" json:"setup_token,omitempty"`
+	unknownFields     protoimpl.UnknownFields
+	sizeCache         protoimpl.SizeCache
 }
 
 func (x *UsrLoginRep) Reset() {
@@ -592,6 +614,27 @@ func (x *UsrLoginRep) GetJwt() string {
 func (x *UsrLoginRep) GetRefreshToken() string {
 	if x != nil {
 		return x.RefreshToken
+	}
+	return ""
+}
+
+func (x *UsrLoginRep) GetTotpRequired() bool {
+	if x != nil {
+		return x.TotpRequired
+	}
+	return false
+}
+
+func (x *UsrLoginRep) GetTotpSetupRequired() bool {
+	if x != nil {
+		return x.TotpSetupRequired
+	}
+	return false
+}
+
+func (x *UsrLoginRep) GetSetupToken() string {
+	if x != nil {
+		return x.SetupToken
 	}
 	return ""
 }
@@ -744,18 +787,213 @@ func (x *UsrUpdateProfileReq) GetUsername() string {
 	return ""
 }
 
+type UsrEnrollTotpReq struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// setup_token нужен, если привязка выполняется по enroll-токену (админ сразу
+	// после логина). Для уже авторизованного пользователя поле можно не слать.
+	SetupToken    string `protobuf:"bytes,1,opt,name=setup_token,json=setupToken,proto3" json:"setup_token,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *UsrEnrollTotpReq) Reset() {
+	*x = UsrEnrollTotpReq{}
+	mi := &file_kusec_v1_usr_proto_msgTypes[12]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *UsrEnrollTotpReq) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*UsrEnrollTotpReq) ProtoMessage() {}
+
+func (x *UsrEnrollTotpReq) ProtoReflect() protoreflect.Message {
+	mi := &file_kusec_v1_usr_proto_msgTypes[12]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use UsrEnrollTotpReq.ProtoReflect.Descriptor instead.
+func (*UsrEnrollTotpReq) Descriptor() ([]byte, []int) {
+	return file_kusec_v1_usr_proto_rawDescGZIP(), []int{12}
+}
+
+func (x *UsrEnrollTotpReq) GetSetupToken() string {
+	if x != nil {
+		return x.SetupToken
+	}
+	return ""
+}
+
+type UsrEnrollTotpRep struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Secret        string                 `protobuf:"bytes,1,opt,name=secret,proto3" json:"secret,omitempty"`
+	OtpauthUrl    string                 `protobuf:"bytes,2,opt,name=otpauth_url,json=otpauthUrl,proto3" json:"otpauth_url,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *UsrEnrollTotpRep) Reset() {
+	*x = UsrEnrollTotpRep{}
+	mi := &file_kusec_v1_usr_proto_msgTypes[13]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *UsrEnrollTotpRep) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*UsrEnrollTotpRep) ProtoMessage() {}
+
+func (x *UsrEnrollTotpRep) ProtoReflect() protoreflect.Message {
+	mi := &file_kusec_v1_usr_proto_msgTypes[13]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use UsrEnrollTotpRep.ProtoReflect.Descriptor instead.
+func (*UsrEnrollTotpRep) Descriptor() ([]byte, []int) {
+	return file_kusec_v1_usr_proto_rawDescGZIP(), []int{13}
+}
+
+func (x *UsrEnrollTotpRep) GetSecret() string {
+	if x != nil {
+		return x.Secret
+	}
+	return ""
+}
+
+func (x *UsrEnrollTotpRep) GetOtpauthUrl() string {
+	if x != nil {
+		return x.OtpauthUrl
+	}
+	return ""
+}
+
+type UsrConfirmTotpReq struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	SetupToken    string                 `protobuf:"bytes,1,opt,name=setup_token,json=setupToken,proto3" json:"setup_token,omitempty"`
+	Code          string                 `protobuf:"bytes,2,opt,name=code,proto3" json:"code,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *UsrConfirmTotpReq) Reset() {
+	*x = UsrConfirmTotpReq{}
+	mi := &file_kusec_v1_usr_proto_msgTypes[14]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *UsrConfirmTotpReq) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*UsrConfirmTotpReq) ProtoMessage() {}
+
+func (x *UsrConfirmTotpReq) ProtoReflect() protoreflect.Message {
+	mi := &file_kusec_v1_usr_proto_msgTypes[14]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use UsrConfirmTotpReq.ProtoReflect.Descriptor instead.
+func (*UsrConfirmTotpReq) Descriptor() ([]byte, []int) {
+	return file_kusec_v1_usr_proto_rawDescGZIP(), []int{14}
+}
+
+func (x *UsrConfirmTotpReq) GetSetupToken() string {
+	if x != nil {
+		return x.SetupToken
+	}
+	return ""
+}
+
+func (x *UsrConfirmTotpReq) GetCode() string {
+	if x != nil {
+		return x.Code
+	}
+	return ""
+}
+
+type UsrDisableTotpReq struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Code          string                 `protobuf:"bytes,1,opt,name=code,proto3" json:"code,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *UsrDisableTotpReq) Reset() {
+	*x = UsrDisableTotpReq{}
+	mi := &file_kusec_v1_usr_proto_msgTypes[15]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *UsrDisableTotpReq) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*UsrDisableTotpReq) ProtoMessage() {}
+
+func (x *UsrDisableTotpReq) ProtoReflect() protoreflect.Message {
+	mi := &file_kusec_v1_usr_proto_msgTypes[15]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use UsrDisableTotpReq.ProtoReflect.Descriptor instead.
+func (*UsrDisableTotpReq) Descriptor() ([]byte, []int) {
+	return file_kusec_v1_usr_proto_rawDescGZIP(), []int{15}
+}
+
+func (x *UsrDisableTotpReq) GetCode() string {
+	if x != nil {
+		return x.Code
+	}
+	return ""
+}
+
 var File_kusec_v1_usr_proto protoreflect.FileDescriptor
 
 const file_kusec_v1_usr_proto_rawDesc = "" +
 	"\n" +
-	"\x12kusec_v1/usr.proto\x12\bkusec_v1\x1a\x1cgoogle/api/annotations.proto\x1a\x1bgoogle/protobuf/empty.proto\x1a\x13common/common.proto\"\x95\x01\n" +
+	"\x12kusec_v1/usr.proto\x12\bkusec_v1\x1a\x1cgoogle/api/annotations.proto\x1a\x1bgoogle/protobuf/empty.proto\x1a\x13common/common.proto\"\xb8\x01\n" +
 	"\aUsrMain\x12\x0e\n" +
 	"\x02id\x18\x01 \x01(\x03R\x02id\x12\x16\n" +
 	"\x06active\x18\x02 \x01(\bR\x06active\x12\x19\n" +
 	"\bis_admin\x18\x03 \x01(\bR\aisAdmin\x12\x12\n" +
 	"\x04name\x18\x04 \x01(\tR\x04name\x12\x1a\n" +
 	"\busername\x18\x05 \x01(\tR\busername\x12\x17\n" +
-	"\aapp_ids\x18\x06 \x03(\tR\x06appIds\"\xc0\x01\n" +
+	"\aapp_ids\x18\x06 \x03(\tR\x06appIds\x12!\n" +
+	"\ftotp_enabled\x18\a \x01(\bR\vtotpEnabled\"\xc0\x01\n" +
 	"\n" +
 	"UsrListReq\x125\n" +
 	"\vlist_params\x18\x01 \x01(\v2\x14.common.ListParamsStR\n" +
@@ -794,13 +1032,18 @@ const file_kusec_v1_usr_proto_rawDesc = "" +
 	"\t_is_adminB\a\n" +
 	"\x05_nameB\v\n" +
 	"\t_usernameB\v\n" +
-	"\t_password\"E\n" +
+	"\t_password\"b\n" +
 	"\vUsrLoginReq\x12\x1a\n" +
 	"\busername\x18\x01 \x01(\tR\busername\x12\x1a\n" +
-	"\bpassword\x18\x02 \x01(\tR\bpassword\"D\n" +
+	"\bpassword\x18\x02 \x01(\tR\bpassword\x12\x1b\n" +
+	"\ttotp_code\x18\x03 \x01(\tR\btotpCode\"\xba\x01\n" +
 	"\vUsrLoginRep\x12\x10\n" +
 	"\x03jwt\x18\x01 \x01(\tR\x03jwt\x12#\n" +
-	"\rrefresh_token\x18\x02 \x01(\tR\frefreshToken\"9\n" +
+	"\rrefresh_token\x18\x02 \x01(\tR\frefreshToken\x12#\n" +
+	"\rtotp_required\x18\x03 \x01(\bR\ftotpRequired\x12.\n" +
+	"\x13totp_setup_required\x18\x04 \x01(\bR\x11totpSetupRequired\x12\x1f\n" +
+	"\vsetup_token\x18\x05 \x01(\tR\n" +
+	"setupToken\"9\n" +
 	"\x12UsrRefreshTokenReq\x12#\n" +
 	"\rrefresh_token\x18\x01 \x01(\tR\frefreshToken\"L\n" +
 	"\x15UsrBootstrapStatusRep\x123\n" +
@@ -811,7 +1054,20 @@ const file_kusec_v1_usr_proto_rawDesc = "" +
 	"\busername\x18\x03 \x01(\tH\x02R\busername\x88\x01\x01B\a\n" +
 	"\x05_nameB\v\n" +
 	"\t_passwordB\v\n" +
-	"\t_username2\xbb\x06\n" +
+	"\t_username\"3\n" +
+	"\x10UsrEnrollTotpReq\x12\x1f\n" +
+	"\vsetup_token\x18\x01 \x01(\tR\n" +
+	"setupToken\"K\n" +
+	"\x10UsrEnrollTotpRep\x12\x16\n" +
+	"\x06secret\x18\x01 \x01(\tR\x06secret\x12\x1f\n" +
+	"\votpauth_url\x18\x02 \x01(\tR\n" +
+	"otpauthUrl\"H\n" +
+	"\x11UsrConfirmTotpReq\x12\x1f\n" +
+	"\vsetup_token\x18\x01 \x01(\tR\n" +
+	"setupToken\x12\x12\n" +
+	"\x04code\x18\x02 \x01(\tR\x04code\"'\n" +
+	"\x11UsrDisableTotpReq\x12\x12\n" +
+	"\x04code\x18\x01 \x01(\tR\x04code2\xb9\t\n" +
 	"\x03Usr\x12@\n" +
 	"\x04List\x12\x14.kusec_v1.UsrListReq\x1a\x14.kusec_v1.UsrListRep\"\f\x82\xd3\xe4\x93\x02\x06\x12\x04/usr\x12@\n" +
 	"\x03Get\x12\x13.kusec_v1.UsrGetReq\x1a\x11.kusec_v1.UsrMain\"\x11\x82\xd3\xe4\x93\x02\v\x12\t/usr/{id}\x12I\n" +
@@ -824,7 +1080,12 @@ const file_kusec_v1_usr_proto_rawDesc = "" +
 	"\x0fBootstrapStatus\x12\x16.google.protobuf.Empty\x1a\x1f.kusec_v1.UsrBootstrapStatusRep\"\x1d\x82\xd3\xe4\x93\x02\x17\x12\x15/usr/bootstrap/status\x12M\n" +
 	"\n" +
 	"GetProfile\x12\x16.google.protobuf.Empty\x1a\x11.kusec_v1.UsrMain\"\x14\x82\xd3\xe4\x93\x02\x0e\x12\f/usr/profile\x12_\n" +
-	"\rUpdateProfile\x12\x1d.kusec_v1.UsrUpdateProfileReq\x1a\x16.google.protobuf.Empty\"\x17\x82\xd3\xe4\x93\x02\x11:\x01*\x1a\f/usr/profileB\vZ\t/kusec_v1b\x06proto3"
+	"\rUpdateProfile\x12\x1d.kusec_v1.UsrUpdateProfileReq\x1a\x16.google.protobuf.Empty\"\x17\x82\xd3\xe4\x93\x02\x11:\x01*\x1a\f/usr/profile\x12a\n" +
+	"\n" +
+	"EnrollTotp\x12\x1a.kusec_v1.UsrEnrollTotpReq\x1a\x1a.kusec_v1.UsrEnrollTotpRep\"\x1b\x82\xd3\xe4\x93\x02\x15:\x01*\"\x10/usr/totp/enroll\x12_\n" +
+	"\vConfirmTotp\x12\x1b.kusec_v1.UsrConfirmTotpReq\x1a\x15.kusec_v1.UsrLoginRep\"\x1c\x82\xd3\xe4\x93\x02\x16:\x01*\"\x11/usr/totp/confirm\x12`\n" +
+	"\vDisableTotp\x12\x1b.kusec_v1.UsrDisableTotpReq\x1a\x16.google.protobuf.Empty\"\x1c\x82\xd3\xe4\x93\x02\x16:\x01*\"\x11/usr/totp/disable\x12V\n" +
+	"\tResetTotp\x12\x13.kusec_v1.UsrGetReq\x1a\x16.google.protobuf.Empty\"\x1c\x82\xd3\xe4\x93\x02\x16\"\x14/usr/{id}/totp/resetB\vZ\t/kusec_v1b\x06proto3"
 
 var (
 	file_kusec_v1_usr_proto_rawDescOnce sync.Once
@@ -838,7 +1099,7 @@ func file_kusec_v1_usr_proto_rawDescGZIP() []byte {
 	return file_kusec_v1_usr_proto_rawDescData
 }
 
-var file_kusec_v1_usr_proto_msgTypes = make([]protoimpl.MessageInfo, 12)
+var file_kusec_v1_usr_proto_msgTypes = make([]protoimpl.MessageInfo, 16)
 var file_kusec_v1_usr_proto_goTypes = []any{
 	(*UsrMain)(nil),                 // 0: kusec_v1.UsrMain
 	(*UsrListReq)(nil),              // 1: kusec_v1.UsrListReq
@@ -852,13 +1113,17 @@ var file_kusec_v1_usr_proto_goTypes = []any{
 	(*UsrRefreshTokenReq)(nil),      // 9: kusec_v1.UsrRefreshTokenReq
 	(*UsrBootstrapStatusRep)(nil),   // 10: kusec_v1.UsrBootstrapStatusRep
 	(*UsrUpdateProfileReq)(nil),     // 11: kusec_v1.UsrUpdateProfileReq
-	(*common.ListParamsSt)(nil),     // 12: common.ListParamsSt
-	(*common.PaginationInfoSt)(nil), // 13: common.PaginationInfoSt
-	(*emptypb.Empty)(nil),           // 14: google.protobuf.Empty
+	(*UsrEnrollTotpReq)(nil),        // 12: kusec_v1.UsrEnrollTotpReq
+	(*UsrEnrollTotpRep)(nil),        // 13: kusec_v1.UsrEnrollTotpRep
+	(*UsrConfirmTotpReq)(nil),       // 14: kusec_v1.UsrConfirmTotpReq
+	(*UsrDisableTotpReq)(nil),       // 15: kusec_v1.UsrDisableTotpReq
+	(*common.ListParamsSt)(nil),     // 16: common.ListParamsSt
+	(*common.PaginationInfoSt)(nil), // 17: common.PaginationInfoSt
+	(*emptypb.Empty)(nil),           // 18: google.protobuf.Empty
 }
 var file_kusec_v1_usr_proto_depIdxs = []int32{
-	12, // 0: kusec_v1.UsrListReq.list_params:type_name -> common.ListParamsSt
-	13, // 1: kusec_v1.UsrListRep.pagination_info:type_name -> common.PaginationInfoSt
+	16, // 0: kusec_v1.UsrListReq.list_params:type_name -> common.ListParamsSt
+	17, // 1: kusec_v1.UsrListRep.pagination_info:type_name -> common.PaginationInfoSt
 	0,  // 2: kusec_v1.UsrListRep.results:type_name -> kusec_v1.UsrMain
 	1,  // 3: kusec_v1.Usr.List:input_type -> kusec_v1.UsrListReq
 	3,  // 4: kusec_v1.Usr.Get:input_type -> kusec_v1.UsrGetReq
@@ -867,21 +1132,29 @@ var file_kusec_v1_usr_proto_depIdxs = []int32{
 	3,  // 7: kusec_v1.Usr.Delete:input_type -> kusec_v1.UsrGetReq
 	7,  // 8: kusec_v1.Usr.Login:input_type -> kusec_v1.UsrLoginReq
 	9,  // 9: kusec_v1.Usr.RefreshToken:input_type -> kusec_v1.UsrRefreshTokenReq
-	14, // 10: kusec_v1.Usr.BootstrapStatus:input_type -> google.protobuf.Empty
-	14, // 11: kusec_v1.Usr.GetProfile:input_type -> google.protobuf.Empty
+	18, // 10: kusec_v1.Usr.BootstrapStatus:input_type -> google.protobuf.Empty
+	18, // 11: kusec_v1.Usr.GetProfile:input_type -> google.protobuf.Empty
 	11, // 12: kusec_v1.Usr.UpdateProfile:input_type -> kusec_v1.UsrUpdateProfileReq
-	2,  // 13: kusec_v1.Usr.List:output_type -> kusec_v1.UsrListRep
-	0,  // 14: kusec_v1.Usr.Get:output_type -> kusec_v1.UsrMain
-	5,  // 15: kusec_v1.Usr.Create:output_type -> kusec_v1.UsrCreateRep
-	14, // 16: kusec_v1.Usr.Update:output_type -> google.protobuf.Empty
-	14, // 17: kusec_v1.Usr.Delete:output_type -> google.protobuf.Empty
-	8,  // 18: kusec_v1.Usr.Login:output_type -> kusec_v1.UsrLoginRep
-	8,  // 19: kusec_v1.Usr.RefreshToken:output_type -> kusec_v1.UsrLoginRep
-	10, // 20: kusec_v1.Usr.BootstrapStatus:output_type -> kusec_v1.UsrBootstrapStatusRep
-	0,  // 21: kusec_v1.Usr.GetProfile:output_type -> kusec_v1.UsrMain
-	14, // 22: kusec_v1.Usr.UpdateProfile:output_type -> google.protobuf.Empty
-	13, // [13:23] is the sub-list for method output_type
-	3,  // [3:13] is the sub-list for method input_type
+	12, // 13: kusec_v1.Usr.EnrollTotp:input_type -> kusec_v1.UsrEnrollTotpReq
+	14, // 14: kusec_v1.Usr.ConfirmTotp:input_type -> kusec_v1.UsrConfirmTotpReq
+	15, // 15: kusec_v1.Usr.DisableTotp:input_type -> kusec_v1.UsrDisableTotpReq
+	3,  // 16: kusec_v1.Usr.ResetTotp:input_type -> kusec_v1.UsrGetReq
+	2,  // 17: kusec_v1.Usr.List:output_type -> kusec_v1.UsrListRep
+	0,  // 18: kusec_v1.Usr.Get:output_type -> kusec_v1.UsrMain
+	5,  // 19: kusec_v1.Usr.Create:output_type -> kusec_v1.UsrCreateRep
+	18, // 20: kusec_v1.Usr.Update:output_type -> google.protobuf.Empty
+	18, // 21: kusec_v1.Usr.Delete:output_type -> google.protobuf.Empty
+	8,  // 22: kusec_v1.Usr.Login:output_type -> kusec_v1.UsrLoginRep
+	8,  // 23: kusec_v1.Usr.RefreshToken:output_type -> kusec_v1.UsrLoginRep
+	10, // 24: kusec_v1.Usr.BootstrapStatus:output_type -> kusec_v1.UsrBootstrapStatusRep
+	0,  // 25: kusec_v1.Usr.GetProfile:output_type -> kusec_v1.UsrMain
+	18, // 26: kusec_v1.Usr.UpdateProfile:output_type -> google.protobuf.Empty
+	13, // 27: kusec_v1.Usr.EnrollTotp:output_type -> kusec_v1.UsrEnrollTotpRep
+	8,  // 28: kusec_v1.Usr.ConfirmTotp:output_type -> kusec_v1.UsrLoginRep
+	18, // 29: kusec_v1.Usr.DisableTotp:output_type -> google.protobuf.Empty
+	18, // 30: kusec_v1.Usr.ResetTotp:output_type -> google.protobuf.Empty
+	17, // [17:31] is the sub-list for method output_type
+	3,  // [3:17] is the sub-list for method input_type
 	3,  // [3:3] is the sub-list for extension type_name
 	3,  // [3:3] is the sub-list for extension extendee
 	0,  // [0:3] is the sub-list for field type_name
@@ -902,7 +1175,7 @@ func file_kusec_v1_usr_proto_init() {
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_kusec_v1_usr_proto_rawDesc), len(file_kusec_v1_usr_proto_rawDesc)),
 			NumEnums:      0,
-			NumMessages:   12,
+			NumMessages:   16,
 			NumExtensions: 0,
 			NumServices:   1,
 		},

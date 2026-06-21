@@ -23,11 +23,16 @@ const (
 	// без повторного логина).
 	refreshTokenTTL = 30 * 24 * time.Hour
 
+	// enrollTokenTTL — короткое окно на привязку 2FA: выдаётся админу без
+	// настроенной 2FA, годится только для эндпоинтов настройки 2FA.
+	enrollTokenTTL = 15 * time.Minute
+
 	// Значения claim "typ", разделяющие назначение токенов. Access-токены,
 	// выданные до введения refresh-flow, не имеют "typ" — они принимаются
 	// как access до их естественного истечения.
 	tokenTypeAccess  = "access"
 	tokenTypeRefresh = "refresh"
+	tokenTypeEnroll  = "totp_enroll"
 )
 
 type contextKey string
@@ -154,6 +159,35 @@ func (s *Service) CreateToken(usrId int64, isAdmin bool, appIds []string) (strin
 		"iat":      now.Unix(),
 		"exp":      now.Add(accessTokenTTL).Unix(),
 	})
+}
+
+// CreateEnrollToken подписывает короткоживущий токен настройки 2FA. Он не
+// является access-токеном: FromToken его отвергает, поэтому доступ к обычным
+// ручкам по нему невозможен — только к эндпоинтам настройки 2FA.
+func (s *Service) CreateEnrollToken(usrId int64) (string, error) {
+	now := time.Now().UTC()
+	return s.signClaims(jwtv5.MapClaims{
+		"typ": tokenTypeEnroll,
+		"id":  usrId,
+		"iat": now.Unix(),
+		"exp": now.Add(enrollTokenTTL).Unix(),
+	})
+}
+
+// ParseEnrollToken валидирует enroll-токен и возвращает id пользователя.
+func (s *Service) ParseEnrollToken(tokenStr string) (int64, error) {
+	claims, err := s.parseClaims(tokenStr)
+	if err != nil {
+		return 0, err
+	}
+	if tokenType(claims) != tokenTypeEnroll {
+		return 0, fmt.Errorf("not an enroll token")
+	}
+	usrRaw, ok := claims["id"]
+	if !ok {
+		return 0, fmt.Errorf("missing user id claim in token")
+	}
+	return usrIDFromClaim(usrRaw)
 }
 
 // passwordFingerprint — необратимый отпечаток хеша пароля, зашиваемый в

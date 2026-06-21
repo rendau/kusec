@@ -30,6 +30,10 @@ const (
 	Usr_BootstrapStatus_FullMethodName = "/kusec_v1.Usr/BootstrapStatus"
 	Usr_GetProfile_FullMethodName      = "/kusec_v1.Usr/GetProfile"
 	Usr_UpdateProfile_FullMethodName   = "/kusec_v1.Usr/UpdateProfile"
+	Usr_EnrollTotp_FullMethodName      = "/kusec_v1.Usr/EnrollTotp"
+	Usr_ConfirmTotp_FullMethodName     = "/kusec_v1.Usr/ConfirmTotp"
+	Usr_DisableTotp_FullMethodName     = "/kusec_v1.Usr/DisableTotp"
+	Usr_ResetTotp_FullMethodName       = "/kusec_v1.Usr/ResetTotp"
 )
 
 // UsrClient is the client API for Usr service.
@@ -46,6 +50,10 @@ type UsrClient interface {
 	BootstrapStatus(ctx context.Context, in *emptypb.Empty, opts ...grpc.CallOption) (*UsrBootstrapStatusRep, error)
 	GetProfile(ctx context.Context, in *emptypb.Empty, opts ...grpc.CallOption) (*UsrMain, error)
 	UpdateProfile(ctx context.Context, in *UsrUpdateProfileReq, opts ...grpc.CallOption) (*emptypb.Empty, error)
+	EnrollTotp(ctx context.Context, in *UsrEnrollTotpReq, opts ...grpc.CallOption) (*UsrEnrollTotpRep, error)
+	ConfirmTotp(ctx context.Context, in *UsrConfirmTotpReq, opts ...grpc.CallOption) (*UsrLoginRep, error)
+	DisableTotp(ctx context.Context, in *UsrDisableTotpReq, opts ...grpc.CallOption) (*emptypb.Empty, error)
+	ResetTotp(ctx context.Context, in *UsrGetReq, opts ...grpc.CallOption) (*emptypb.Empty, error)
 }
 
 type usrClient struct {
@@ -156,6 +164,46 @@ func (c *usrClient) UpdateProfile(ctx context.Context, in *UsrUpdateProfileReq, 
 	return out, nil
 }
 
+func (c *usrClient) EnrollTotp(ctx context.Context, in *UsrEnrollTotpReq, opts ...grpc.CallOption) (*UsrEnrollTotpRep, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(UsrEnrollTotpRep)
+	err := c.cc.Invoke(ctx, Usr_EnrollTotp_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *usrClient) ConfirmTotp(ctx context.Context, in *UsrConfirmTotpReq, opts ...grpc.CallOption) (*UsrLoginRep, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(UsrLoginRep)
+	err := c.cc.Invoke(ctx, Usr_ConfirmTotp_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *usrClient) DisableTotp(ctx context.Context, in *UsrDisableTotpReq, opts ...grpc.CallOption) (*emptypb.Empty, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(emptypb.Empty)
+	err := c.cc.Invoke(ctx, Usr_DisableTotp_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *usrClient) ResetTotp(ctx context.Context, in *UsrGetReq, opts ...grpc.CallOption) (*emptypb.Empty, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(emptypb.Empty)
+	err := c.cc.Invoke(ctx, Usr_ResetTotp_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
 // UsrServer is the server API for Usr service.
 // All implementations must embed UnimplementedUsrServer
 // for forward compatibility.
@@ -170,6 +218,10 @@ type UsrServer interface {
 	BootstrapStatus(context.Context, *emptypb.Empty) (*UsrBootstrapStatusRep, error)
 	GetProfile(context.Context, *emptypb.Empty) (*UsrMain, error)
 	UpdateProfile(context.Context, *UsrUpdateProfileReq) (*emptypb.Empty, error)
+	EnrollTotp(context.Context, *UsrEnrollTotpReq) (*UsrEnrollTotpRep, error)
+	ConfirmTotp(context.Context, *UsrConfirmTotpReq) (*UsrLoginRep, error)
+	DisableTotp(context.Context, *UsrDisableTotpReq) (*emptypb.Empty, error)
+	ResetTotp(context.Context, *UsrGetReq) (*emptypb.Empty, error)
 	mustEmbedUnimplementedUsrServer()
 }
 
@@ -209,6 +261,18 @@ func (UnimplementedUsrServer) GetProfile(context.Context, *emptypb.Empty) (*UsrM
 }
 func (UnimplementedUsrServer) UpdateProfile(context.Context, *UsrUpdateProfileReq) (*emptypb.Empty, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method UpdateProfile not implemented")
+}
+func (UnimplementedUsrServer) EnrollTotp(context.Context, *UsrEnrollTotpReq) (*UsrEnrollTotpRep, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method EnrollTotp not implemented")
+}
+func (UnimplementedUsrServer) ConfirmTotp(context.Context, *UsrConfirmTotpReq) (*UsrLoginRep, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method ConfirmTotp not implemented")
+}
+func (UnimplementedUsrServer) DisableTotp(context.Context, *UsrDisableTotpReq) (*emptypb.Empty, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method DisableTotp not implemented")
+}
+func (UnimplementedUsrServer) ResetTotp(context.Context, *UsrGetReq) (*emptypb.Empty, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method ResetTotp not implemented")
 }
 func (UnimplementedUsrServer) mustEmbedUnimplementedUsrServer() {}
 func (UnimplementedUsrServer) testEmbeddedByValue()             {}
@@ -411,6 +475,78 @@ func _Usr_UpdateProfile_Handler(srv interface{}, ctx context.Context, dec func(i
 	return interceptor(ctx, in, info, handler)
 }
 
+func _Usr_EnrollTotp_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(UsrEnrollTotpReq)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(UsrServer).EnrollTotp(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: Usr_EnrollTotp_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(UsrServer).EnrollTotp(ctx, req.(*UsrEnrollTotpReq))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _Usr_ConfirmTotp_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(UsrConfirmTotpReq)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(UsrServer).ConfirmTotp(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: Usr_ConfirmTotp_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(UsrServer).ConfirmTotp(ctx, req.(*UsrConfirmTotpReq))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _Usr_DisableTotp_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(UsrDisableTotpReq)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(UsrServer).DisableTotp(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: Usr_DisableTotp_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(UsrServer).DisableTotp(ctx, req.(*UsrDisableTotpReq))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _Usr_ResetTotp_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(UsrGetReq)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(UsrServer).ResetTotp(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: Usr_ResetTotp_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(UsrServer).ResetTotp(ctx, req.(*UsrGetReq))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
 // Usr_ServiceDesc is the grpc.ServiceDesc for Usr service.
 // It's only intended for direct use with grpc.RegisterService,
 // and not to be introspected or modified (even as a copy)
@@ -457,6 +593,22 @@ var Usr_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "UpdateProfile",
 			Handler:    _Usr_UpdateProfile_Handler,
+		},
+		{
+			MethodName: "EnrollTotp",
+			Handler:    _Usr_EnrollTotp_Handler,
+		},
+		{
+			MethodName: "ConfirmTotp",
+			Handler:    _Usr_ConfirmTotp_Handler,
+		},
+		{
+			MethodName: "DisableTotp",
+			Handler:    _Usr_DisableTotp_Handler,
+		},
+		{
+			MethodName: "ResetTotp",
+			Handler:    _Usr_ResetTotp_Handler,
 		},
 	},
 	Streams:  []grpc.StreamDesc{},

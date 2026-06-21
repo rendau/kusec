@@ -13,6 +13,9 @@ type Main struct {
 	Username string
 	Password string // хеш пароля; наружу (в proto) не отдаётся — usecase обнуляет перед ответом
 
+	TotpEnabled bool
+	TotpSecret  string // секрет TOTP (base32); наружу не отдаётся
+
 	AppIds []string
 }
 
@@ -23,6 +26,9 @@ type Edit struct {
 	Name     *string
 	Username *string
 	Password *string
+
+	TotpEnabled *bool
+	TotpSecret  *string
 
 	AppIds []string
 }

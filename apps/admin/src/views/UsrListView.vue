@@ -18,10 +18,10 @@ import {
   useMessage,
 } from 'naive-ui'
 import type { DataTableColumns, SelectOption } from 'naive-ui'
-import { InfoCircle, Pencil, Plus, Trash } from '@vicons/tabler'
+import { InfoCircle, Pencil, Plus, ShieldOff, Trash } from '@vicons/tabler'
 
 import { apiErrorMessage } from '@/api/http'
-import { deleteUser, listUsers } from '@/api/usr'
+import { deleteUser, listUsers, resetUserTotp } from '@/api/usr'
 import type { UsrListReq, UsrMain } from '@/api/types'
 import { useBreakpoint } from '@/composables/useBreakpoint'
 import { useAuthStore } from '@/stores/auth'
@@ -183,6 +183,17 @@ async function removeUser(row: UsrMain): Promise<void> {
   }
 }
 
+// Admin-reset: clear another user's 2FA when they lost their authenticator.
+async function resetTotp(row: UsrMain): Promise<void> {
+  try {
+    await resetUserTotp(row.id)
+    message.success(`2FA reset for "${row.username}"`)
+    await fetchUsers()
+  } catch (error) {
+    message.error(apiErrorMessage(error, 'Failed to reset 2FA'))
+  }
+}
+
 function iconButton(
   icon: typeof Pencil,
   tooltip: string,
@@ -263,13 +274,45 @@ const columns: DataTableColumns<UsrMain> = [
     },
   },
   {
+    title: '2FA',
+    key: 'totp_enabled',
+    width: 90,
+    render: (row) =>
+      h(
+        NTag,
+        { type: row.totp_enabled ? 'success' : 'default', size: 'small' },
+        { default: () => (row.totp_enabled ? 'On' : 'Off') },
+      ),
+  },
+  {
     title: 'Actions',
     key: 'actions',
-    width: 140,
+    width: 180,
     render: (row) =>
       h(NSpace, { size: 4, wrapItem: false }, () => [
         iconButton(InfoCircle, 'Details', () => openDetail(row)),
         iconButton(Pencil, 'Edit', () => openEdit(row)),
+        row.totp_enabled
+          ? h(
+              NPopconfirm,
+              { onPositiveClick: () => resetTotp(row) },
+              {
+                trigger: () =>
+                  h(
+                    NButton,
+                    {
+                      quaternary: true,
+                      circle: true,
+                      size: 'small',
+                      type: 'warning',
+                      'aria-label': 'Reset 2FA',
+                    },
+                    { icon: () => h(NIcon, { component: ShieldOff }) },
+                  ),
+                default: () => `Reset 2FA for "${row.username}"?`,
+              },
+            )
+          : null,
         isSelf(row)
           ? iconButton(Trash, 'You cannot delete yourself', () => {}, {
               type: 'error',
@@ -343,12 +386,7 @@ onMounted(fetchUsers)
           style="padding: 24px 0"
         />
         <div class="usr-cards">
-          <NCard
-            v-for="row in rows"
-            :key="row.id"
-            size="small"
-            class="usr-card"
-          >
+          <NCard v-for="row in rows" :key="row.id" size="small" class="usr-card">
             <div class="usr-card__top">
               <NButton text type="primary" @click="openDetail(row)">
                 {{ row.name || '—' }}
@@ -362,9 +400,13 @@ onMounted(fetchUsers)
               <NTag :type="row.is_admin ? 'success' : 'default'" size="small">
                 {{ row.is_admin ? 'Administrator' : 'User' }}
               </NTag>
-              <NTag :type="accessLabel(row) === 'All apps' ? 'default' : 'info'" size="small">
+              <NTag
+                :type="accessLabel(row) === 'All apps' ? 'default' : 'info'"
+                size="small"
+              >
                 {{ accessLabel(row) }}
               </NTag>
+              <NTag v-if="row.totp_enabled" type="success" size="small"> 2FA </NTag>
             </NSpace>
             <template #action>
               <NSpace justify="end" :size="4" :wrap-item="false">
@@ -390,6 +432,22 @@ onMounted(fetchUsers)
                     <NIcon :component="Pencil" />
                   </template>
                 </NButton>
+                <NPopconfirm v-if="row.totp_enabled" @positive-click="resetTotp(row)">
+                  <template #trigger>
+                    <NButton
+                      quaternary
+                      circle
+                      size="small"
+                      type="warning"
+                      aria-label="Reset 2FA"
+                    >
+                      <template #icon>
+                        <NIcon :component="ShieldOff" />
+                      </template>
+                    </NButton>
+                  </template>
+                  Reset 2FA for "{{ row.username }}"?
+                </NPopconfirm>
                 <NButton
                   v-if="isSelf(row)"
                   quaternary

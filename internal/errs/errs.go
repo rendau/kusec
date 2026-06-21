@@ -23,6 +23,10 @@ const (
 	UsernameRequired = Err("username_required")
 	PasswordRequired = Err("password_required")
 
+	TotpInvalid    = Err("totp_invalid")
+	TotpAlreadyOn  = Err("totp_already_enabled")
+	TotpNotEnabled = Err("totp_not_enabled")
+
 	NotInCluster   = Err("not_in_cluster")
 	SyncInProgress = Err("sync_in_progress")
 )

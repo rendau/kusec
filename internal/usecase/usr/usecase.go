@@ -35,18 +35,118 @@ func (u *Usecase) issueTokenPair(item *model.Main) (string, string, error) {
 	return access, refresh, nil
 }
 
-func (u *Usecase) Login(ctx context.Context, username, password string) (string, string, error) {
+func (u *Usecase) issueLoginResult(item *model.Main) (*LoginResult, error) {
+	access, refresh, err := u.issueTokenPair(item)
+	if err != nil {
+		return nil, err
+	}
+	return &LoginResult{Jwt: access, RefreshToken: refresh}, nil
+}
+
+func (u *Usecase) Login(ctx context.Context, username, password, totpCode string) (*LoginResult, error) {
 	username = strings.TrimSpace(username)
 
 	item, found, err := u.svc.AuthByUsernamePassword(ctx, username, password)
 	if err != nil {
-		return "", "", fmt.Errorf("svc.AuthByUsernamePassword: %w", err)
+		return nil, fmt.Errorf("svc.AuthByUsernamePassword: %w", err)
 	}
 	if !found || !item.Active {
-		return "", "", errs.NotAuthorized
+		return nil, errs.NotAuthorized
 	}
 
-	return u.issueTokenPair(item)
+	if item.TotpEnabled {
+		if strings.TrimSpace(totpCode) == "" {
+			// пароль верный, но нужен второй фактор
+			return &LoginResult{TotpRequired: true}, nil
+		}
+		if !u.svc.ValidateTotpCode(item.TotpSecret, totpCode) {
+			return nil, errs.TotpInvalid
+		}
+		return u.issueLoginResult(item)
+	}
+
+	// 2FA не настроена: для админов привязка обязательна — выдаём enroll-токен
+	// вместо полноценной сессии.
+	if item.IsAdmin {
+		setupToken, err := u.sessionSvc.CreateEnrollToken(item.Id)
+		if err != nil {
+			return nil, fmt.Errorf("sessionSvc.CreateEnrollToken: %w", err)
+		}
+		return &LoginResult{TotpSetupRequired: true, SetupToken: setupToken}, nil
+	}
+
+	return u.issueLoginResult(item)
+}
+
+// totpSetupUserId определяет пользователя для эндпоинтов настройки 2FA:
+// это либо уже авторизованный пользователь (добровольная привязка), либо
+// владелец валидного enroll-токена (обязательная привязка после логина).
+func (u *Usecase) totpSetupUserId(ctx context.Context, setupToken string) (int64, error) {
+	session := u.sessionSvc.FromContext(ctx)
+	if session.IsAuthorized() {
+		return session.Id, nil
+	}
+	setupToken = strings.TrimSpace(setupToken)
+	if setupToken == "" {
+		return 0, errs.NotAuthorized
+	}
+	usrId, err := u.sessionSvc.ParseEnrollToken(setupToken)
+	if err != nil {
+		return 0, errs.NotAuthorized
+	}
+	return usrId, nil
+}
+
+// EnrollTotp генерирует новый секрет и otpauth-URL для привязки 2FA.
+func (u *Usecase) EnrollTotp(ctx context.Context, setupToken string) (string, string, error) {
+	usrId, err := u.totpSetupUserId(ctx, setupToken)
+	if err != nil {
+		return "", "", err
+	}
+	secret, url, err := u.svc.EnrollTotp(ctx, usrId)
+	if err != nil {
+		return "", "", fmt.Errorf("svc.EnrollTotp: %w", err)
+	}
+	return secret, url, nil
+}
+
+// ConfirmTotp подтверждает привязку 2FA первым кодом и выдаёт пару токенов.
+func (u *Usecase) ConfirmTotp(ctx context.Context, setupToken, code string) (*LoginResult, error) {
+	usrId, err := u.totpSetupUserId(ctx, setupToken)
+	if err != nil {
+		return nil, err
+	}
+	item, err := u.svc.ConfirmTotp(ctx, usrId, code)
+	if err != nil {
+		return nil, fmt.Errorf("svc.ConfirmTotp: %w", err)
+	}
+	return u.issueLoginResult(item)
+}
+
+// DisableTotp отключает 2FA текущему пользователю (требуется действующий код).
+func (u *Usecase) DisableTotp(ctx context.Context, code string) error {
+	if !u.sessionSvc.CtxIsAuthorized(ctx) {
+		return errs.NotAuthorized
+	}
+	session := u.sessionSvc.FromContext(ctx)
+	if err := u.svc.DisableTotp(ctx, session.Id, code); err != nil {
+		return fmt.Errorf("svc.DisableTotp: %w", err)
+	}
+	return nil
+}
+
+// ResetTotp принудительно сбрасывает 2FA пользователю (только админ).
+func (u *Usecase) ResetTotp(ctx context.Context, id int64) error {
+	if !u.sessionSvc.CtxIsAdmin(ctx) {
+		return errs.NoPermission
+	}
+	if id == 0 {
+		return errs.IdRequired
+	}
+	if err := u.svc.ResetTotp(ctx, id); err != nil {
+		return fmt.Errorf("svc.ResetTotp: %w", err)
+	}
+	return nil
 }
 
 // RefreshToken обменивает валидный refresh-токен на новую пару токенов

@@ -73,6 +73,35 @@ service Usr {
       body: "*"
     };
   }
+
+  // 2FA (TOTP)
+
+  rpc EnrollTotp(UsrEnrollTotpReq) returns (UsrEnrollTotpRep) {
+    option (google.api.http) = {
+      post: "/usr/totp/enroll"
+      body: "*"
+    };
+  }
+
+  rpc ConfirmTotp(UsrConfirmTotpReq) returns (UsrLoginRep) {
+    option (google.api.http) = {
+      post: "/usr/totp/confirm"
+      body: "*"
+    };
+  }
+
+  rpc DisableTotp(UsrDisableTotpReq) returns (google.protobuf.Empty) {
+    option (google.api.http) = {
+      post: "/usr/totp/disable"
+      body: "*"
+    };
+  }
+
+  rpc ResetTotp(UsrGetReq) returns (google.protobuf.Empty) {
+    option (google.api.http) = {
+      post: "/usr/{id}/totp/reset"
+    };
+  }
 }
 
 // ── Messages ────────────────────────────────────────────
@@ -84,6 +113,7 @@ message UsrMain {
   string name = 4;
   string username = 5;
   repeated string app_ids = 6;
+  bool totp_enabled = 7;
 }
 
 // List
@@ -140,11 +170,18 @@ message UsrUpdateReq {
 message UsrLoginReq {
   string username = 1;
   string password = 2;
+  string totp_code = 3;
 }
 
 message UsrLoginRep {
   string jwt = 1;
   string refresh_token = 2;
+  // totp_required — пароль верный, но требуется код 2FA (повторить логин с totp_code).
+  bool totp_required = 3;
+  // totp_setup_required — админ без настроенной 2FA обязан её привязать;
+  // setup_token годится только для эндпоинтов настройки 2FA.
+  bool totp_setup_required = 4;
+  string setup_token = 5;
 }
 
 message UsrRefreshTokenReq {
@@ -159,4 +196,26 @@ message UsrUpdateProfileReq {
   optional string name = 1;
   optional string password = 2;
   optional string username = 3;
+}
+
+// 2FA (TOTP)
+
+message UsrEnrollTotpReq {
+  // setup_token нужен, если привязка выполняется по enroll-токену (админ сразу
+  // после логина). Для уже авторизованного пользователя поле можно не слать.
+  string setup_token = 1;
+}
+
+message UsrEnrollTotpRep {
+  string secret = 1;
+  string otpauth_url = 2;
+}
+
+message UsrConfirmTotpReq {
+  string setup_token = 1;
+  string code = 2;
+}
+
+message UsrDisableTotpReq {
+  string code = 1;
 }
