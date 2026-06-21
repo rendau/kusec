@@ -53,7 +53,7 @@ const app = computed<AppMain | null>(
 )
 
 // Active tab: switch between the app's secrets and config maps.
-const activeTab = ref<'secrets' | 'configmaps'>('secrets')
+const activeTab = ref<'secrets' | 'configmaps'>('configmaps')
 
 // Live counts are read from each section so the tab labels and delete modal
 // stay in sync as secrets/config maps are created or removed.
@@ -215,22 +215,6 @@ watch(
         display-directive="show:lazy"
         pane-class="workspace-tab-pane"
       >
-        <NTabPane name="secrets">
-          <template #tab>
-            Secrets
-            <NTag
-              v-if="secretCount"
-              size="small"
-              round
-              :bordered="false"
-              class="workspace-tab__count"
-            >
-              {{ secretCount }}
-            </NTag>
-          </template>
-          <SecretsSection v-if="appId" ref="secretsRef" :app-id="appId" />
-        </NTabPane>
-
         <NTabPane name="configmaps">
           <template #tab>
             Config maps
@@ -245,6 +229,22 @@ watch(
             </NTag>
           </template>
           <ConfigMapsSection v-if="appId" ref="configMapsRef" :app-id="appId" />
+        </NTabPane>
+
+        <NTabPane name="secrets">
+          <template #tab>
+            Secrets
+            <NTag
+              v-if="secretCount"
+              size="small"
+              round
+              :bordered="false"
+              class="workspace-tab__count"
+            >
+              {{ secretCount }}
+            </NTag>
+          </template>
+          <SecretsSection v-if="appId" ref="secretsRef" :app-id="appId" />
         </NTabPane>
       </NTabs>
     </NCard>
