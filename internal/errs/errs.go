@@ -23,6 +23,11 @@ const (
 	UsernameRequired = Err("username_required")
 	PasswordRequired = Err("password_required")
 
+	PasswordTooShort        = Err("password_too_short")
+	PasswordTooLong         = Err("password_too_long")
+	PasswordRequiresUpper   = Err("password_requires_upper")
+	PasswordRequiresSpecial = Err("password_requires_special")
+
 	TotpInvalid    = Err("totp_invalid")
 	TotpAlreadyOn  = Err("totp_already_enabled")
 	TotpNotEnabled = Err("totp_not_enabled")

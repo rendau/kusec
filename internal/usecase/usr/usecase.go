@@ -4,9 +4,19 @@ import (
 	"context"
 	"fmt"
 	"strings"
+	"unicode"
+	"unicode/utf8"
 
 	"github.com/mechta-market/kusec/internal/domain/usr/model"
 	"github.com/mechta-market/kusec/internal/errs"
+)
+
+const (
+	// passwordMinLen — минимальная длина пароля (в рунах).
+	passwordMinLen = 8
+	// passwordMaxLen — максимальная длина пароля в байтах: bcrypt молча обрезает
+	// всё, что длиннее 72 байт, поэтому ограничиваем явно.
+	passwordMaxLen = 72
 )
 
 type Usecase struct {
@@ -381,6 +391,39 @@ func (u *Usecase) validateEdit(obj *model.Edit, forCreate bool) error {
 		if *obj.Password == "" {
 			return errs.PasswordRequired
 		}
+		if err := validatePassword(*obj.Password); err != nil {
+			return err
+		}
+	}
+
+	return nil
+}
+
+// validatePassword проверяет требования к сложности пароля: длина,
+// наличие буквы в верхнем регистре и спецсимвола.
+func validatePassword(password string) error {
+	if utf8.RuneCountInString(password) < passwordMinLen {
+		return errs.PasswordTooShort
+	}
+	if len(password) > passwordMaxLen {
+		return errs.PasswordTooLong
+	}
+
+	var hasUpper, hasSpecial bool
+	for _, r := range password {
+		switch {
+		case unicode.IsUpper(r):
+			hasUpper = true
+		case !unicode.IsLetter(r) && !unicode.IsDigit(r) && !unicode.IsSpace(r):
+			hasSpecial = true
+		}
+	}
+
+	if !hasUpper {
+		return errs.PasswordRequiresUpper
+	}
+	if !hasSpecial {
+		return errs.PasswordRequiresSpecial
 	}
 
 	return nil

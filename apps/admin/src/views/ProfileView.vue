@@ -19,6 +19,7 @@ import { apiErrorMessage } from '@/api/http'
 import { disableTotp } from '@/api/usr'
 import type { UsrUpdateProfileReq } from '@/api/types'
 import { useAuthStore } from '@/stores/auth'
+import { passwordComplexityError } from '@/utils/password'
 
 import TotpSetupCard from '@/components/usr/TotpSetupCard.vue'
 
@@ -91,6 +92,16 @@ const rules: FormRules = {
   name: [{ required: true, message: 'Name is required', trigger: ['blur', 'input'] }],
   username: [
     { required: true, message: 'Username is required', trigger: ['blur', 'input'] },
+  ],
+  password: [
+    {
+      trigger: ['blur', 'input'],
+      validator: (_rule: FormItemRule, value: string) => {
+        if (!value) return true
+        const err = passwordComplexityError(value)
+        return err ? new Error(err) : true
+      },
+    },
   ],
   passwordConfirm: [
     {

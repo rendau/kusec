@@ -11,12 +11,13 @@ import {
   NSwitch,
   NText,
 } from 'naive-ui'
-import type { FormRules } from 'naive-ui'
+import type { FormItemRule, FormRules } from 'naive-ui'
 
 import { createUser, updateUser } from '@/api/usr'
 import type { UsrMain, UsrUpdateReq } from '@/api/types'
 import { useAppOptions } from '@/composables/useAppOptions'
 import { useEntityForm } from '@/composables/useEntityForm'
+import { passwordComplexityError } from '@/utils/password'
 
 const props = defineProps<{
   show: boolean
@@ -105,10 +106,21 @@ const rules = computed<FormRules>(() => ({
   username: [
     { required: true, message: 'Username is required', trigger: ['blur', 'input'] },
   ],
-  // Password is mandatory only when creating a new user.
-  password: isEdit.value
-    ? []
-    : [{ required: true, message: 'Password is required', trigger: ['blur', 'input'] }],
+  // Password is mandatory only when creating a new user; complexity is checked
+  // whenever a password is actually entered.
+  password: [
+    ...(isEdit.value
+      ? []
+      : [{ required: true, message: 'Password is required', trigger: ['blur', 'input'] }]),
+    {
+      trigger: ['blur', 'input'],
+      validator: (_rule: FormItemRule, value: string) => {
+        if (!value) return true
+        const err = passwordComplexityError(value)
+        return err ? new Error(err) : true
+      },
+    },
+  ],
 }))
 
 function close(): void {
