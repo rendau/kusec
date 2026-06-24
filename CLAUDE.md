@@ -21,8 +21,9 @@
 - `docs/` — swagger JSON и статические доки, выдаются через `/docs/*`.
 - `vendor-proto/` — внешние `.proto` зависимости (обновляются Makefile).
 - `Makefile` — сборка, запуск, генерация proto, docker-образы.
-- `deploy/docker/` — `Dockerfile` (CI, готовый бинарник из `make build`) и
-  `Dockerfile.local` (полная сборка в Docker: бэкенд + вшитая админка).
+- `deploy/docker/` — единственный `Dockerfile`: полная multi-stage сборка целиком в
+  Docker (этап `admin-builder` — фронт через pnpm; этап `builder` — Go из исходников;
+  финальный alpine-образ с бинарником + `docs/` + `migrations/` + админкой в `admin-dist/`).
   Helm-chart для локального подъёма живёт в отдельном репо `local_kube`
   (`charts/kusec`, поднимается там через helmfile).
 - `.env.example`, `.migrate_scripts.example` — примеры окружения и миграций.
@@ -158,11 +159,13 @@ domain service → repo
 - `/docs/*` — статические docs + swagger (`docs/api.swagger.json`), порт 3003.
 
 ### Сборка
-- `make build` создаёт бинарник `cmd/build/svc`.
-- `deploy/docker/Dockerfile` (CI) копирует готовый бинарник и `docs/` в `/app`.
-- `make docker-build` собирает локальный образ `kusec:local` целиком в Docker
-  (`deploy/docker/Dockerfile.local`): бинарник + `docs/` + `migrations/` +
-  админка в `admin-dist/` (раздаётся бэком с `/`, API под `/api`).
+- `make build` (дефолтная цель) создаёт бинарник `cmd/build/svc`
+  (`go build`, `CGO_ENABLED=0`) — для локального запуска вне Docker.
+- `make docker-build` собирает локальный образ `kusec:local` **целиком в Docker** через
+  `deploy/docker/Dockerfile` (multi-stage): этап `admin-builder` собирает фронт (pnpm,
+  `pnpm install --frozen-lockfile` → `pnpm build`), этап `builder` компилирует Go из
+  исходников, финальный alpine-образ получает бинарник + `docs/` + `migrations/` +
+  админку в `admin-dist/` (раздаётся бэком с `/`, API под `/api`).
 
 ### Flow проверки изменений
 ```

@@ -14,6 +14,14 @@ Naive UI. Раздаётся Go-бэкендом с `/`, API под `/api`.
 - Зависимости ставить через `pnpm add` / `pnpm add -D`, lockfile — `pnpm-lock.yaml`.
 - **npm и yarn ломаются**: в дереве есть `link:`-зависимости (протокол pnpm) →
   `npm error EUNSUPPORTEDPROTOCOL`, плюс peer-конфликты по vite. Не используй их.
+- **`pnpm-workspace.yaml` (рядом с `package.json`) содержит `allowBuilds:`** — явный
+  allowlist пакетов, которым pnpm (v10+/11) разрешает запускать post-install build-скрипты
+  (`esbuild`, `vue-demi`). По умолчанию pnpm **блокирует** их из соображений безопасности.
+  Добавил зависимость с нативным/postinstall-билдом и видишь warning «Ignored build
+  scripts» — допиши пакет в `allowBuilds` (или `pnpm approve-builds`), иначе он молча не
+  соберётся. Этот файл нужен и Docker-сборке (копируется в install-слой).
+- **После смены зависимостей коммить актуальный `pnpm-lock.yaml`.** Docker-сборка ставит
+  пакеты с `--frozen-lockfile` — рассинхрон lockfile с `package.json` уронит сборку.
 
 ## Naive UI
 
@@ -110,9 +118,16 @@ Naive UI. Раздаётся Go-бэкендом с `/`, API под `/api`.
   ожидаемо.
 - В прод API относительный (`/api`, `VITE_API_BASE_URL` пуст) → один origin с
   бэком, поэтому CORS на бэке по умолчанию выключен.
+- **`.env.*` работают из коробки** (Vite грузит по режиму: `pnpm dev` →
+  `.env.development`, `pnpm build` → `.env.production`). `.env.development` /
+  `.env.production` / `.env.example` закоммичены (`.env.production` принудительно,
+  `!.env.production` в `.gitignore`). В бандл попадает и **виден в браузере только**
+  `VITE_`-префикс — **секретов в `.env.*` не клади**. Локальный оверрайд — `.env.local`
+  (gitignored), не коммить.
 - В docker-образ `dist/` вшивается как `admin-dist/` (`make docker-build` в
   корне репо) и раздаётся Go-бэкендом. После изменений фронта для образа нужна
-  пересборка.
+  пересборка. Docker собирает фронт сам (этап `admin-builder`); локальный `dist/`
+  в образ не попадает (исключён в `.dockerignore`).
 
 ## Линт / формат
 
