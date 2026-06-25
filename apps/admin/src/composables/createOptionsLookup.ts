@@ -31,10 +31,15 @@ export function createOptionsLookup<T>(config: OptionsLookupConfig<T>) {
     const loading = ref(false)
 
     const options = computed<SelectOption[]>(() =>
-      Array.from(cache.value.values()).map((item) => ({
-        label: config.labelOf(item),
-        value: config.idOf(item),
-      })),
+      Array.from(cache.value.values())
+        .map((item) => ({
+          label: config.labelOf(item),
+          value: config.idOf(item),
+        }))
+        // Cache is a Map in insertion order, and `ensure()` appends already
+        // assigned entities out of order — sort by label so the picker always
+        // shows options alphabetically regardless of how they got cached.
+        .sort((a, b) => a.label.localeCompare(b.label)),
     )
 
     /** Load the first page (optionally filtered) into the cache. */

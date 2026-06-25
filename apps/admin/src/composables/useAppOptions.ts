@@ -11,7 +11,9 @@ function labelFor(app: AppMain): string {
 export const useAppOptions = createOptionsLookup<AppMain>({
   list: (query) =>
     listApps({
-      list_params: { page: 0, page_size: 50 },
+      // page_size: 0 — без лимита (mobone не ставит LIMIT при PageSize == 0),
+      // грузим все приложения; бэкенд отдаёт их отсортированными по имени.
+      list_params: { page: 0, page_size: 0 },
       ...(query ? { search: query } : {}),
     }).then((rep) => rep.results ?? []),
   get: getApp,
