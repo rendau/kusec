@@ -22,6 +22,10 @@ func NewAdminSPAHandler() http.Handler {
 	indexPath := filepath.Join(distPath, "index.html")
 
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		// Кэшируем статику админки в браузере не дольше 5 минут, чтобы новый
+		// деплой подхватывался быстро (бандл не имеет content-hash в имени).
+		w.Header().Set("Cache-Control", "max-age=300")
+
 		requestPath := strings.TrimPrefix(filepath.Clean("/"+r.URL.Path), "/")
 
 		if requestPath == "." {
