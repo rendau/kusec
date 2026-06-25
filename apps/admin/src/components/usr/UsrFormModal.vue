@@ -173,12 +173,10 @@ function close(): void {
             :disabled="model.is_admin"
             multiple
             filterable
-            remote
             clearable
             :placeholder="
               model.is_admin ? 'All applications' : 'All applications (leave empty)'
             "
-            @search="search"
           />
           <NText depth="3" style="font-size: 12px">
             {{
