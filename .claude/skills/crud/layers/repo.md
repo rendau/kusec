@@ -143,11 +143,11 @@ import (
     "github.com/<module>/internal/domain/<entity>/model"
    
     "github.com/jackc/pgx/v5/pgxpool"
-    "github.com/mechta-market/mobone/v2"
+    "github.com/rendau/mobone/v2"
     "github.com/samber/lo"
 
     commonRepoPg "github.com/<module>/internal/domain/common/repo/pg"
-    moboneTools "github.com/mechta-market/mobone/v2/tools"
+    moboneTools "github.com/rendau/mobone/v2/tools"
     repoModel "github.com/<module>/internal/domain/<entity>/repo/db/model"
 )
 

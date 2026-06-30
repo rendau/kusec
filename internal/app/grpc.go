@@ -20,12 +20,12 @@ import (
 	"google.golang.org/grpc/reflection"
 	"google.golang.org/grpc/status"
 
-	"github.com/mechta-market/kusec/internal/config"
-	sessionModel "github.com/mechta-market/kusec/internal/domain/session/model"
-	sessionService "github.com/mechta-market/kusec/internal/domain/session/service"
-	"github.com/mechta-market/kusec/internal/errs"
-	"github.com/mechta-market/kusec/internal/infra/metrics"
-	"github.com/mechta-market/kusec/pkg/proto/common"
+	"github.com/rendau/kusec/internal/config"
+	sessionModel "github.com/rendau/kusec/internal/domain/session/model"
+	sessionService "github.com/rendau/kusec/internal/domain/session/service"
+	"github.com/rendau/kusec/internal/errs"
+	"github.com/rendau/kusec/internal/infra/metrics"
+	proto "github.com/rendau/kusec/pkg/proto/kusec_v1"
 )
 
 type GrpcServer struct {
@@ -204,7 +204,7 @@ func GrpcInterceptorError() grpc.UnaryServerInterceptor {
 			return h, nil
 		}
 
-		var ei *common.ErrorRep
+		var ei *proto.ErrorRep
 		errStr := err.Error()
 
 		if fullErr, ok := errors.AsType[errs.ErrFull](err); ok {
@@ -212,18 +212,18 @@ func GrpcInterceptorError() grpc.UnaryServerInterceptor {
 			if fullErr.Err != nil {
 				errCode = fullErr.Err.Error()
 			}
-			ei = &common.ErrorRep{
+			ei = &proto.ErrorRep{
 				Code:    errCode,
 				Message: fullErr.Desc,
 				Fields:  fullErr.Fields,
 			}
 		} else if baseErr, ok := errors.AsType[errs.Err](err); ok {
-			ei = &common.ErrorRep{
+			ei = &proto.ErrorRep{
 				Code:    baseErr.Error(),
 				Message: errStr,
 			}
 		} else {
-			ei = &common.ErrorRep{
+			ei = &proto.ErrorRep{
 				Code:    errs.ServiceNA.Error(),
 				Message: errStr,
 			}

@@ -3,8 +3,8 @@ package dto
 import (
 	"google.golang.org/protobuf/types/known/timestamppb"
 
-	domainModel "github.com/mechta-market/kusec/internal/domain/configmap/model"
-	proto "github.com/mechta-market/kusec/pkg/proto/kusec_v1"
+	domainModel "github.com/rendau/kusec/internal/domain/configmap/model"
+	proto "github.com/rendau/kusec/pkg/proto/kusec_v1"
 )
 
 // domain → proto

@@ -15,10 +15,10 @@ import (
 	"k8s.io/apimachinery/pkg/util/validation"
 	"k8s.io/client-go/kubernetes"
 
-	appModel "github.com/mechta-market/kusec/internal/domain/app/model"
-	itemModel "github.com/mechta-market/kusec/internal/domain/item/model"
-	secretModel "github.com/mechta-market/kusec/internal/domain/secret/model"
-	"github.com/mechta-market/kusec/internal/errs"
+	appModel "github.com/rendau/kusec/internal/domain/app/model"
+	itemModel "github.com/rendau/kusec/internal/domain/item/model"
+	secretModel "github.com/rendau/kusec/internal/domain/secret/model"
+	"github.com/rendau/kusec/internal/errs"
 )
 
 // SyncSecrets приводит k8s-секреты в соответствие с базой:

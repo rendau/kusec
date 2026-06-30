@@ -4,10 +4,10 @@ import (
 	"context"
 	"fmt"
 
-	"github.com/mechta-market/kusec/internal/domain/configitem/model"
-	configmapModel "github.com/mechta-market/kusec/internal/domain/configmap/model"
-	"github.com/mechta-market/kusec/internal/errs"
-	"github.com/mechta-market/kusec/internal/util"
+	"github.com/rendau/kusec/internal/domain/configitem/model"
+	configmapModel "github.com/rendau/kusec/internal/domain/configmap/model"
+	"github.com/rendau/kusec/internal/errs"
+	"github.com/rendau/kusec/internal/util"
 )
 
 type Usecase struct {

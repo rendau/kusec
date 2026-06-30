@@ -7,7 +7,7 @@ import (
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/promauto"
 
-	"github.com/mechta-market/kusec/internal/constant"
+	"github.com/rendau/kusec/internal/constant"
 )
 
 var Enabled bool

@@ -1886,51 +1886,6 @@
     }
   },
   "definitions": {
-    "commonListParamsSt": {
-      "type": "object",
-      "properties": {
-        "page": {
-          "type": "string",
-          "format": "int64"
-        },
-        "page_size": {
-          "type": "string",
-          "format": "int64"
-        },
-        "with_total_count": {
-          "type": "boolean"
-        },
-        "only_count": {
-          "type": "boolean"
-        },
-        "sort_name": {
-          "type": "string"
-        },
-        "sort": {
-          "type": "array",
-          "items": {
-            "type": "string"
-          }
-        }
-      }
-    },
-    "commonPaginationInfoSt": {
-      "type": "object",
-      "properties": {
-        "page": {
-          "type": "string",
-          "format": "int64"
-        },
-        "page_size": {
-          "type": "string",
-          "format": "int64"
-        },
-        "total_count": {
-          "type": "string",
-          "format": "int64"
-        }
-      }
-    },
     "kusec_v1AppCreateRep": {
       "type": "object",
       "properties": {
@@ -1963,7 +1918,7 @@
       "type": "object",
       "properties": {
         "pagination_info": {
-          "$ref": "#/definitions/commonPaginationInfoSt"
+          "$ref": "#/definitions/kusec_v1PaginationInfoSt"
         },
         "results": {
           "type": "array",
@@ -2069,7 +2024,7 @@
       "type": "object",
       "properties": {
         "pagination_info": {
-          "$ref": "#/definitions/commonPaginationInfoSt"
+          "$ref": "#/definitions/kusec_v1PaginationInfoSt"
         },
         "results": {
           "type": "array",
@@ -2188,7 +2143,7 @@
       "type": "object",
       "properties": {
         "pagination_info": {
-          "$ref": "#/definitions/commonPaginationInfoSt"
+          "$ref": "#/definitions/kusec_v1PaginationInfoSt"
         },
         "results": {
           "type": "array",
@@ -2376,7 +2331,7 @@
       "type": "object",
       "properties": {
         "pagination_info": {
-          "$ref": "#/definitions/commonPaginationInfoSt"
+          "$ref": "#/definitions/kusec_v1PaginationInfoSt"
         },
         "results": {
           "type": "array",
@@ -2725,6 +2680,51 @@
         }
       }
     },
+    "kusec_v1ListParamsSt": {
+      "type": "object",
+      "properties": {
+        "page": {
+          "type": "string",
+          "format": "int64"
+        },
+        "page_size": {
+          "type": "string",
+          "format": "int64"
+        },
+        "with_total_count": {
+          "type": "boolean"
+        },
+        "only_count": {
+          "type": "boolean"
+        },
+        "sort_name": {
+          "type": "string"
+        },
+        "sort": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        }
+      }
+    },
+    "kusec_v1PaginationInfoSt": {
+      "type": "object",
+      "properties": {
+        "page": {
+          "type": "string",
+          "format": "int64"
+        },
+        "page_size": {
+          "type": "string",
+          "format": "int64"
+        },
+        "total_count": {
+          "type": "string",
+          "format": "int64"
+        }
+      }
+    },
     "kusec_v1SecretCreateRep": {
       "type": "object",
       "properties": {
@@ -2762,7 +2762,7 @@
       "type": "object",
       "properties": {
         "pagination_info": {
-          "$ref": "#/definitions/commonPaginationInfoSt"
+          "$ref": "#/definitions/kusec_v1PaginationInfoSt"
         },
         "results": {
           "type": "array",
@@ -3112,7 +3112,7 @@
       "type": "object",
       "properties": {
         "pagination_info": {
-          "$ref": "#/definitions/commonPaginationInfoSt"
+          "$ref": "#/definitions/kusec_v1PaginationInfoSt"
         },
         "results": {
           "type": "array",

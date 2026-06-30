@@ -3,7 +3,7 @@ package model
 import (
 	"time"
 
-	commonModel "github.com/mechta-market/kusec/internal/domain/common/model"
+	commonModel "github.com/rendau/kusec/internal/domain/common/model"
 )
 
 // Main — доменная сущность (все поля value-типы)

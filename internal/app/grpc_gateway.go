@@ -10,7 +10,7 @@ import (
 	"runtime/debug"
 	"slices"
 
-	"github.com/mechta-market/kusec/internal/errs"
+	"github.com/rendau/kusec/internal/errs"
 
 	"github.com/goccy/go-json"
 	"github.com/grpc-ecosystem/grpc-gateway/v2/runtime"
@@ -19,7 +19,7 @@ import (
 	"google.golang.org/grpc/status"
 	"google.golang.org/protobuf/encoding/protojson"
 
-	"github.com/mechta-market/kusec/internal/config"
+	"github.com/rendau/kusec/internal/config"
 )
 
 func GrpcGatewayCreateHandler(muxHook func(*runtime.ServeMux) error) (http.Handler, error) {

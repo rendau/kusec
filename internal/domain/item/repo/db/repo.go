@@ -5,13 +5,13 @@ import (
 	"fmt"
 
 	"github.com/jackc/pgx/v5/pgxpool"
-	"github.com/mechta-market/mobone/v2"
-	moboneTools "github.com/mechta-market/mobone/v2/tools"
+	"github.com/rendau/mobone/v2"
+	moboneTools "github.com/rendau/mobone/v2/tools"
 	"github.com/samber/lo"
 
-	commonRepoPg "github.com/mechta-market/kusec/internal/domain/common/repo/pg"
-	"github.com/mechta-market/kusec/internal/domain/item/model"
-	repoModel "github.com/mechta-market/kusec/internal/domain/item/repo/db/model"
+	commonRepoPg "github.com/rendau/kusec/internal/domain/common/repo/pg"
+	"github.com/rendau/kusec/internal/domain/item/model"
+	repoModel "github.com/rendau/kusec/internal/domain/item/repo/db/model"
 )
 
 type Repo struct {

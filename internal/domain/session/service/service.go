@@ -11,8 +11,8 @@ import (
 
 	jwtv5 "github.com/golang-jwt/jwt/v5"
 
-	sessionModel "github.com/mechta-market/kusec/internal/domain/session/model"
-	"github.com/mechta-market/kusec/internal/errs"
+	sessionModel "github.com/rendau/kusec/internal/domain/session/model"
+	"github.com/rendau/kusec/internal/errs"
 )
 
 const (

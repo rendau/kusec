@@ -7,7 +7,7 @@ import (
 
 	"github.com/prometheus/client_golang/prometheus/promhttp"
 
-	"github.com/mechta-market/kusec/internal/infra/metrics"
+	"github.com/rendau/kusec/internal/infra/metrics"
 )
 
 const systemHttpPort = 3003

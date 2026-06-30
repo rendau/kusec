@@ -15,10 +15,10 @@ import (
 	"k8s.io/apimachinery/pkg/util/validation"
 	"k8s.io/client-go/kubernetes"
 
-	appModel "github.com/mechta-market/kusec/internal/domain/app/model"
-	configitemModel "github.com/mechta-market/kusec/internal/domain/configitem/model"
-	configmapModel "github.com/mechta-market/kusec/internal/domain/configmap/model"
-	"github.com/mechta-market/kusec/internal/errs"
+	appModel "github.com/rendau/kusec/internal/domain/app/model"
+	configitemModel "github.com/rendau/kusec/internal/domain/configitem/model"
+	configmapModel "github.com/rendau/kusec/internal/domain/configmap/model"
+	"github.com/rendau/kusec/internal/errs"
 )
 
 // SyncConfigMaps приводит k8s-configmap-ы в соответствие с базой:

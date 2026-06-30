@@ -8,7 +8,7 @@ jobs:
     name: Build and deploy
     runs-on: ubuntu-latest
     env:
-      OWNER: mechta-market
+      OWNER: rendau
       IMAGE: kusec:latest
     steps:
       - uses: actions/checkout@v6

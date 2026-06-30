@@ -4,7 +4,7 @@ import (
 	"flag"
 	"log/slog"
 
-	"github.com/mechta-market/kusec/internal/app"
+	"github.com/rendau/kusec/internal/app"
 )
 
 func main() {

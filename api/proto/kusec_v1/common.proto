@@ -1,8 +1,8 @@
 syntax = "proto3";
 
-package common;
+package kusec_v1;
 
-option go_package = "github.com/mechta-market/nsi/pkg/proto/common";
+option go_package = "/kusec_v1";
 
 message ListParamsSt {
   int64 page = 2;
@@ -19,21 +19,8 @@ message PaginationInfoSt {
   int64 total_count = 3;
 }
 
-message I18nFieldSt {
-  string kz = 1;
-  string ru = 2;
-  string en = 3;
-}
-
 message ErrorRep {
   string code = 1;
   string message = 2;
   map<string, string> fields = 3;
-}
-
-message File {
-  string name = 1;
-  string extension = 2;
-  string mime_type = 3;
-  bytes data = 4;
 }

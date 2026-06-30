@@ -3,8 +3,8 @@ package dto
 import (
 	"google.golang.org/protobuf/types/known/timestamppb"
 
-	usecaseModel "github.com/mechta-market/kusec/internal/usecase/dashboard"
-	proto "github.com/mechta-market/kusec/pkg/proto/kusec_v1"
+	usecaseModel "github.com/rendau/kusec/internal/usecase/dashboard"
+	proto "github.com/rendau/kusec/pkg/proto/kusec_v1"
 )
 
 // usecase → proto

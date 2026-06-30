@@ -5,12 +5,12 @@ import (
 	"fmt"
 	"sort"
 
-	appModel "github.com/mechta-market/kusec/internal/domain/app/model"
-	configitemModel "github.com/mechta-market/kusec/internal/domain/configitem/model"
-	configmapModel "github.com/mechta-market/kusec/internal/domain/configmap/model"
-	itemModel "github.com/mechta-market/kusec/internal/domain/item/model"
-	secretModel "github.com/mechta-market/kusec/internal/domain/secret/model"
-	"github.com/mechta-market/kusec/internal/errs"
+	appModel "github.com/rendau/kusec/internal/domain/app/model"
+	configitemModel "github.com/rendau/kusec/internal/domain/configitem/model"
+	configmapModel "github.com/rendau/kusec/internal/domain/configmap/model"
+	itemModel "github.com/rendau/kusec/internal/domain/item/model"
+	secretModel "github.com/rendau/kusec/internal/domain/secret/model"
+	"github.com/rendau/kusec/internal/errs"
 )
 
 type Usecase struct {

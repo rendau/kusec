@@ -12,9 +12,9 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	k8sfake "k8s.io/client-go/kubernetes/fake"
 
-	appModel "github.com/mechta-market/kusec/internal/domain/app/model"
-	itemModel "github.com/mechta-market/kusec/internal/domain/item/model"
-	secretModel "github.com/mechta-market/kusec/internal/domain/secret/model"
+	appModel "github.com/rendau/kusec/internal/domain/app/model"
+	itemModel "github.com/rendau/kusec/internal/domain/item/model"
+	secretModel "github.com/rendau/kusec/internal/domain/secret/model"
 )
 
 type secretSvcStub struct {

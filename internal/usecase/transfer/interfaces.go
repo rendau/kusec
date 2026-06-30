@@ -3,12 +3,12 @@ package transfer
 import (
 	"context"
 
-	appModel "github.com/mechta-market/kusec/internal/domain/app/model"
-	configitemModel "github.com/mechta-market/kusec/internal/domain/configitem/model"
-	configmapModel "github.com/mechta-market/kusec/internal/domain/configmap/model"
-	itemModel "github.com/mechta-market/kusec/internal/domain/item/model"
-	secretModel "github.com/mechta-market/kusec/internal/domain/secret/model"
-	sessionModel "github.com/mechta-market/kusec/internal/domain/session/model"
+	appModel "github.com/rendau/kusec/internal/domain/app/model"
+	configitemModel "github.com/rendau/kusec/internal/domain/configitem/model"
+	configmapModel "github.com/rendau/kusec/internal/domain/configmap/model"
+	itemModel "github.com/rendau/kusec/internal/domain/item/model"
+	secretModel "github.com/rendau/kusec/internal/domain/secret/model"
+	sessionModel "github.com/rendau/kusec/internal/domain/session/model"
 )
 
 type AppServiceI interface {

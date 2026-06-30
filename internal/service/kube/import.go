@@ -14,9 +14,9 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/util/validation"
 
-	itemModel "github.com/mechta-market/kusec/internal/domain/item/model"
-	secretModel "github.com/mechta-market/kusec/internal/domain/secret/model"
-	"github.com/mechta-market/kusec/internal/errs"
+	itemModel "github.com/rendau/kusec/internal/domain/item/model"
+	secretModel "github.com/rendau/kusec/internal/domain/secret/model"
+	"github.com/rendau/kusec/internal/errs"
 )
 
 // importSkippedTypes — типы секретов, не предназначенные для импорта:

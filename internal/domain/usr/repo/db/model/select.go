@@ -1,7 +1,7 @@
 package model
 
 import (
-	domainModel "github.com/mechta-market/kusec/internal/domain/usr/model"
+	domainModel "github.com/rendau/kusec/internal/domain/usr/model"
 )
 
 type Select struct {

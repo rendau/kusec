@@ -3,9 +3,9 @@ package secret
 import (
 	"context"
 
-	appModel "github.com/mechta-market/kusec/internal/domain/app/model"
-	"github.com/mechta-market/kusec/internal/domain/secret/model"
-	sessionModel "github.com/mechta-market/kusec/internal/domain/session/model"
+	appModel "github.com/rendau/kusec/internal/domain/app/model"
+	"github.com/rendau/kusec/internal/domain/secret/model"
+	sessionModel "github.com/rendau/kusec/internal/domain/session/model"
 )
 
 type ServiceI interface {

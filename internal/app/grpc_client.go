@@ -6,7 +6,8 @@ import (
 	"fmt"
 	"math"
 
-	"github.com/mechta-market/kusec/internal/errs"
+	"github.com/rendau/kusec/internal/errs"
+	proto "github.com/rendau/kusec/pkg/proto/kusec_v1"
 
 	"github.com/grpc-ecosystem/grpc-opentracing/go/otgrpc"
 	"github.com/opentracing/opentracing-go"
@@ -14,8 +15,6 @@ import (
 	"google.golang.org/grpc/credentials"
 	"google.golang.org/grpc/credentials/insecure"
 	"google.golang.org/grpc/status"
-
-	"github.com/mechta-market/kusec/pkg/proto/common"
 )
 
 func newGrpcClientConn(uri string, secure bool, username, password, errMessagePrefix string) (*grpc.ClientConn, error) {
@@ -71,7 +70,7 @@ func (o *grpcClientInterceptorErrorT) grpcClientInterceptorError(ctx context.Con
 	if ok {
 		if len(st.Details()) > 0 {
 			stDetail := st.Details()[0]
-			errObj, ok := stDetail.(*common.ErrorRep)
+			errObj, ok := stDetail.(*proto.ErrorRep)
 			if ok {
 				return errs.ErrFull{
 					Err:    errs.Err(errObj.Code),

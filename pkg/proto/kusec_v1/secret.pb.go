@@ -7,7 +7,6 @@
 package kusec_v1
 
 import (
-	common "github.com/mechta-market/kusec/pkg/proto/common"
 	_ "google.golang.org/genproto/googleapis/api/annotations"
 	protoreflect "google.golang.org/protobuf/reflect/protoreflect"
 	protoimpl "google.golang.org/protobuf/runtime/protoimpl"
@@ -147,7 +146,7 @@ func (x *SecretMain) GetExactSlug() bool {
 
 type SecretListReq struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
-	ListParams    *common.ListParamsSt   `protobuf:"bytes,1,opt,name=list_params,json=listParams,proto3" json:"list_params,omitempty"`
+	ListParams    *ListParamsSt          `protobuf:"bytes,1,opt,name=list_params,json=listParams,proto3" json:"list_params,omitempty"`
 	AppId         *string                `protobuf:"bytes,2,opt,name=app_id,json=appId,proto3,oneof" json:"app_id,omitempty"`
 	Active        *bool                  `protobuf:"varint,3,opt,name=active,proto3,oneof" json:"active,omitempty"`
 	Search        *string                `protobuf:"bytes,4,opt,name=search,proto3,oneof" json:"search,omitempty"`
@@ -185,7 +184,7 @@ func (*SecretListReq) Descriptor() ([]byte, []int) {
 	return file_kusec_v1_secret_proto_rawDescGZIP(), []int{1}
 }
 
-func (x *SecretListReq) GetListParams() *common.ListParamsSt {
+func (x *SecretListReq) GetListParams() *ListParamsSt {
 	if x != nil {
 		return x.ListParams
 	}
@@ -214,9 +213,9 @@ func (x *SecretListReq) GetSearch() string {
 }
 
 type SecretListRep struct {
-	state          protoimpl.MessageState   `protogen:"open.v1"`
-	PaginationInfo *common.PaginationInfoSt `protobuf:"bytes,1,opt,name=pagination_info,json=paginationInfo,proto3" json:"pagination_info,omitempty"`
-	Results        []*SecretMain            `protobuf:"bytes,2,rep,name=results,proto3" json:"results,omitempty"`
+	state          protoimpl.MessageState `protogen:"open.v1"`
+	PaginationInfo *PaginationInfoSt      `protobuf:"bytes,1,opt,name=pagination_info,json=paginationInfo,proto3" json:"pagination_info,omitempty"`
+	Results        []*SecretMain          `protobuf:"bytes,2,rep,name=results,proto3" json:"results,omitempty"`
 	unknownFields  protoimpl.UnknownFields
 	sizeCache      protoimpl.SizeCache
 }
@@ -251,7 +250,7 @@ func (*SecretListRep) Descriptor() ([]byte, []int) {
 	return file_kusec_v1_secret_proto_rawDescGZIP(), []int{2}
 }
 
-func (x *SecretListRep) GetPaginationInfo() *common.PaginationInfoSt {
+func (x *SecretListRep) GetPaginationInfo() *PaginationInfoSt {
 	if x != nil {
 		return x.PaginationInfo
 	}
@@ -536,7 +535,7 @@ var File_kusec_v1_secret_proto protoreflect.FileDescriptor
 
 const file_kusec_v1_secret_proto_rawDesc = "" +
 	"\n" +
-	"\x15kusec_v1/secret.proto\x12\bkusec_v1\x1a\x1cgoogle/api/annotations.proto\x1a\x1bgoogle/protobuf/empty.proto\x1a\x1fgoogle/protobuf/timestamp.proto\x1a\x13common/common.proto\"\xe6\x02\n" +
+	"\x15kusec_v1/secret.proto\x12\bkusec_v1\x1a\x1cgoogle/api/annotations.proto\x1a\x1bgoogle/protobuf/empty.proto\x1a\x1fgoogle/protobuf/timestamp.proto\x1a\x15kusec_v1/common.proto\"\xe6\x02\n" +
 	"\n" +
 	"SecretMain\x12\x0e\n" +
 	"\x02id\x18\x01 \x01(\tR\x02id\x129\n" +
@@ -552,18 +551,18 @@ const file_kusec_v1_secret_proto_rawDesc = "" +
 	"\tkube_type\x18\t \x01(\tR\bkubeType\x12\x1d\n" +
 	"\n" +
 	"exact_slug\x18\n" +
-	" \x01(\bR\texactSlug\"\xbd\x01\n" +
-	"\rSecretListReq\x125\n" +
-	"\vlist_params\x18\x01 \x01(\v2\x14.common.ListParamsStR\n" +
+	" \x01(\bR\texactSlug\"\xbf\x01\n" +
+	"\rSecretListReq\x127\n" +
+	"\vlist_params\x18\x01 \x01(\v2\x16.kusec_v1.ListParamsStR\n" +
 	"listParams\x12\x1a\n" +
 	"\x06app_id\x18\x02 \x01(\tH\x00R\x05appId\x88\x01\x01\x12\x1b\n" +
 	"\x06active\x18\x03 \x01(\bH\x01R\x06active\x88\x01\x01\x12\x1b\n" +
 	"\x06search\x18\x04 \x01(\tH\x02R\x06search\x88\x01\x01B\t\n" +
 	"\a_app_idB\t\n" +
 	"\a_activeB\t\n" +
-	"\a_search\"\x82\x01\n" +
-	"\rSecretListRep\x12A\n" +
-	"\x0fpagination_info\x18\x01 \x01(\v2\x18.common.PaginationInfoStR\x0epaginationInfo\x12.\n" +
+	"\a_search\"\x84\x01\n" +
+	"\rSecretListRep\x12C\n" +
+	"\x0fpagination_info\x18\x01 \x01(\v2\x1a.kusec_v1.PaginationInfoStR\x0epaginationInfo\x12.\n" +
 	"\aresults\x18\x02 \x03(\v2\x14.kusec_v1.SecretMainR\aresults\"\x1e\n" +
 	"\fSecretGetReq\x12\x0e\n" +
 	"\x02id\x18\x01 \x01(\tR\x02id\"\xcb\x01\n" +
@@ -616,23 +615,23 @@ func file_kusec_v1_secret_proto_rawDescGZIP() []byte {
 
 var file_kusec_v1_secret_proto_msgTypes = make([]protoimpl.MessageInfo, 7)
 var file_kusec_v1_secret_proto_goTypes = []any{
-	(*SecretMain)(nil),              // 0: kusec_v1.SecretMain
-	(*SecretListReq)(nil),           // 1: kusec_v1.SecretListReq
-	(*SecretListRep)(nil),           // 2: kusec_v1.SecretListRep
-	(*SecretGetReq)(nil),            // 3: kusec_v1.SecretGetReq
-	(*SecretCreateReq)(nil),         // 4: kusec_v1.SecretCreateReq
-	(*SecretCreateRep)(nil),         // 5: kusec_v1.SecretCreateRep
-	(*SecretUpdateReq)(nil),         // 6: kusec_v1.SecretUpdateReq
-	(*timestamppb.Timestamp)(nil),   // 7: google.protobuf.Timestamp
-	(*common.ListParamsSt)(nil),     // 8: common.ListParamsSt
-	(*common.PaginationInfoSt)(nil), // 9: common.PaginationInfoSt
-	(*emptypb.Empty)(nil),           // 10: google.protobuf.Empty
+	(*SecretMain)(nil),            // 0: kusec_v1.SecretMain
+	(*SecretListReq)(nil),         // 1: kusec_v1.SecretListReq
+	(*SecretListRep)(nil),         // 2: kusec_v1.SecretListRep
+	(*SecretGetReq)(nil),          // 3: kusec_v1.SecretGetReq
+	(*SecretCreateReq)(nil),       // 4: kusec_v1.SecretCreateReq
+	(*SecretCreateRep)(nil),       // 5: kusec_v1.SecretCreateRep
+	(*SecretUpdateReq)(nil),       // 6: kusec_v1.SecretUpdateReq
+	(*timestamppb.Timestamp)(nil), // 7: google.protobuf.Timestamp
+	(*ListParamsSt)(nil),          // 8: kusec_v1.ListParamsSt
+	(*PaginationInfoSt)(nil),      // 9: kusec_v1.PaginationInfoSt
+	(*emptypb.Empty)(nil),         // 10: google.protobuf.Empty
 }
 var file_kusec_v1_secret_proto_depIdxs = []int32{
 	7,  // 0: kusec_v1.SecretMain.created_at:type_name -> google.protobuf.Timestamp
 	7,  // 1: kusec_v1.SecretMain.updated_at:type_name -> google.protobuf.Timestamp
-	8,  // 2: kusec_v1.SecretListReq.list_params:type_name -> common.ListParamsSt
-	9,  // 3: kusec_v1.SecretListRep.pagination_info:type_name -> common.PaginationInfoSt
+	8,  // 2: kusec_v1.SecretListReq.list_params:type_name -> kusec_v1.ListParamsSt
+	9,  // 3: kusec_v1.SecretListRep.pagination_info:type_name -> kusec_v1.PaginationInfoSt
 	0,  // 4: kusec_v1.SecretListRep.results:type_name -> kusec_v1.SecretMain
 	1,  // 5: kusec_v1.Secret.List:input_type -> kusec_v1.SecretListReq
 	3,  // 6: kusec_v1.Secret.Get:input_type -> kusec_v1.SecretGetReq
@@ -656,6 +655,7 @@ func file_kusec_v1_secret_proto_init() {
 	if File_kusec_v1_secret_proto != nil {
 		return
 	}
+	file_kusec_v1_common_proto_init()
 	file_kusec_v1_secret_proto_msgTypes[1].OneofWrappers = []any{}
 	file_kusec_v1_secret_proto_msgTypes[4].OneofWrappers = []any{}
 	file_kusec_v1_secret_proto_msgTypes[6].OneofWrappers = []any{}

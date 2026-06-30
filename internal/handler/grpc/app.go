@@ -6,10 +6,9 @@ import (
 	"github.com/samber/lo"
 	"google.golang.org/protobuf/types/known/emptypb"
 
-	"github.com/mechta-market/kusec/internal/handler/grpc/dto"
-	usecase "github.com/mechta-market/kusec/internal/usecase/app"
-	"github.com/mechta-market/kusec/pkg/proto/common"
-	proto "github.com/mechta-market/kusec/pkg/proto/kusec_v1"
+	"github.com/rendau/kusec/internal/handler/grpc/dto"
+	usecase "github.com/rendau/kusec/internal/usecase/app"
+	proto "github.com/rendau/kusec/pkg/proto/kusec_v1"
 )
 
 type App struct {
@@ -23,7 +22,7 @@ func NewApp(uc *usecase.Usecase) *App {
 
 func (h *App) List(ctx context.Context, req *proto.AppListReq) (*proto.AppListRep, error) {
 	if req.ListParams == nil {
-		req.ListParams = &common.ListParamsSt{}
+		req.ListParams = &proto.ListParamsSt{}
 	}
 
 	items, tCount, err := h.usecase.List(ctx, dto.DecodeAppListReq(req))
@@ -32,7 +31,7 @@ func (h *App) List(ctx context.Context, req *proto.AppListReq) (*proto.AppListRe
 	}
 
 	return &proto.AppListRep{
-		PaginationInfo: &common.PaginationInfoSt{
+		PaginationInfo: &proto.PaginationInfoSt{
 			Page:       req.ListParams.Page,
 			PageSize:   req.ListParams.PageSize,
 			TotalCount: tCount,

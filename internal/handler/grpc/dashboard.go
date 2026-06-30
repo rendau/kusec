@@ -6,9 +6,9 @@ import (
 	"github.com/samber/lo"
 	"google.golang.org/protobuf/types/known/emptypb"
 
-	"github.com/mechta-market/kusec/internal/handler/grpc/dto"
-	usecase "github.com/mechta-market/kusec/internal/usecase/dashboard"
-	proto "github.com/mechta-market/kusec/pkg/proto/kusec_v1"
+	"github.com/rendau/kusec/internal/handler/grpc/dto"
+	usecase "github.com/rendau/kusec/internal/usecase/dashboard"
+	proto "github.com/rendau/kusec/pkg/proto/kusec_v1"
 )
 
 type Dashboard struct {

@@ -6,10 +6,9 @@ import (
 	"github.com/samber/lo"
 	"google.golang.org/protobuf/types/known/emptypb"
 
-	"github.com/mechta-market/kusec/internal/handler/grpc/dto"
-	usecase "github.com/mechta-market/kusec/internal/usecase/secret"
-	"github.com/mechta-market/kusec/pkg/proto/common"
-	proto "github.com/mechta-market/kusec/pkg/proto/kusec_v1"
+	"github.com/rendau/kusec/internal/handler/grpc/dto"
+	usecase "github.com/rendau/kusec/internal/usecase/secret"
+	proto "github.com/rendau/kusec/pkg/proto/kusec_v1"
 )
 
 type Secret struct {
@@ -23,7 +22,7 @@ func NewSecret(uc *usecase.Usecase) *Secret {
 
 func (h *Secret) List(ctx context.Context, req *proto.SecretListReq) (*proto.SecretListRep, error) {
 	if req.ListParams == nil {
-		req.ListParams = &common.ListParamsSt{}
+		req.ListParams = &proto.ListParamsSt{}
 	}
 
 	items, tCount, err := h.usecase.List(ctx, dto.DecodeSecretListReq(req))
@@ -32,7 +31,7 @@ func (h *Secret) List(ctx context.Context, req *proto.SecretListReq) (*proto.Sec
 	}
 
 	return &proto.SecretListRep{
-		PaginationInfo: &common.PaginationInfoSt{
+		PaginationInfo: &proto.PaginationInfoSt{
 			Page:       req.ListParams.Page,
 			PageSize:   req.ListParams.PageSize,
 			TotalCount: tCount,

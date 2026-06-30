@@ -8,8 +8,8 @@ import (
 	sq "github.com/Masterminds/squirrel"
 	"github.com/jackc/pgx/v5"
 
-	"github.com/mechta-market/kusec/internal/domain/usr/model"
-	repoModel "github.com/mechta-market/kusec/internal/domain/usr/repo/db/model"
+	"github.com/rendau/kusec/internal/domain/usr/model"
+	repoModel "github.com/rendau/kusec/internal/domain/usr/repo/db/model"
 )
 
 var allowedSortFields = map[string]string{

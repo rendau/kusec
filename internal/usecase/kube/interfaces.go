@@ -3,11 +3,11 @@ package kube
 import (
 	"context"
 
-	appModel "github.com/mechta-market/kusec/internal/domain/app/model"
-	configmapModel "github.com/mechta-market/kusec/internal/domain/configmap/model"
-	secretModel "github.com/mechta-market/kusec/internal/domain/secret/model"
-	sessionModel "github.com/mechta-market/kusec/internal/domain/session/model"
-	kubeService "github.com/mechta-market/kusec/internal/service/kube"
+	appModel "github.com/rendau/kusec/internal/domain/app/model"
+	configmapModel "github.com/rendau/kusec/internal/domain/configmap/model"
+	secretModel "github.com/rendau/kusec/internal/domain/secret/model"
+	sessionModel "github.com/rendau/kusec/internal/domain/session/model"
+	kubeService "github.com/rendau/kusec/internal/service/kube"
 )
 
 type KubeServiceI interface {

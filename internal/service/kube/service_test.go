@@ -9,7 +9,7 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	k8sfake "k8s.io/client-go/kubernetes/fake"
 
-	appModel "github.com/mechta-market/kusec/internal/domain/app/model"
+	appModel "github.com/rendau/kusec/internal/domain/app/model"
 )
 
 type appSvcStub struct {

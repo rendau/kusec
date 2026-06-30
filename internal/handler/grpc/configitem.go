@@ -6,10 +6,9 @@ import (
 	"github.com/samber/lo"
 	"google.golang.org/protobuf/types/known/emptypb"
 
-	"github.com/mechta-market/kusec/internal/handler/grpc/dto"
-	usecase "github.com/mechta-market/kusec/internal/usecase/configitem"
-	"github.com/mechta-market/kusec/pkg/proto/common"
-	proto "github.com/mechta-market/kusec/pkg/proto/kusec_v1"
+	"github.com/rendau/kusec/internal/handler/grpc/dto"
+	usecase "github.com/rendau/kusec/internal/usecase/configitem"
+	proto "github.com/rendau/kusec/pkg/proto/kusec_v1"
 )
 
 type ConfigItem struct {
@@ -23,7 +22,7 @@ func NewConfigItem(uc *usecase.Usecase) *ConfigItem {
 
 func (h *ConfigItem) List(ctx context.Context, req *proto.ConfigItemListReq) (*proto.ConfigItemListRep, error) {
 	if req.ListParams == nil {
-		req.ListParams = &common.ListParamsSt{}
+		req.ListParams = &proto.ListParamsSt{}
 	}
 
 	items, tCount, err := h.usecase.List(ctx, dto.DecodeConfigItemListReq(req))
@@ -32,7 +31,7 @@ func (h *ConfigItem) List(ctx context.Context, req *proto.ConfigItemListReq) (*p
 	}
 
 	return &proto.ConfigItemListRep{
-		PaginationInfo: &common.PaginationInfoSt{
+		PaginationInfo: &proto.PaginationInfoSt{
 			Page:       req.ListParams.Page,
 			PageSize:   req.ListParams.PageSize,
 			TotalCount: tCount,

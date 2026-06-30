@@ -1,8 +1,8 @@
 package dto
 
 import (
-	kubeService "github.com/mechta-market/kusec/internal/service/kube"
-	proto "github.com/mechta-market/kusec/pkg/proto/kusec_v1"
+	kubeService "github.com/rendau/kusec/internal/service/kube"
+	proto "github.com/rendau/kusec/pkg/proto/kusec_v1"
 )
 
 // service → proto

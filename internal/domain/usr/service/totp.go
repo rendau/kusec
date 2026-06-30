@@ -6,9 +6,9 @@ import (
 
 	"github.com/pquerna/otp/totp"
 
-	"github.com/mechta-market/kusec/internal/constant"
-	"github.com/mechta-market/kusec/internal/domain/usr/model"
-	"github.com/mechta-market/kusec/internal/errs"
+	"github.com/rendau/kusec/internal/constant"
+	"github.com/rendau/kusec/internal/domain/usr/model"
+	"github.com/rendau/kusec/internal/errs"
 )
 
 // generateTotpSecret создаёт новый TOTP-секрет и otpauth-URL для привязки в

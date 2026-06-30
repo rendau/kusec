@@ -7,7 +7,6 @@
 package kusec_v1
 
 import (
-	common "github.com/mechta-market/kusec/pkg/proto/common"
 	_ "google.golang.org/genproto/googleapis/api/annotations"
 	protoreflect "google.golang.org/protobuf/reflect/protoreflect"
 	protoimpl "google.golang.org/protobuf/runtime/protoimpl"
@@ -127,7 +126,7 @@ func (x *AppMain) GetDescription() string {
 
 type AppListReq struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
-	ListParams    *common.ListParamsSt   `protobuf:"bytes,1,opt,name=list_params,json=listParams,proto3" json:"list_params,omitempty"`
+	ListParams    *ListParamsSt          `protobuf:"bytes,1,opt,name=list_params,json=listParams,proto3" json:"list_params,omitempty"`
 	Active        *bool                  `protobuf:"varint,2,opt,name=active,proto3,oneof" json:"active,omitempty"`
 	Namespace     *string                `protobuf:"bytes,3,opt,name=namespace,proto3,oneof" json:"namespace,omitempty"`
 	Search        *string                `protobuf:"bytes,4,opt,name=search,proto3,oneof" json:"search,omitempty"`
@@ -165,7 +164,7 @@ func (*AppListReq) Descriptor() ([]byte, []int) {
 	return file_kusec_v1_app_proto_rawDescGZIP(), []int{1}
 }
 
-func (x *AppListReq) GetListParams() *common.ListParamsSt {
+func (x *AppListReq) GetListParams() *ListParamsSt {
 	if x != nil {
 		return x.ListParams
 	}
@@ -194,9 +193,9 @@ func (x *AppListReq) GetSearch() string {
 }
 
 type AppListRep struct {
-	state          protoimpl.MessageState   `protogen:"open.v1"`
-	PaginationInfo *common.PaginationInfoSt `protobuf:"bytes,1,opt,name=pagination_info,json=paginationInfo,proto3" json:"pagination_info,omitempty"`
-	Results        []*AppMain               `protobuf:"bytes,2,rep,name=results,proto3" json:"results,omitempty"`
+	state          protoimpl.MessageState `protogen:"open.v1"`
+	PaginationInfo *PaginationInfoSt      `protobuf:"bytes,1,opt,name=pagination_info,json=paginationInfo,proto3" json:"pagination_info,omitempty"`
+	Results        []*AppMain             `protobuf:"bytes,2,rep,name=results,proto3" json:"results,omitempty"`
 	unknownFields  protoimpl.UnknownFields
 	sizeCache      protoimpl.SizeCache
 }
@@ -231,7 +230,7 @@ func (*AppListRep) Descriptor() ([]byte, []int) {
 	return file_kusec_v1_app_proto_rawDescGZIP(), []int{2}
 }
 
-func (x *AppListRep) GetPaginationInfo() *common.PaginationInfoSt {
+func (x *AppListRep) GetPaginationInfo() *PaginationInfoSt {
 	if x != nil {
 		return x.PaginationInfo
 	}
@@ -497,7 +496,7 @@ var File_kusec_v1_app_proto protoreflect.FileDescriptor
 
 const file_kusec_v1_app_proto_rawDesc = "" +
 	"\n" +
-	"\x12kusec_v1/app.proto\x12\bkusec_v1\x1a\x1cgoogle/api/annotations.proto\x1a\x1bgoogle/protobuf/empty.proto\x1a\x1fgoogle/protobuf/timestamp.proto\x1a\x13common/common.proto\"\x98\x02\n" +
+	"\x12kusec_v1/app.proto\x12\bkusec_v1\x1a\x1cgoogle/api/annotations.proto\x1a\x1bgoogle/protobuf/empty.proto\x1a\x1fgoogle/protobuf/timestamp.proto\x1a\x15kusec_v1/common.proto\"\x98\x02\n" +
 	"\aAppMain\x12\x0e\n" +
 	"\x02id\x18\x01 \x01(\tR\x02id\x129\n" +
 	"\n" +
@@ -508,10 +507,10 @@ const file_kusec_v1_app_proto_rawDesc = "" +
 	"\tnamespace\x18\x05 \x01(\tR\tnamespace\x12\x12\n" +
 	"\x04name\x18\x06 \x01(\tR\x04name\x12\x1b\n" +
 	"\tslug_name\x18\b \x01(\tR\bslugName\x12 \n" +
-	"\vdescription\x18\a \x01(\tR\vdescription\"\xc4\x01\n" +
+	"\vdescription\x18\a \x01(\tR\vdescription\"\xc6\x01\n" +
 	"\n" +
-	"AppListReq\x125\n" +
-	"\vlist_params\x18\x01 \x01(\v2\x14.common.ListParamsStR\n" +
+	"AppListReq\x127\n" +
+	"\vlist_params\x18\x01 \x01(\v2\x16.kusec_v1.ListParamsStR\n" +
 	"listParams\x12\x1b\n" +
 	"\x06active\x18\x02 \x01(\bH\x00R\x06active\x88\x01\x01\x12!\n" +
 	"\tnamespace\x18\x03 \x01(\tH\x01R\tnamespace\x88\x01\x01\x12\x1b\n" +
@@ -519,10 +518,10 @@ const file_kusec_v1_app_proto_rawDesc = "" +
 	"\a_activeB\f\n" +
 	"\n" +
 	"_namespaceB\t\n" +
-	"\a_search\"|\n" +
+	"\a_search\"~\n" +
 	"\n" +
-	"AppListRep\x12A\n" +
-	"\x0fpagination_info\x18\x01 \x01(\v2\x18.common.PaginationInfoStR\x0epaginationInfo\x12+\n" +
+	"AppListRep\x12C\n" +
+	"\x0fpagination_info\x18\x01 \x01(\v2\x1a.kusec_v1.PaginationInfoStR\x0epaginationInfo\x12+\n" +
 	"\aresults\x18\x02 \x03(\v2\x11.kusec_v1.AppMainR\aresults\"\x1b\n" +
 	"\tAppGetReq\x12\x0e\n" +
 	"\x02id\x18\x01 \x01(\tR\x02id\"\xa7\x01\n" +
@@ -570,23 +569,23 @@ func file_kusec_v1_app_proto_rawDescGZIP() []byte {
 
 var file_kusec_v1_app_proto_msgTypes = make([]protoimpl.MessageInfo, 7)
 var file_kusec_v1_app_proto_goTypes = []any{
-	(*AppMain)(nil),                 // 0: kusec_v1.AppMain
-	(*AppListReq)(nil),              // 1: kusec_v1.AppListReq
-	(*AppListRep)(nil),              // 2: kusec_v1.AppListRep
-	(*AppGetReq)(nil),               // 3: kusec_v1.AppGetReq
-	(*AppCreateReq)(nil),            // 4: kusec_v1.AppCreateReq
-	(*AppCreateRep)(nil),            // 5: kusec_v1.AppCreateRep
-	(*AppUpdateReq)(nil),            // 6: kusec_v1.AppUpdateReq
-	(*timestamppb.Timestamp)(nil),   // 7: google.protobuf.Timestamp
-	(*common.ListParamsSt)(nil),     // 8: common.ListParamsSt
-	(*common.PaginationInfoSt)(nil), // 9: common.PaginationInfoSt
-	(*emptypb.Empty)(nil),           // 10: google.protobuf.Empty
+	(*AppMain)(nil),               // 0: kusec_v1.AppMain
+	(*AppListReq)(nil),            // 1: kusec_v1.AppListReq
+	(*AppListRep)(nil),            // 2: kusec_v1.AppListRep
+	(*AppGetReq)(nil),             // 3: kusec_v1.AppGetReq
+	(*AppCreateReq)(nil),          // 4: kusec_v1.AppCreateReq
+	(*AppCreateRep)(nil),          // 5: kusec_v1.AppCreateRep
+	(*AppUpdateReq)(nil),          // 6: kusec_v1.AppUpdateReq
+	(*timestamppb.Timestamp)(nil), // 7: google.protobuf.Timestamp
+	(*ListParamsSt)(nil),          // 8: kusec_v1.ListParamsSt
+	(*PaginationInfoSt)(nil),      // 9: kusec_v1.PaginationInfoSt
+	(*emptypb.Empty)(nil),         // 10: google.protobuf.Empty
 }
 var file_kusec_v1_app_proto_depIdxs = []int32{
 	7,  // 0: kusec_v1.AppMain.created_at:type_name -> google.protobuf.Timestamp
 	7,  // 1: kusec_v1.AppMain.updated_at:type_name -> google.protobuf.Timestamp
-	8,  // 2: kusec_v1.AppListReq.list_params:type_name -> common.ListParamsSt
-	9,  // 3: kusec_v1.AppListRep.pagination_info:type_name -> common.PaginationInfoSt
+	8,  // 2: kusec_v1.AppListReq.list_params:type_name -> kusec_v1.ListParamsSt
+	9,  // 3: kusec_v1.AppListRep.pagination_info:type_name -> kusec_v1.PaginationInfoSt
 	0,  // 4: kusec_v1.AppListRep.results:type_name -> kusec_v1.AppMain
 	1,  // 5: kusec_v1.App.List:input_type -> kusec_v1.AppListReq
 	3,  // 6: kusec_v1.App.Get:input_type -> kusec_v1.AppGetReq
@@ -610,6 +609,7 @@ func file_kusec_v1_app_proto_init() {
 	if File_kusec_v1_app_proto != nil {
 		return
 	}
+	file_kusec_v1_common_proto_init()
 	file_kusec_v1_app_proto_msgTypes[1].OneofWrappers = []any{}
 	file_kusec_v1_app_proto_msgTypes[4].OneofWrappers = []any{}
 	file_kusec_v1_app_proto_msgTypes[6].OneofWrappers = []any{}

@@ -1,9 +1,9 @@
 package dto
 
 import (
-	domainModel "github.com/mechta-market/kusec/internal/domain/usr/model"
-	usecase "github.com/mechta-market/kusec/internal/usecase/usr"
-	proto "github.com/mechta-market/kusec/pkg/proto/kusec_v1"
+	domainModel "github.com/rendau/kusec/internal/domain/usr/model"
+	usecase "github.com/rendau/kusec/internal/usecase/usr"
+	proto "github.com/rendau/kusec/pkg/proto/kusec_v1"
 )
 
 // domain → proto

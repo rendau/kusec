@@ -14,7 +14,7 @@ import (
 	"k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/rest"
 
-	"github.com/mechta-market/kusec/internal/errs"
+	"github.com/rendau/kusec/internal/errs"
 )
 
 const (

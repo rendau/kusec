@@ -4,8 +4,8 @@ import (
 	"context"
 	"fmt"
 
-	"github.com/mechta-market/kusec/internal/domain/usr/model"
-	"github.com/mechta-market/kusec/internal/errs"
+	"github.com/rendau/kusec/internal/domain/usr/model"
+	"github.com/rendau/kusec/internal/errs"
 )
 
 type Service struct {

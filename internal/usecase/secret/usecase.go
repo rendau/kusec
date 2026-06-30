@@ -6,11 +6,11 @@ import (
 
 	"github.com/samber/lo"
 
-	appModel "github.com/mechta-market/kusec/internal/domain/app/model"
-	"github.com/mechta-market/kusec/internal/domain/secret/model"
-	"github.com/mechta-market/kusec/internal/errs"
-	"github.com/mechta-market/kusec/internal/service/kube"
-	"github.com/mechta-market/kusec/internal/util"
+	appModel "github.com/rendau/kusec/internal/domain/app/model"
+	"github.com/rendau/kusec/internal/domain/secret/model"
+	"github.com/rendau/kusec/internal/errs"
+	"github.com/rendau/kusec/internal/service/kube"
+	"github.com/rendau/kusec/internal/util"
 )
 
 type Usecase struct {

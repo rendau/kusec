@@ -5,8 +5,8 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/mechta-market/kusec/internal/domain/app/model"
-	"github.com/mechta-market/kusec/internal/errs"
+	"github.com/rendau/kusec/internal/domain/app/model"
+	"github.com/rendau/kusec/internal/errs"
 )
 
 type Service struct {

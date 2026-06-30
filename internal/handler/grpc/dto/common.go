@@ -1,11 +1,11 @@
 package dto
 
 import (
-	commonModel "github.com/mechta-market/kusec/internal/domain/common/model"
-	"github.com/mechta-market/kusec/pkg/proto/common"
+	commonModel "github.com/rendau/kusec/internal/domain/common/model"
+	"github.com/rendau/kusec/pkg/proto/kusec_v1"
 )
 
-func DecodeListParams(v *common.ListParamsSt) commonModel.ListParams {
+func DecodeListParams(v *kusec_v1.ListParamsSt) commonModel.ListParams {
 	if v == nil {
 		return commonModel.ListParams{}
 	}

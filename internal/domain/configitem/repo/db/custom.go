@@ -1,7 +1,7 @@
 package db
 
 import (
-	"github.com/mechta-market/kusec/internal/domain/configitem/model"
+	"github.com/rendau/kusec/internal/domain/configitem/model"
 )
 
 var allowedSortFields = map[string]string{

@@ -9,7 +9,7 @@ import (
 	k8serrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 
-	"github.com/mechta-market/kusec/internal/errs"
+	"github.com/rendau/kusec/internal/errs"
 )
 
 // sortedConfigMapKeys возвращает объединённые отсортированные ключи текстовых

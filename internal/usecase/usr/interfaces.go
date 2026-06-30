@@ -3,8 +3,8 @@ package usr
 import (
 	"context"
 
-	sessionModel "github.com/mechta-market/kusec/internal/domain/session/model"
-	"github.com/mechta-market/kusec/internal/domain/usr/model"
+	sessionModel "github.com/rendau/kusec/internal/domain/session/model"
+	"github.com/rendau/kusec/internal/domain/usr/model"
 )
 
 type ServiceI interface {

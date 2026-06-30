@@ -3,7 +3,7 @@ package kube
 import (
 	"testing"
 
-	"github.com/mechta-market/kusec/internal/config"
+	"github.com/rendau/kusec/internal/config"
 )
 
 func TestSecretName_UsesConfiguredPrefix(t *testing.T) {

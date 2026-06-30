@@ -3,7 +3,7 @@ package service
 import (
 	"context"
 
-	"github.com/mechta-market/kusec/internal/domain/item/model"
+	"github.com/rendau/kusec/internal/domain/item/model"
 )
 
 type RepoDbI interface {

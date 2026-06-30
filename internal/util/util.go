@@ -1,8 +1,8 @@
 package util
 
 import (
-	"github.com/mechta-market/kusec/internal/domain/common/model"
-	"github.com/mechta-market/kusec/internal/errs"
+	"github.com/rendau/kusec/internal/domain/common/model"
+	"github.com/rendau/kusec/internal/errs"
 )
 
 const (

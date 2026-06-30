@@ -7,7 +7,6 @@
 package kusec_v1
 
 import (
-	common "github.com/mechta-market/kusec/pkg/proto/common"
 	_ "google.golang.org/genproto/googleapis/api/annotations"
 	protoreflect "google.golang.org/protobuf/reflect/protoreflect"
 	protoimpl "google.golang.org/protobuf/runtime/protoimpl"
@@ -138,7 +137,7 @@ func (x *ConfigMapMain) GetExactSlug() bool {
 
 type ConfigMapListReq struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
-	ListParams    *common.ListParamsSt   `protobuf:"bytes,1,opt,name=list_params,json=listParams,proto3" json:"list_params,omitempty"`
+	ListParams    *ListParamsSt          `protobuf:"bytes,1,opt,name=list_params,json=listParams,proto3" json:"list_params,omitempty"`
 	AppId         *string                `protobuf:"bytes,2,opt,name=app_id,json=appId,proto3,oneof" json:"app_id,omitempty"`
 	Active        *bool                  `protobuf:"varint,3,opt,name=active,proto3,oneof" json:"active,omitempty"`
 	Search        *string                `protobuf:"bytes,4,opt,name=search,proto3,oneof" json:"search,omitempty"`
@@ -176,7 +175,7 @@ func (*ConfigMapListReq) Descriptor() ([]byte, []int) {
 	return file_kusec_v1_configmap_proto_rawDescGZIP(), []int{1}
 }
 
-func (x *ConfigMapListReq) GetListParams() *common.ListParamsSt {
+func (x *ConfigMapListReq) GetListParams() *ListParamsSt {
 	if x != nil {
 		return x.ListParams
 	}
@@ -205,9 +204,9 @@ func (x *ConfigMapListReq) GetSearch() string {
 }
 
 type ConfigMapListRep struct {
-	state          protoimpl.MessageState   `protogen:"open.v1"`
-	PaginationInfo *common.PaginationInfoSt `protobuf:"bytes,1,opt,name=pagination_info,json=paginationInfo,proto3" json:"pagination_info,omitempty"`
-	Results        []*ConfigMapMain         `protobuf:"bytes,2,rep,name=results,proto3" json:"results,omitempty"`
+	state          protoimpl.MessageState `protogen:"open.v1"`
+	PaginationInfo *PaginationInfoSt      `protobuf:"bytes,1,opt,name=pagination_info,json=paginationInfo,proto3" json:"pagination_info,omitempty"`
+	Results        []*ConfigMapMain       `protobuf:"bytes,2,rep,name=results,proto3" json:"results,omitempty"`
 	unknownFields  protoimpl.UnknownFields
 	sizeCache      protoimpl.SizeCache
 }
@@ -242,7 +241,7 @@ func (*ConfigMapListRep) Descriptor() ([]byte, []int) {
 	return file_kusec_v1_configmap_proto_rawDescGZIP(), []int{2}
 }
 
-func (x *ConfigMapListRep) GetPaginationInfo() *common.PaginationInfoSt {
+func (x *ConfigMapListRep) GetPaginationInfo() *PaginationInfoSt {
 	if x != nil {
 		return x.PaginationInfo
 	}
@@ -510,7 +509,7 @@ var File_kusec_v1_configmap_proto protoreflect.FileDescriptor
 
 const file_kusec_v1_configmap_proto_rawDesc = "" +
 	"\n" +
-	"\x18kusec_v1/configmap.proto\x12\bkusec_v1\x1a\x1cgoogle/api/annotations.proto\x1a\x1bgoogle/protobuf/empty.proto\x1a\x1fgoogle/protobuf/timestamp.proto\x1a\x13common/common.proto\"\xd2\x02\n" +
+	"\x18kusec_v1/configmap.proto\x12\bkusec_v1\x1a\x1cgoogle/api/annotations.proto\x1a\x1bgoogle/protobuf/empty.proto\x1a\x1fgoogle/protobuf/timestamp.proto\x1a\x15kusec_v1/common.proto\"\xd2\x02\n" +
 	"\rConfigMapMain\x12\x0e\n" +
 	"\x02id\x18\x01 \x01(\tR\x02id\x129\n" +
 	"\n" +
@@ -523,18 +522,18 @@ const file_kusec_v1_configmap_proto_rawDesc = "" +
 	"\vdescription\x18\a \x01(\tR\vdescription\x12.\n" +
 	"\x13kube_configmap_name\x18\b \x01(\tR\x11kubeConfigmapName\x12\x1d\n" +
 	"\n" +
-	"exact_slug\x18\t \x01(\bR\texactSlug\"\xc0\x01\n" +
-	"\x10ConfigMapListReq\x125\n" +
-	"\vlist_params\x18\x01 \x01(\v2\x14.common.ListParamsStR\n" +
+	"exact_slug\x18\t \x01(\bR\texactSlug\"\xc2\x01\n" +
+	"\x10ConfigMapListReq\x127\n" +
+	"\vlist_params\x18\x01 \x01(\v2\x16.kusec_v1.ListParamsStR\n" +
 	"listParams\x12\x1a\n" +
 	"\x06app_id\x18\x02 \x01(\tH\x00R\x05appId\x88\x01\x01\x12\x1b\n" +
 	"\x06active\x18\x03 \x01(\bH\x01R\x06active\x88\x01\x01\x12\x1b\n" +
 	"\x06search\x18\x04 \x01(\tH\x02R\x06search\x88\x01\x01B\t\n" +
 	"\a_app_idB\t\n" +
 	"\a_activeB\t\n" +
-	"\a_search\"\x88\x01\n" +
-	"\x10ConfigMapListRep\x12A\n" +
-	"\x0fpagination_info\x18\x01 \x01(\v2\x18.common.PaginationInfoStR\x0epaginationInfo\x121\n" +
+	"\a_search\"\x8a\x01\n" +
+	"\x10ConfigMapListRep\x12C\n" +
+	"\x0fpagination_info\x18\x01 \x01(\v2\x1a.kusec_v1.PaginationInfoStR\x0epaginationInfo\x121\n" +
 	"\aresults\x18\x02 \x03(\v2\x17.kusec_v1.ConfigMapMainR\aresults\"!\n" +
 	"\x0fConfigMapGetReq\x12\x0e\n" +
 	"\x02id\x18\x01 \x01(\tR\x02id\"\xb1\x01\n" +
@@ -585,23 +584,23 @@ func file_kusec_v1_configmap_proto_rawDescGZIP() []byte {
 
 var file_kusec_v1_configmap_proto_msgTypes = make([]protoimpl.MessageInfo, 7)
 var file_kusec_v1_configmap_proto_goTypes = []any{
-	(*ConfigMapMain)(nil),           // 0: kusec_v1.ConfigMapMain
-	(*ConfigMapListReq)(nil),        // 1: kusec_v1.ConfigMapListReq
-	(*ConfigMapListRep)(nil),        // 2: kusec_v1.ConfigMapListRep
-	(*ConfigMapGetReq)(nil),         // 3: kusec_v1.ConfigMapGetReq
-	(*ConfigMapCreateReq)(nil),      // 4: kusec_v1.ConfigMapCreateReq
-	(*ConfigMapCreateRep)(nil),      // 5: kusec_v1.ConfigMapCreateRep
-	(*ConfigMapUpdateReq)(nil),      // 6: kusec_v1.ConfigMapUpdateReq
-	(*timestamppb.Timestamp)(nil),   // 7: google.protobuf.Timestamp
-	(*common.ListParamsSt)(nil),     // 8: common.ListParamsSt
-	(*common.PaginationInfoSt)(nil), // 9: common.PaginationInfoSt
-	(*emptypb.Empty)(nil),           // 10: google.protobuf.Empty
+	(*ConfigMapMain)(nil),         // 0: kusec_v1.ConfigMapMain
+	(*ConfigMapListReq)(nil),      // 1: kusec_v1.ConfigMapListReq
+	(*ConfigMapListRep)(nil),      // 2: kusec_v1.ConfigMapListRep
+	(*ConfigMapGetReq)(nil),       // 3: kusec_v1.ConfigMapGetReq
+	(*ConfigMapCreateReq)(nil),    // 4: kusec_v1.ConfigMapCreateReq
+	(*ConfigMapCreateRep)(nil),    // 5: kusec_v1.ConfigMapCreateRep
+	(*ConfigMapUpdateReq)(nil),    // 6: kusec_v1.ConfigMapUpdateReq
+	(*timestamppb.Timestamp)(nil), // 7: google.protobuf.Timestamp
+	(*ListParamsSt)(nil),          // 8: kusec_v1.ListParamsSt
+	(*PaginationInfoSt)(nil),      // 9: kusec_v1.PaginationInfoSt
+	(*emptypb.Empty)(nil),         // 10: google.protobuf.Empty
 }
 var file_kusec_v1_configmap_proto_depIdxs = []int32{
 	7,  // 0: kusec_v1.ConfigMapMain.created_at:type_name -> google.protobuf.Timestamp
 	7,  // 1: kusec_v1.ConfigMapMain.updated_at:type_name -> google.protobuf.Timestamp
-	8,  // 2: kusec_v1.ConfigMapListReq.list_params:type_name -> common.ListParamsSt
-	9,  // 3: kusec_v1.ConfigMapListRep.pagination_info:type_name -> common.PaginationInfoSt
+	8,  // 2: kusec_v1.ConfigMapListReq.list_params:type_name -> kusec_v1.ListParamsSt
+	9,  // 3: kusec_v1.ConfigMapListRep.pagination_info:type_name -> kusec_v1.PaginationInfoSt
 	0,  // 4: kusec_v1.ConfigMapListRep.results:type_name -> kusec_v1.ConfigMapMain
 	1,  // 5: kusec_v1.ConfigMap.List:input_type -> kusec_v1.ConfigMapListReq
 	3,  // 6: kusec_v1.ConfigMap.Get:input_type -> kusec_v1.ConfigMapGetReq
@@ -625,6 +624,7 @@ func file_kusec_v1_configmap_proto_init() {
 	if File_kusec_v1_configmap_proto != nil {
 		return
 	}
+	file_kusec_v1_common_proto_init()
 	file_kusec_v1_configmap_proto_msgTypes[1].OneofWrappers = []any{}
 	file_kusec_v1_configmap_proto_msgTypes[4].OneofWrappers = []any{}
 	file_kusec_v1_configmap_proto_msgTypes[6].OneofWrappers = []any{}

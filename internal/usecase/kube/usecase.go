@@ -5,8 +5,8 @@ import (
 	"errors"
 	"fmt"
 
-	"github.com/mechta-market/kusec/internal/errs"
-	kubeService "github.com/mechta-market/kusec/internal/service/kube"
+	"github.com/rendau/kusec/internal/errs"
+	kubeService "github.com/rendau/kusec/internal/service/kube"
 )
 
 type Usecase struct {

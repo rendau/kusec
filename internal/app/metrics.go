@@ -3,7 +3,7 @@ package app
 import (
 	"github.com/prometheus/client_golang/prometheus"
 
-	"github.com/mechta-market/kusec/internal/infra/metrics"
+	"github.com/rendau/kusec/internal/infra/metrics"
 )
 
 var (
