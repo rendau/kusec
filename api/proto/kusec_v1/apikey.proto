@@ -1,0 +1,97 @@
+syntax = "proto3";
+
+package kusec_v1;
+
+import "google/api/annotations.proto";
+import "google/protobuf/empty.proto";
+import "google/protobuf/timestamp.proto";
+import "common/common.proto";
+
+option go_package = "/kusec_v1";
+
+// ApiKey — долгоживущие ключи для машинных клиентов (MCP-сервер, CI).
+// Ключ наследует права владельца; хранится только хэш, значение ключа
+// возвращается один раз при создании.
+service ApiKey {
+  rpc List(ApiKeyListReq) returns (ApiKeyListRep) {
+    option (google.api.http) = {
+      get: "/api-key"
+    };
+  }
+
+  rpc Create(ApiKeyCreateReq) returns (ApiKeyCreateRep) {
+    option (google.api.http) = {
+      post: "/api-key"
+      body: "*"
+    };
+  }
+
+  rpc Update(ApiKeyUpdateReq) returns (google.protobuf.Empty) {
+    option (google.api.http) = {
+      put: "/api-key/{id}"
+      body: "*"
+    };
+  }
+
+  rpc Delete(ApiKeyGetReq) returns (google.protobuf.Empty) {
+    option (google.api.http) = {
+      delete: "/api-key/{id}"
+    };
+  }
+}
+
+// ── Messages ────────────────────────────────────────────
+
+message ApiKeyMain {
+  string id = 1;
+  google.protobuf.Timestamp created_at = 2;
+  google.protobuf.Timestamp updated_at = 3;
+  int64 usr_id = 4;
+  bool active = 5;
+  string name = 6;
+  // Первые символы ключа — для опознания; сам ключ не хранится.
+  string key_prefix = 7;
+  google.protobuf.Timestamp last_used_at = 8;
+}
+
+// List
+
+message ApiKeyListReq {
+  common.ListParamsSt list_params = 1;
+  // Только для админов; не-админ всегда видит только свои ключи.
+  optional int64 usr_id = 2;
+  optional bool active = 3;
+}
+
+message ApiKeyListRep {
+  common.PaginationInfoSt pagination_info = 1;
+  repeated ApiKeyMain results = 2;
+}
+
+// Get
+
+message ApiKeyGetReq {
+  string id = 1;
+}
+
+// Create
+
+message ApiKeyCreateReq {
+  string name = 1;
+  // Только для админов; не-админ создаёт ключи только себе.
+  optional int64 usr_id = 2;
+}
+
+message ApiKeyCreateRep {
+  string id = 1;
+  // Значение ключа; показывается только здесь, повторно получить нельзя.
+  string key = 2;
+}
+
+// Update
+
+message ApiKeyUpdateReq {
+  string id = 1;
+  optional bool active = 2;
+  optional string name = 3;
+}

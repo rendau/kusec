@@ -20,6 +20,8 @@ import (
 	"github.com/mechta-market/kusec/internal/config"
 	"github.com/mechta-market/kusec/internal/constant"
 
+	apikeyDb "github.com/mechta-market/kusec/internal/domain/apikey/repo/db"
+	apikeyService "github.com/mechta-market/kusec/internal/domain/apikey/service"
 	appDb "github.com/mechta-market/kusec/internal/domain/app/repo/db"
 	appService "github.com/mechta-market/kusec/internal/domain/app/service"
 	configitemDb "github.com/mechta-market/kusec/internal/domain/configitem/repo/db"
@@ -38,6 +40,7 @@ import (
 
 	kubeService "github.com/mechta-market/kusec/internal/service/kube"
 
+	apikeyUsc "github.com/mechta-market/kusec/internal/usecase/apikey"
 	appUsc "github.com/mechta-market/kusec/internal/usecase/app"
 	configitemUsc "github.com/mechta-market/kusec/internal/usecase/configitem"
 	configmapUsc "github.com/mechta-market/kusec/internal/usecase/configmap"
@@ -106,6 +109,10 @@ func (a *App) Init() {
 	itemSvc := itemService.New(itemDb.New(a.pgpool))
 	configMapSvc := configmapService.New(configmapDb.New(a.pgpool))
 	configItemSvc := configitemService.New(configitemDb.New(a.pgpool))
+	apikeySvc := apikeyService.New(apikeyDb.New(a.pgpool))
+
+	// api-key usecase используется и хендлером, и session-интерсептором
+	apikeyUsecase := apikeyUsc.New(apikeySvc, usrSvc, sessionSvc)
 
 	usrHandler := grpcHandler.NewUsr(usrUsc.New(usrSvc, sessionSvc))
 	appHandler := grpcHandler.NewApp(appUsc.New(appSvc, sessionSvc))
@@ -128,10 +135,11 @@ func (a *App) Init() {
 	transferHandler := grpcHandler.NewTransfer(
 		transferUsc.New(appSvc, secretSvc, itemSvc, configMapSvc, configItemSvc, sessionSvc),
 	)
+	apikeyHandler := grpcHandler.NewApiKey(apikeyUsecase)
 
 	// grpc server
 	{
-		a.grpcServer = NewGrpcServer("main", sessionSvc, func(server *grpc.Server) {
+		a.grpcServer = NewGrpcServer("main", sessionSvc, apikeyUsecase, func(server *grpc.Server) {
 			proto.RegisterUsrServer(server, usrHandler)
 			proto.RegisterAppServer(server, appHandler)
 			proto.RegisterSecretServer(server, secretHandler)
@@ -141,6 +149,7 @@ func (a *App) Init() {
 			proto.RegisterDashboardServer(server, dashboardHandler)
 			proto.RegisterKubeServer(server, kubeHandler)
 			proto.RegisterTransferServer(server, transferHandler)
+			proto.RegisterApiKeyServer(server, apikeyHandler)
 		})
 	}
 
@@ -166,6 +175,7 @@ func (a *App) Init() {
 				proto.RegisterDashboardHandler,
 				proto.RegisterKubeHandler,
 				proto.RegisterTransferHandler,
+				proto.RegisterApiKeyHandler,
 			}
 			for _, h := range handlers {
 				err = h(context.Background(), mux, conn)

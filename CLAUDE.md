@@ -11,6 +11,9 @@
 
 ### Верхний уровень
 - `cmd/main.go` — entrypoint, поднимает `internal/app.App`.
+- `cmd/mcp/` — MCP-сервер для AI-агентов (stdio, `make build-mcp`): доступ к API kusec
+  без раскрытия значений секретов (маскирование + декларативный `value_source`).
+  Код — `internal/mcpserver/`, подробности — `docs/mcp-server.md`.
 - `internal/` — бизнес-логика и инфраструктура (закрытые пакеты).
 - `apps/admin/` — фронтенд админки (Vue 3 SPA). Конвенции и тонкости — в
   `apps/admin/CLAUDE.md` (пакетный менеджер pnpm, обработка ошибок API,
@@ -109,6 +112,9 @@ domain service → repo
   Первая страница — `page=0`. Относится к `common.ListParamsSt.page` и всем
   клиентам API. UI с 1-based пагинацией (напр. naive-ui) обязан конвертировать:
   `apiPage = uiPage - 1`.
+- API-ключи для машинных клиентов: `/api-key` (значение `ksk_…` выдаётся один раз,
+  хранится sha256-хэш; аутентификация — тем же заголовком `Authorization: Bearer`,
+  интерсептор различает ключ и JWT по префиксу). См. `docs/mcp-server.md`.
 - **Update-методы используют HTTP `PUT`** (не `PATCH`). В proto-аннотациях
   (`google.api.http`) для `Update`/`Update*` указывать `put: "/<entity>/{id}"`,
   все клиенты API шлют `PUT`. CORS (`internal/app/grpc_gateway.go`) должен
