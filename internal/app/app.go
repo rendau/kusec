@@ -125,15 +125,16 @@ func (a *App) Init() {
 	dashboardHandler := grpcHandler.NewDashboard(
 		dashboardUsc.New(appSvc, secretSvc, itemSvc, configMapSvc, configItemSvc, usrSvc, sessionSvc),
 	)
-	kubeHandler := grpcHandler.NewKube(
-		kubeUsc.New(
-			kubeService.New(appSvc, secretSvc, itemSvc, configMapSvc, configItemSvc),
-			appSvc,
-			secretSvc,
-			configMapSvc,
-			sessionSvc,
-		),
+	// kube usecase общий для gRPC и MCP: лок «один sync одновременно» живёт
+	// в kube-сервисе и должен быть один на процесс
+	kubeUsecase := kubeUsc.New(
+		kubeService.New(appSvc, secretSvc, itemSvc, configMapSvc, configItemSvc),
+		appSvc,
+		secretSvc,
+		configMapSvc,
+		sessionSvc,
 	)
+	kubeHandler := grpcHandler.NewKube(kubeUsecase)
 	transferHandler := grpcHandler.NewTransfer(
 		transferUsc.New(appSvc, secretSvc, itemSvc, configMapSvc, configItemSvc, sessionSvc),
 	)
@@ -235,6 +236,7 @@ func (a *App) Init() {
 			itemUsc.New(itemSvc, secretSvc, sessionSvc),
 			configmapUsc.New(configMapSvc, appSvc, sessionSvc),
 			configitemUsc.New(configItemSvc, configMapSvc, sessionSvc),
+			kubeUsecase,
 		)
 
 		a.mcpHttpServer = &http.Server{

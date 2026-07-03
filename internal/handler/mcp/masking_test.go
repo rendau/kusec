@@ -112,7 +112,7 @@ func TestMaskingE2E(t *testing.T) {
 		sessionSvc,
 	)
 
-	h := New(sessionSvc, apikeyUsecase, nil, nil, itemUsecase, nil, nil)
+	h := New(sessionSvc, apikeyUsecase, nil, nil, itemUsecase, nil, nil, nil)
 
 	httpSrv := httptest.NewServer(h.HTTPHandler())
 	defer httpSrv.Close()

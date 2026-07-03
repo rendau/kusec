@@ -77,7 +77,7 @@ func TestAuthMiddleware(t *testing.T) {
 		nil,
 	)
 
-	h := New(sessionSvc, apikeyUsecase, nil, nil, nil, nil, nil)
+	h := New(sessionSvc, apikeyUsecase, nil, nil, nil, nil, nil, nil)
 
 	nextCalled := false
 	next := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -122,7 +122,7 @@ func TestAuthMiddleware(t *testing.T) {
 func TestServerInstructions(t *testing.T) {
 	t.Parallel()
 
-	h := New(nil, nil, nil, nil, nil, nil, nil)
+	h := New(nil, nil, nil, nil, nil, nil, nil, nil)
 	srv := h.newSessionServer(&sessionModel.Session{Id: 10}, "hash")
 
 	clientTr, serverTr := mcpsdk.NewInMemoryTransports()

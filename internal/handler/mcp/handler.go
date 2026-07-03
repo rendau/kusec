@@ -24,6 +24,7 @@ import (
 	configitemUsc "github.com/mechta-market/kusec/internal/usecase/configitem"
 	configmapUsc "github.com/mechta-market/kusec/internal/usecase/configmap"
 	itemUsc "github.com/mechta-market/kusec/internal/usecase/item"
+	kubeUsc "github.com/mechta-market/kusec/internal/usecase/kube"
 	secretUsc "github.com/mechta-market/kusec/internal/usecase/secret"
 )
 
@@ -48,6 +49,7 @@ const (
    - literal — явное значение, только для несекретного (хосты, порты, url, имена БД).
 4. Значения item-ов конфигмапов не секретны: видны полностью и задаются явно.
 5. Пагинация zero-based: page начинается с 0, page_size по умолчанию 100.
+6. Инструмент sync применяет секреты и конфигмапы в Kubernetes-кластер (по умолчанию — только текущий app). Вызывай его после завершения изменений, а не после каждого item-а; работает только когда kusec запущен внутри кластера.
 
 Типовой сценарий:
 use_app {"app": "billing"} → create_secret {"slug_name": "db"} → create_item {"secret_id": "…", "key": "POSTGRES_PASSWORD", "value_source": {"kind": "generate", "name": "db_password"}} → create_item {"secret_id": "…", "key": "DATABASE_URL_PASSWORD", "value_source": {"kind": "reuse", "name": "db_password"}}`
@@ -62,6 +64,7 @@ type Handler struct {
 	itemUsecase       *itemUsc.Usecase
 	configmapUsecase  *configmapUsc.Usecase
 	configitemUsecase *configitemUsc.Usecase
+	kubeUsecase       *kubeUsc.Usecase
 }
 
 func New(
@@ -72,6 +75,7 @@ func New(
 	itemUsecase *itemUsc.Usecase,
 	configmapUsecase *configmapUsc.Usecase,
 	configitemUsecase *configitemUsc.Usecase,
+	kubeUsecase *kubeUsc.Usecase,
 ) *Handler {
 	return &Handler{
 		sessionSvc:        sessionSvc,
@@ -81,6 +85,7 @@ func New(
 		itemUsecase:       itemUsecase,
 		configmapUsecase:  configmapUsecase,
 		configitemUsecase: configitemUsecase,
+		kubeUsecase:       kubeUsecase,
 	}
 }
 

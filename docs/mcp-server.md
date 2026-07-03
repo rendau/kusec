@@ -40,13 +40,21 @@ app/secret/configmap/item и управляет ею, но **значения с
 для сгенерированных (высокоэнтропийных) значений это безопасно, но не защищает слабые
 пароли, заведённые вручную. Точная длина значения также раскрывается — осознанный выбор.
 
-## Инструменты (22)
+## Инструменты (23)
 
 | Группа | Инструменты |
 |---|---|
 | Чтение | `list_app`, `get_app`, `list_secret`, `get_secret`, `list_configmap`, `get_configmap`, `list_item`, `get_item` (маскированные), `list_config_item`, `get_config_item` |
 | Контекст | `use_app`, `current_app` (текущий app + имена значений в реестре) |
 | Запись | `create_app`, `update_app`, `create_secret`, `update_secret`, `create_configmap`, `update_configmap`, `create_item`, `update_item`, `create_config_item`, `update_config_item` |
+| Кластер | `sync` — применить секреты и конфигмапы в Kubernetes |
+
+`sync` вызывает тот же usecase, что и `POST /kube/sync`: по умолчанию синхронизирует
+только текущий app (`use_app`), с `all_apps=true` — все app, доступные владельцу ключа
+(`syncScope`). Работает только когда kusec запущен внутри кластера; лок «один sync
+одновременно» общий с основным API. Результат содержит только имена объектов
+(`namespace/name`) и счётчики; тексты ошибок по отдельным объектам проходят скраб
+значений секретов.
 
 Пагинация zero-based (`page` с 0), `page_size` по умолчанию 100.
 

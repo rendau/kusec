@@ -51,6 +51,7 @@ func (h *Handler) newSessionServer(_ *sessionModel.Session, keyHash string) *mcp
 
 	s.registerReadTools(srv)
 	s.registerWriteTools(srv)
+	s.registerKubeTools(srv)
 
 	return srv
 }
