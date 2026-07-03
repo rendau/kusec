@@ -5,7 +5,6 @@ import (
 	"errors"
 	"fmt"
 	"strings"
-	"sync"
 
 	mcpsdk "github.com/modelcontextprotocol/go-sdk/mcp"
 	"github.com/samber/lo"
@@ -13,9 +12,6 @@ import (
 	apikeyService "github.com/rendau/kusec/internal/domain/apikey/service"
 	appModel "github.com/rendau/kusec/internal/domain/app/model"
 	commonModel "github.com/rendau/kusec/internal/domain/common/model"
-	configmapModel "github.com/rendau/kusec/internal/domain/configmap/model"
-	itemModel "github.com/rendau/kusec/internal/domain/item/model"
-	secretModel "github.com/rendau/kusec/internal/domain/secret/model"
 	sessionModel "github.com/rendau/kusec/internal/domain/session/model"
 )
 
@@ -23,15 +19,12 @@ func hashKey(key string) string {
 	return apikeyService.HashKey(key)
 }
 
-// sessionServer — состояние одной MCP-сессии: пользователь (по api-ключу),
-// реестр значений и «текущий app». Живёт в памяти до закрытия сессии.
+// sessionServer — состояние одной MCP-сессии: пользователь (по api-ключу)
+// и реестр значений. Живёт в памяти до закрытия сессии.
 type sessionServer struct {
 	h       *Handler
 	keyHash string
 	vault   *vault
-
-	mu     sync.Mutex
-	curApp *appModel.Main
 }
 
 func (h *Handler) newSessionServer(_ *sessionModel.Session, keyHash string) *mcpsdk.Server {
@@ -81,25 +74,6 @@ func (s *sessionServer) toolErr(err error) error {
 	return errors.New(s.vault.scrub(err.Error()))
 }
 
-// ── Текущий app ─────────────────────────────────────────
-
-func (s *sessionServer) currentApp() (*appModel.Main, error) {
-	s.mu.Lock()
-	defer s.mu.Unlock()
-
-	if s.curApp == nil {
-		return nil, errors.New("текущий app не выбран: сначала вызови use_app (или create_app)")
-	}
-
-	return s.curApp, nil
-}
-
-func (s *sessionServer) setCurrentApp(app *appModel.Main) {
-	s.mu.Lock()
-	defer s.mu.Unlock()
-	s.curApp = app
-}
-
 // resolveApp находит app по id, slug_name или точному имени.
 func (s *sessionServer) resolveApp(ctx context.Context, ref string) (*appModel.Main, error) {
 	app, getErr := s.h.appUsecase.Get(ctx, ref)
@@ -133,60 +107,6 @@ func (s *sessionServer) resolveApp(ctx context.Context, ref string) (*appModel.M
 	}
 }
 
-// ── Scope-проверки: запись только в текущем app ─────────
-
-func (s *sessionServer) secretInCurrentApp(ctx context.Context, secretId string) (*secretModel.Main, error) {
-	app, err := s.currentApp()
-	if err != nil {
-		return nil, err
-	}
-
-	sec, err := s.h.secretUsecase.Get(ctx, secretId)
-	if err != nil {
-		return nil, err
-	}
-
-	if sec.AppId != app.Id {
-		return nil, fmt.Errorf("секрет %s (%s) принадлежит другому app (%s): запись разрешена только в текущем app %s — сначала переключись через use_app", sec.Id, sec.SlugName, sec.AppId, app.SlugName)
-	}
-
-	return sec, nil
-}
-
-func (s *sessionServer) configMapInCurrentApp(ctx context.Context, configmapId string) (*configmapModel.Main, error) {
-	app, err := s.currentApp()
-	if err != nil {
-		return nil, err
-	}
-
-	cm, err := s.h.configmapUsecase.Get(ctx, configmapId)
-	if err != nil {
-		return nil, err
-	}
-
-	if cm.AppId != app.Id {
-		return nil, fmt.Errorf("configmap %s (%s) принадлежит другому app (%s): запись разрешена только в текущем app %s — сначала переключись через use_app", cm.Id, cm.SlugName, cm.AppId, app.SlugName)
-	}
-
-	return cm, nil
-}
-
-// itemInCurrentApp возвращает item, если его секрет принадлежит текущему app.
-// Значение item-а помечается увиденным для последующего скраба.
-func (s *sessionServer) itemInCurrentApp(ctx context.Context, itemId string) (*itemModel.Main, error) {
-	item, err := s.h.itemUsecase.Get(ctx, itemId)
-	if err != nil {
-		return nil, err
-	}
-	s.vault.markSeen(item.Value)
-
-	if _, err = s.secretInCurrentApp(ctx, item.SecretId); err != nil {
-		return nil, err
-	}
-
-	return item, nil
-}
-
 // ── value_source ────────────────────────────────────────
 
 // ValueSourceIn — декларативный источник значения item-а: агент описывает,
@@ -201,7 +121,7 @@ type ValueSourceIn struct {
 }
 
 // resolveValueSource возвращает готовое значение для записи.
-func (s *sessionServer) resolveValueSource(ctx context.Context, appId string, src ValueSourceIn) (string, error) {
+func (s *sessionServer) resolveValueSource(ctx context.Context, src ValueSourceIn) (string, error) {
 	switch src.Kind {
 	case "generate":
 		value, err := generateValue(src.Format, src.Length)
@@ -210,7 +130,7 @@ func (s *sessionServer) resolveValueSource(ctx context.Context, appId string, sr
 		}
 		s.vault.markSeen(value)
 		if src.Name != "" {
-			s.vault.remember(appId, src.Name, value)
+			s.vault.remember(src.Name, value)
 		}
 		return value, nil
 
@@ -218,9 +138,9 @@ func (s *sessionServer) resolveValueSource(ctx context.Context, appId string, sr
 		if src.Name == "" {
 			return "", errors.New("reuse: требуется name")
 		}
-		value, ok := s.vault.lookup(appId, src.Name)
+		value, ok := s.vault.lookup(src.Name)
 		if !ok {
-			return "", fmt.Errorf("reuse: значение %q не найдено в реестре текущего app (реестр живёт в памяти сессии; доступные имена: [%s]); для существующих значений используй copy_item", src.Name, strings.Join(s.vault.names(appId), ", "))
+			return "", fmt.Errorf("reuse: значение %q не найдено в реестре сессии (реестр живёт в памяти сессии; доступные имена: [%s]); для существующих значений используй copy_item", src.Name, strings.Join(s.vault.names(), ", "))
 		}
 		return value, nil
 
@@ -234,7 +154,7 @@ func (s *sessionServer) resolveValueSource(ctx context.Context, appId string, sr
 		}
 		s.vault.markSeen(item.Value)
 		if src.Name != "" {
-			s.vault.remember(appId, src.Name, item.Value)
+			s.vault.remember(src.Name, item.Value)
 		}
 		return item.Value, nil
 

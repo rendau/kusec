@@ -130,35 +130,28 @@ func newVault() *vault {
 	}
 }
 
-func namedKey(appID, name string) string {
-	return appID + "\x00" + name
-}
-
-func (v *vault) remember(appID, name, value string) {
+func (v *vault) remember(name, value string) {
 	v.mu.Lock()
 	defer v.mu.Unlock()
-	v.named[namedKey(appID, name)] = value
+	v.named[name] = value
 	v.seen[value] = struct{}{}
 }
 
-func (v *vault) lookup(appID, name string) (string, bool) {
+func (v *vault) lookup(name string) (string, bool) {
 	v.mu.Lock()
 	defer v.mu.Unlock()
-	value, ok := v.named[namedKey(appID, name)]
+	value, ok := v.named[name]
 	return value, ok
 }
 
-// names возвращает имена зарегистрированных значений app (сами значения не раскрывает).
-func (v *vault) names(appID string) []string {
+// names возвращает имена зарегистрированных значений (сами значения не раскрывает).
+func (v *vault) names() []string {
 	v.mu.Lock()
 	defer v.mu.Unlock()
 
-	prefix := namedKey(appID, "")
 	result := make([]string, 0, len(v.named))
-	for key := range v.named {
-		if strings.HasPrefix(key, prefix) {
-			result = append(result, strings.TrimPrefix(key, prefix))
-		}
+	for name := range v.named {
+		result = append(result, name)
 	}
 	sort.Strings(result)
 

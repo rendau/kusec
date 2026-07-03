@@ -2,6 +2,7 @@ package mcp
 
 import (
 	"context"
+	"errors"
 
 	mcpsdk "github.com/modelcontextprotocol/go-sdk/mcp"
 	"github.com/samber/lo"
@@ -14,14 +15,15 @@ import (
 func (s *sessionServer) registerKubeTools(srv *mcpsdk.Server) {
 	mcpsdk.AddTool(srv, &mcpsdk.Tool{
 		Name:        "sync",
-		Description: "Синхронизировать секреты и конфигмапы из kusec в Kubernetes-кластер (создать/обновить/удалить управляемые k8s-объекты). По умолчанию синхронизируется только текущий app (use_app); all_apps=true — все доступные app. Работает, только когда kusec запущен внутри кластера.",
+		Description: "Синхронизировать секреты и конфигмапы из kusec в Kubernetes-кластер (создать/обновить/удалить управляемые k8s-объекты). Укажи app (id, slug_name или имя) либо all_apps=true — все доступные app. Работает, только когда kusec запущен внутри кластера.",
 	}, s.sync)
 }
 
 // ── Sync ────────────────────────────────────────────────
 
 type SyncIn struct {
-	AllApps bool `json:"all_apps,omitempty" jsonschema:"true — синхронизировать все доступные app; по умолчанию только текущий app"`
+	App     string `json:"app,omitempty" jsonschema:"id, slug_name или имя app для синхронизации"`
+	AllApps bool   `json:"all_apps,omitempty" jsonschema:"true — синхронизировать все доступные app"`
 }
 
 // SyncResultOut — итог синхронизации одного вида объектов; списки в формате "namespace/name".
@@ -46,9 +48,12 @@ func (s *sessionServer) sync(ctx context.Context, req *mcpsdk.CallToolRequest, i
 
 	var appId *string
 	if !in.AllApps {
-		app, cerr := s.currentApp()
-		if cerr != nil {
-			return nil, SyncOut{}, s.toolErr(cerr)
+		if in.App == "" {
+			return nil, SyncOut{}, errors.New("укажи app (id, slug_name или имя) либо all_apps=true")
+		}
+		app, rerr := s.resolveApp(ctx, in.App)
+		if rerr != nil {
+			return nil, SyncOut{}, s.toolErr(rerr)
 		}
 		appId = &app.Id
 	}

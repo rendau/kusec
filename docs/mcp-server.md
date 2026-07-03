@@ -19,7 +19,7 @@ app/secret/configmap/item и управляет ею, но **значения с
      `digits` | `hex` | `base64url` | `uuid`; `length`, по умолчанию 32). При указании
      `name` сохраняется в реестре сессии для переиспользования.
    - `reuse` — взять значение из реестра сессии по `name` (тот же токен для нескольких
-     item-ов одного app). Реестр живёт в памяти MCP-сессии и изолирован по app.
+     item-ов, в том числе в разных app). Реестр живёт в памяти MCP-сессии.
    - `copy_item` — скопировать значение существующего item-а по `item_id` (из любого
      app, доступного пользователю). С `name` — также зарегистрировать для reuse.
    - `literal` — явное значение от агента (для несекретного: хосты, порты, url).
@@ -30,9 +30,9 @@ app/secret/configmap/item и управляет ею, но **значения с
    даже достав ключ из своего окружения, не может обойти маскирование прямым запросом
    к API. Подмена MCP-сессии исключена: ключ каждого запроса сверяется с ключом,
    которым сессия была открыта.
-4. **Scope записи**: все create/update выполняются только в «текущем app» (`use_app`);
-   `create_app` делает новый app текущим. Чтение — в рамках прав пользователя.
-   Delete-инструментов нет.
+4. **Scope записи**: create/update работают в любом app, доступном владельцу ключа
+   (`app_ids`, `is_admin` — проверки usecase-слоя); `create_secret`/`create_configmap`
+   принимают целевой `app` явно. Delete-инструментов нет.
 5. **Ошибки** фильтруются: из текстов вычищаются все значения секретов, прошедшие через
    сессию (`[REDACTED]`).
 
@@ -40,17 +40,17 @@ app/secret/configmap/item и управляет ею, но **значения с
 для сгенерированных (высокоэнтропийных) значений это безопасно, но не защищает слабые
 пароли, заведённые вручную. Точная длина значения также раскрывается — осознанный выбор.
 
-## Инструменты (23)
+## Инструменты (22)
 
 | Группа | Инструменты |
 |---|---|
 | Чтение | `list_app`, `get_app`, `list_secret`, `get_secret`, `list_configmap`, `get_configmap`, `list_item`, `get_item` (маскированные), `list_config_item`, `get_config_item` |
-| Контекст | `use_app`, `current_app` (текущий app + имена значений в реестре) |
+| Сессия | `list_value_name` — имена значений в реестре сессии для reuse |
 | Запись | `create_app`, `update_app`, `create_secret`, `update_secret`, `create_configmap`, `update_configmap`, `create_item`, `update_item`, `create_config_item`, `update_config_item` |
 | Кластер | `sync` — применить секреты и конфигмапы в Kubernetes |
 
-`sync` вызывает тот же usecase, что и `POST /kube/sync`: по умолчанию синхронизирует
-только текущий app (`use_app`), с `all_apps=true` — все app, доступные владельцу ключа
+`sync` вызывает тот же usecase, что и `POST /kube/sync`: синхронизирует указанный
+`app` (id, slug_name или имя), с `all_apps=true` — все app, доступные владельцу ключа
 (`syncScope`). Работает только когда kusec запущен внутри кластера; лок «один sync
 одновременно» общий с основным API. Результат содержит только имена объектов
 (`namespace/name`) и счётчики; тексты ошибок по отдельным объектам проходят скраб
@@ -59,8 +59,8 @@ app/secret/configmap/item и управляет ею, но **значения с
 Пагинация zero-based (`page` с 0), `page_size` по умолчанию 100.
 
 При `initialize` сервер отдаёт клиенту `instructions` (константа `serverInstructions`
-в `internal/handler/mcp/handler.go`) — правила работы для агента: сценарий с `use_app`,
-семантика `value_source`, запрет на запрос/придумывание значений секретов. Отдельно
+в `internal/handler/mcp/handler.go`) — правила работы для агента: адресация записи
+по `app`/id, семантика `value_source`, запрет на запрос/придумывание значений секретов. Отдельно
 прописывать эти правила в CLAUDE.md проектов-потребителей не нужно — туда имеет смысл
 выносить только проектные соглашения (какой app какому чарту соответствует и т.п.).
 
@@ -129,10 +129,10 @@ curl -X DELETE .../api/api-key/{id} -H "..."
 Типовой сценарий агента:
 
 ```
-use_app {"app": "billing"}
-create_secret {"slug_name": "db", "description": "Postgres"}
+create_secret {"app": "billing", "slug_name": "db", "description": "Postgres"}
 create_item {"secret_id": "<id>", "key": "POSTGRES_PASSWORD",
              "value_source": {"kind": "generate", "name": "db_password", "length": 32}}
 create_item {"secret_id": "<id2>", "key": "DATABASE_URL_PASSWORD",
              "value_source": {"kind": "reuse", "name": "db_password"}}
+sync {"app": "billing"}
 ```

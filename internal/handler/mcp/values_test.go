@@ -95,25 +95,23 @@ func TestVault_RememberLookup(t *testing.T) {
 	t.Parallel()
 
 	v := newVault()
-	v.remember("app1", "db_password", "secret-value-1")
+	v.remember("db_password", "secret-value-1")
 
-	got, ok := v.lookup("app1", "db_password")
+	got, ok := v.lookup("db_password")
 	require.True(t, ok)
 	assert.Equal(t, "secret-value-1", got)
 
-	// реестр изолирован по app
-	_, ok = v.lookup("app2", "db_password")
+	_, ok = v.lookup("unknown")
 	assert.False(t, ok)
 
-	assert.Equal(t, []string{"db_password"}, v.names("app1"))
-	assert.Empty(t, v.names("app2"))
+	assert.Equal(t, []string{"db_password"}, v.names())
 }
 
 func TestVault_Scrub(t *testing.T) {
 	t.Parallel()
 
 	v := newVault()
-	v.remember("app1", "token", "sUp3r-s3cr3t")
+	v.remember("token", "sUp3r-s3cr3t")
 	v.markSeen("another-secret")
 	v.markSeen("")
 

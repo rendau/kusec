@@ -118,7 +118,7 @@ func TestSyncE2E(t *testing.T) {
 	require.NoError(t, err)
 	defer clSession.Close()
 
-	// без текущего app и без all_apps — ошибка с подсказкой про use_app
+	// без app и без all_apps — ошибка с подсказкой указать область
 	res, err := clSession.CallTool(t.Context(), &mcpsdk.CallToolParams{Name: "sync", Arguments: map[string]any{}})
 	require.NoError(t, err)
 	require.True(t, res.IsError)
