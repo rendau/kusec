@@ -6,6 +6,7 @@ import (
 	"net/http/httptest"
 	"testing"
 
+	mcpsdk "github.com/modelcontextprotocol/go-sdk/mcp"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
@@ -116,6 +117,25 @@ func TestAuthMiddleware(t *testing.T) {
 	mw.ServeHTTP(rec, req)
 	assert.NotEqual(t, http.StatusUnauthorized, rec.Code)
 	assert.True(t, nextCalled)
+}
+
+func TestServerInstructions(t *testing.T) {
+	t.Parallel()
+
+	h := New(nil, nil, nil, nil, nil, nil, nil)
+	srv := h.newSessionServer(&sessionModel.Session{Id: 10}, "hash")
+
+	clientTr, serverTr := mcpsdk.NewInMemoryTransports()
+	srvSession, err := srv.Connect(t.Context(), serverTr, nil)
+	require.NoError(t, err)
+	defer srvSession.Close()
+
+	client := mcpsdk.NewClient(&mcpsdk.Implementation{Name: "test", Version: "0.0.1"}, nil)
+	clSession, err := client.Connect(t.Context(), clientTr, nil)
+	require.NoError(t, err)
+	defer clSession.Close()
+
+	assert.Equal(t, serverInstructions, clSession.InitializeResult().Instructions)
 }
 
 func TestBearerToken(t *testing.T) {

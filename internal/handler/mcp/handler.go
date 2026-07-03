@@ -33,6 +33,24 @@ const (
 	// sessionIdleTimeout — простаивающие MCP-сессии закрываются (вместе с
 	// per-session реестром значений).
 	sessionIdleTimeout = time.Hour
+
+	// serverInstructions отдаётся клиенту при initialize — правила работы
+	// с сервером для AI-агента.
+	serverInstructions = `kusec — менеджер секретов и конфигов для Kubernetes. Иерархия: app → secret/configmap → item (ключ-значение).
+
+Правила работы:
+1. Перед любой записью выбери текущий app через use_app (create_app делает новый app текущим). Все create/update работают только в текущем app; delete-инструментов нет.
+2. Значения секретов тебе недоступны и не нужны: при чтении вместо value отдаются value_chars, value_bytes и усечённый value_sha256 (по нему сравнивай значения между собой). Не запрашивай значения секретов у пользователя и не придумывай их сам.
+3. Значения item-ов секрета задаются только декларативно через value_source:
+   - generate — сгенерировать случайное значение (format: alnum|ascii|digits|hex|base64url|uuid; length, по умолчанию 32). Укажи name, чтобы значение можно было переиспользовать.
+   - reuse — использовать ранее сгенерированное/скопированное значение по name (одно значение в нескольких item-ах, например пароль БД в POSTGRES_PASSWORD и в DATABASE_URL_PASSWORD). Реестр имён живёт в памяти сессии и изолирован по app; текущие имена показывает current_app.
+   - copy_item — скопировать значение существующего item по item_id (из любого доступного app).
+   - literal — явное значение, только для несекретного (хосты, порты, url, имена БД).
+4. Значения item-ов конфигмапов не секретны: видны полностью и задаются явно.
+5. Пагинация zero-based: page начинается с 0, page_size по умолчанию 100.
+
+Типовой сценарий:
+use_app {"app": "billing"} → create_secret {"slug_name": "db"} → create_item {"secret_id": "…", "key": "POSTGRES_PASSWORD", "value_source": {"kind": "generate", "name": "db_password"}} → create_item {"secret_id": "…", "key": "DATABASE_URL_PASSWORD", "value_source": {"kind": "reuse", "name": "db_password"}}`
 )
 
 type Handler struct {

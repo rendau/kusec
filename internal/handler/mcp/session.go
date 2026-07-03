@@ -45,7 +45,9 @@ func (h *Handler) newSessionServer(_ *sessionModel.Session, keyHash string) *mcp
 		Name:    "kusec",
 		Title:   "Kusec — менеджер секретов и конфигов",
 		Version: serverVersion,
-	}, nil)
+	}, &mcpsdk.ServerOptions{
+		Instructions: serverInstructions,
+	})
 
 	s.registerReadTools(srv)
 	s.registerWriteTools(srv)
