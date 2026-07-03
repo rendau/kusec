@@ -28,6 +28,8 @@ const props = defineProps<{
   configMap: ConfigMapMain | null
   /** Pre-selected app id when creating from within an app context. */
   defaultAppId?: string | null
+  /** Pre-filled slug for a new config map (e.g. "main" for the app's first one). */
+  defaultSlug?: string | null
   /** Lock the application field (the config map is bound to its app). */
   lockApp?: boolean
 }>()
@@ -75,7 +77,8 @@ const { formRef, submitting, isEdit, submit } = useEntityForm<ConfigMapMain>({
   entity: () => props.configMap,
   seed: async (configMap) => {
     model.app_id = configMap?.app_id ?? props.defaultAppId ?? null
-    model.slug_name = configMap?.slug_name ?? ''
+    // Имя нового конфигмапа: defaultSlug (напр. "main" для первого в app).
+    model.slug_name = configMap?.slug_name ?? props.defaultSlug ?? ''
     model.description = configMap?.description ?? ''
     model.active = configMap?.active ?? true
     model.exact_slug = configMap?.exact_slug ?? false

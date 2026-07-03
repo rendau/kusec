@@ -400,6 +400,7 @@ defineExpose({ refresh: fetchConfigMaps, count: computed(() => rows.value.length
       v-model:show="showForm"
       :config-map="editing"
       :default-app-id="appId"
+      :default-slug="rows.length === 0 ? 'main' : null"
       lock-app
       @saved="fetchConfigMaps"
     />
