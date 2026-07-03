@@ -42,7 +42,7 @@ func (h *ApiKey) List(ctx context.Context, req *proto.ApiKeyListReq) (*proto.Api
 }
 
 func (h *ApiKey) Create(ctx context.Context, req *proto.ApiKeyCreateReq) (*proto.ApiKeyCreateRep, error) {
-	newId, key, err := h.usecase.Create(ctx, req.Name, req.UsrId)
+	newId, key, err := h.usecase.Create(ctx, req.Name, req.UsrId, req.McpOnly)
 	if err != nil {
 		return nil, err
 	}
@@ -50,7 +50,7 @@ func (h *ApiKey) Create(ctx context.Context, req *proto.ApiKeyCreateReq) (*proto
 }
 
 func (h *ApiKey) Update(ctx context.Context, req *proto.ApiKeyUpdateReq) (*emptypb.Empty, error) {
-	if err := h.usecase.Update(ctx, req.Id, req.Active, req.Name); err != nil {
+	if err := h.usecase.Update(ctx, req.Id, req.Active, req.Name, req.McpOnly); err != nil {
 		return nil, err
 	}
 	return &emptypb.Empty{}, nil

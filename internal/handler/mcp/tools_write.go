@@ -1,72 +1,76 @@
-package mcpserver
+package mcp
 
 import (
 	"context"
 
-	"github.com/modelcontextprotocol/go-sdk/mcp"
+	mcpsdk "github.com/modelcontextprotocol/go-sdk/mcp"
 
-	"github.com/mechta-market/kusec/internal/mcpserver/client/model"
+	appModel "github.com/mechta-market/kusec/internal/domain/app/model"
+	configitemModel "github.com/mechta-market/kusec/internal/domain/configitem/model"
+	configmapModel "github.com/mechta-market/kusec/internal/domain/configmap/model"
+	itemModel "github.com/mechta-market/kusec/internal/domain/item/model"
+	secretModel "github.com/mechta-market/kusec/internal/domain/secret/model"
 )
 
 // ── Регистрация ─────────────────────────────────────────
 
-func (s *Server) registerWriteTools(srv *mcp.Server) {
-	mcp.AddTool(srv, &mcp.Tool{
+func (s *sessionServer) registerWriteTools(srv *mcpsdk.Server) {
+	mcpsdk.AddTool(srv, &mcpsdk.Tool{
 		Name:        "use_app",
 		Description: "Выбрать текущий app (по id, slug_name или имени). Все операции записи (create/update секретов, конфигмапов и item-ов) разрешены только в текущем app.",
 	}, s.useApp)
 
-	mcp.AddTool(srv, &mcp.Tool{
+	mcpsdk.AddTool(srv, &mcpsdk.Tool{
 		Name:        "current_app",
 		Description: "Показать текущий app и имена значений, зарегистрированных в реестре сессии (сами значения не раскрываются).",
 	}, s.currentAppTool)
 
-	mcp.AddTool(srv, &mcp.Tool{
+	mcpsdk.AddTool(srv, &mcpsdk.Tool{
 		Name:        "create_app",
 		Description: "Создать app. Новый app автоматически становится текущим.",
 	}, s.createApp)
 
-	mcp.AddTool(srv, &mcp.Tool{
+	mcpsdk.AddTool(srv, &mcpsdk.Tool{
 		Name:        "update_app",
 		Description: "Обновить текущий app (только переданные поля).",
 	}, s.updateApp)
 
-	mcp.AddTool(srv, &mcp.Tool{
+	mcpsdk.AddTool(srv, &mcpsdk.Tool{
 		Name:        "create_secret",
 		Description: "Создать секрет в текущем app.",
 	}, s.createSecret)
 
-	mcp.AddTool(srv, &mcp.Tool{
+	mcpsdk.AddTool(srv, &mcpsdk.Tool{
 		Name:        "update_secret",
 		Description: "Обновить секрет текущего app (только переданные поля).",
 	}, s.updateSecret)
 
-	mcp.AddTool(srv, &mcp.Tool{
+	mcpsdk.AddTool(srv, &mcpsdk.Tool{
 		Name:        "create_configmap",
 		Description: "Создать configmap в текущем app.",
 	}, s.createConfigMap)
 
-	mcp.AddTool(srv, &mcp.Tool{
+	mcpsdk.AddTool(srv, &mcpsdk.Tool{
 		Name:        "update_configmap",
 		Description: "Обновить configmap текущего app (только переданные поля).",
 	}, s.updateConfigMap)
 
-	mcp.AddTool(srv, &mcp.Tool{
+	mcpsdk.AddTool(srv, &mcpsdk.Tool{
 		Name:        "create_item",
-		Description: "Создать item секрета в текущем app. Значение задаётся через value_source: generate — сгенерировать случайное (с сохранением в реестре сессии под name), reuse — переиспользовать сгенерированное ранее, copy_item — скопировать значение существующего item (в т.ч. из другого app), literal — явное несекретное значение. Сгенерированные/скопированные значения агенту не показываются.",
+		Description: "Создать item секрета в текущем app. Значение задаётся через value_source: generate — сгенерировать случайное (с сохранением в реестре сессии под name), reuse — переиспользовать сгенерированное ранее, copy_item — скопировать значение существующего item (из любого доступного app), literal — явное несекретное значение. Сгенерированные/скопированные значения агенту не показываются.",
 	}, s.createItem)
 
-	mcp.AddTool(srv, &mcp.Tool{
+	mcpsdk.AddTool(srv, &mcpsdk.Tool{
 		Name:        "update_item",
 		Description: "Обновить item секрета текущего app (только переданные поля). Значение — через value_source, как в create_item.",
 	}, s.updateItem)
 
-	mcp.AddTool(srv, &mcp.Tool{
+	mcpsdk.AddTool(srv, &mcpsdk.Tool{
 		Name:        "create_config_item",
 		Description: "Создать item конфигмапа в текущем app (значение несекретное, задаётся явно).",
 	}, s.createConfigItem)
 
-	mcp.AddTool(srv, &mcp.Tool{
+	mcpsdk.AddTool(srv, &mcpsdk.Tool{
 		Name:        "update_config_item",
 		Description: "Обновить item конфигмапа текущего app (только переданные поля).",
 	}, s.updateConfigItem)
@@ -78,7 +82,12 @@ type UseAppIn struct {
 	App string `json:"app" jsonschema:"id, slug_name или имя app"`
 }
 
-func (s *Server) useApp(ctx context.Context, _ *mcp.CallToolRequest, in UseAppIn) (*mcp.CallToolResult, AppOut, error) {
+func (s *sessionServer) useApp(ctx context.Context, req *mcpsdk.CallToolRequest, in UseAppIn) (*mcpsdk.CallToolResult, AppOut, error) {
+	ctx, err := s.toolCtx(ctx, req)
+	if err != nil {
+		return nil, AppOut{}, err
+	}
+
 	app, err := s.resolveApp(ctx, in.App)
 	if err != nil {
 		return nil, AppOut{}, s.toolErr(err)
@@ -94,7 +103,11 @@ type CurrentAppOut struct {
 	ValueNames []string `json:"value_names" jsonschema:"имена значений в реестре сессии для reuse"`
 }
 
-func (s *Server) currentAppTool(_ context.Context, _ *mcp.CallToolRequest, _ struct{}) (*mcp.CallToolResult, CurrentAppOut, error) {
+func (s *sessionServer) currentAppTool(ctx context.Context, req *mcpsdk.CallToolRequest, _ struct{}) (*mcpsdk.CallToolResult, CurrentAppOut, error) {
+	if _, err := s.toolCtx(ctx, req); err != nil {
+		return nil, CurrentAppOut{}, err
+	}
+
 	app, err := s.currentApp()
 	if err != nil {
 		return nil, CurrentAppOut{ValueNames: []string{}}, nil
@@ -102,7 +115,7 @@ func (s *Server) currentAppTool(_ context.Context, _ *mcp.CallToolRequest, _ str
 
 	out := appToOut(app, 0)
 
-	return nil, CurrentAppOut{App: &out, ValueNames: s.vault.names(app.ID)}, nil
+	return nil, CurrentAppOut{App: &out, ValueNames: s.vault.names(app.Id)}, nil
 }
 
 type CreateAppIn struct {
@@ -114,27 +127,31 @@ type CreateAppIn struct {
 }
 
 type CreateOut struct {
-	ID string `json:"id"`
+	Id string `json:"id"`
 }
 
-func (s *Server) createApp(ctx context.Context, _ *mcp.CallToolRequest, in CreateAppIn) (*mcp.CallToolResult, CreateOut, error) {
-	id, err := s.api.AppCreate(ctx, model.AppCreateReq{
+func (s *sessionServer) createApp(ctx context.Context, req *mcpsdk.CallToolRequest, in CreateAppIn) (*mcpsdk.CallToolResult, CreateOut, error) {
+	ctx, err := s.toolCtx(ctx, req)
+	if err != nil {
+		return nil, CreateOut{}, err
+	}
+
+	newId, err := s.h.appUsecase.Create(ctx, &appModel.Edit{
 		Active:      in.Active,
-		Namespace:   in.Namespace,
-		Name:        in.Name,
-		SlugName:    in.SlugName,
-		Description: in.Description,
+		Namespace:   &in.Namespace,
+		Name:        &in.Name,
+		SlugName:    &in.SlugName,
+		Description: &in.Description,
 	})
 	if err != nil {
 		return nil, CreateOut{}, s.toolErr(err)
 	}
 
-	app, err := s.api.AppGet(ctx, id)
-	if err == nil {
+	if app, gerr := s.h.appUsecase.Get(ctx, newId); gerr == nil {
 		s.setCurrentApp(app)
 	}
 
-	return nil, CreateOut{ID: id}, nil
+	return nil, CreateOut{Id: newId}, nil
 }
 
 type UpdateAppIn struct {
@@ -148,13 +165,18 @@ type StatusOut struct {
 	OK bool `json:"ok"`
 }
 
-func (s *Server) updateApp(ctx context.Context, _ *mcp.CallToolRequest, in UpdateAppIn) (*mcp.CallToolResult, StatusOut, error) {
+func (s *sessionServer) updateApp(ctx context.Context, req *mcpsdk.CallToolRequest, in UpdateAppIn) (*mcpsdk.CallToolResult, StatusOut, error) {
+	ctx, err := s.toolCtx(ctx, req)
+	if err != nil {
+		return nil, StatusOut{}, err
+	}
+
 	app, err := s.currentApp()
 	if err != nil {
 		return nil, StatusOut{}, s.toolErr(err)
 	}
 
-	err = s.api.AppUpdate(ctx, app.ID, model.AppUpdateReq{
+	err = s.h.appUsecase.Update(ctx, app.Id, &appModel.Edit{
 		Active:      in.Active,
 		Namespace:   in.Namespace,
 		Name:        in.Name,
@@ -165,7 +187,7 @@ func (s *Server) updateApp(ctx context.Context, _ *mcp.CallToolRequest, in Updat
 	}
 
 	// обновляем локальную копию текущего app
-	if fresh, ferr := s.api.AppGet(ctx, app.ID); ferr == nil {
+	if fresh, gerr := s.h.appUsecase.Get(ctx, app.Id); gerr == nil {
 		s.setCurrentApp(fresh)
 	}
 
@@ -181,40 +203,50 @@ type CreateSecretIn struct {
 	Active      *bool  `json:"active,omitempty"`
 }
 
-func (s *Server) createSecret(ctx context.Context, _ *mcp.CallToolRequest, in CreateSecretIn) (*mcp.CallToolResult, CreateOut, error) {
+func (s *sessionServer) createSecret(ctx context.Context, req *mcpsdk.CallToolRequest, in CreateSecretIn) (*mcpsdk.CallToolResult, CreateOut, error) {
+	ctx, err := s.toolCtx(ctx, req)
+	if err != nil {
+		return nil, CreateOut{}, err
+	}
+
 	app, err := s.currentApp()
 	if err != nil {
 		return nil, CreateOut{}, s.toolErr(err)
 	}
 
-	id, err := s.api.SecretCreate(ctx, model.SecretCreateReq{
-		AppID:       app.ID,
+	newId, err := s.h.secretUsecase.Create(ctx, &secretModel.Edit{
+		AppId:       &app.Id,
 		Active:      in.Active,
-		SlugName:    in.SlugName,
-		Description: in.Description,
-		KubeType:    in.KubeType,
+		SlugName:    &in.SlugName,
+		Description: &in.Description,
+		KubeType:    &in.KubeType,
 	})
 	if err != nil {
 		return nil, CreateOut{}, s.toolErr(err)
 	}
 
-	return nil, CreateOut{ID: id}, nil
+	return nil, CreateOut{Id: newId}, nil
 }
 
 type UpdateSecretIn struct {
-	ID          string  `json:"id" jsonschema:"id секрета"`
+	Id          string  `json:"id" jsonschema:"id секрета"`
 	Active      *bool   `json:"active,omitempty"`
 	SlugName    *string `json:"slug_name,omitempty"`
 	Description *string `json:"description,omitempty"`
 	KubeType    *string `json:"kube_type,omitempty"`
 }
 
-func (s *Server) updateSecret(ctx context.Context, _ *mcp.CallToolRequest, in UpdateSecretIn) (*mcp.CallToolResult, StatusOut, error) {
-	if _, err := s.secretInCurrentApp(ctx, in.ID); err != nil {
+func (s *sessionServer) updateSecret(ctx context.Context, req *mcpsdk.CallToolRequest, in UpdateSecretIn) (*mcpsdk.CallToolResult, StatusOut, error) {
+	ctx, err := s.toolCtx(ctx, req)
+	if err != nil {
+		return nil, StatusOut{}, err
+	}
+
+	if _, err = s.secretInCurrentApp(ctx, in.Id); err != nil {
 		return nil, StatusOut{}, s.toolErr(err)
 	}
 
-	err := s.api.SecretUpdate(ctx, in.ID, model.SecretUpdateReq{
+	err = s.h.secretUsecase.Update(ctx, in.Id, &secretModel.Edit{
 		Active:      in.Active,
 		SlugName:    in.SlugName,
 		Description: in.Description,
@@ -235,38 +267,48 @@ type CreateConfigMapIn struct {
 	Active      *bool  `json:"active,omitempty"`
 }
 
-func (s *Server) createConfigMap(ctx context.Context, _ *mcp.CallToolRequest, in CreateConfigMapIn) (*mcp.CallToolResult, CreateOut, error) {
+func (s *sessionServer) createConfigMap(ctx context.Context, req *mcpsdk.CallToolRequest, in CreateConfigMapIn) (*mcpsdk.CallToolResult, CreateOut, error) {
+	ctx, err := s.toolCtx(ctx, req)
+	if err != nil {
+		return nil, CreateOut{}, err
+	}
+
 	app, err := s.currentApp()
 	if err != nil {
 		return nil, CreateOut{}, s.toolErr(err)
 	}
 
-	id, err := s.api.ConfigMapCreate(ctx, model.ConfigMapCreateReq{
-		AppID:       app.ID,
+	newId, err := s.h.configmapUsecase.Create(ctx, &configmapModel.Edit{
+		AppId:       &app.Id,
 		Active:      in.Active,
-		SlugName:    in.SlugName,
-		Description: in.Description,
+		SlugName:    &in.SlugName,
+		Description: &in.Description,
 	})
 	if err != nil {
 		return nil, CreateOut{}, s.toolErr(err)
 	}
 
-	return nil, CreateOut{ID: id}, nil
+	return nil, CreateOut{Id: newId}, nil
 }
 
 type UpdateConfigMapIn struct {
-	ID          string  `json:"id" jsonschema:"id конфигмапа"`
+	Id          string  `json:"id" jsonschema:"id конфигмапа"`
 	Active      *bool   `json:"active,omitempty"`
 	SlugName    *string `json:"slug_name,omitempty"`
 	Description *string `json:"description,omitempty"`
 }
 
-func (s *Server) updateConfigMap(ctx context.Context, _ *mcp.CallToolRequest, in UpdateConfigMapIn) (*mcp.CallToolResult, StatusOut, error) {
-	if _, err := s.configMapInCurrentApp(ctx, in.ID); err != nil {
+func (s *sessionServer) updateConfigMap(ctx context.Context, req *mcpsdk.CallToolRequest, in UpdateConfigMapIn) (*mcpsdk.CallToolResult, StatusOut, error) {
+	ctx, err := s.toolCtx(ctx, req)
+	if err != nil {
+		return nil, StatusOut{}, err
+	}
+
+	if _, err = s.configMapInCurrentApp(ctx, in.Id); err != nil {
 		return nil, StatusOut{}, s.toolErr(err)
 	}
 
-	err := s.api.ConfigMapUpdate(ctx, in.ID, model.ConfigMapUpdateReq{
+	err = s.h.configmapUsecase.Update(ctx, in.Id, &configmapModel.Edit{
 		Active:      in.Active,
 		SlugName:    in.SlugName,
 		Description: in.Description,
@@ -281,7 +323,7 @@ func (s *Server) updateConfigMap(ctx context.Context, _ *mcp.CallToolRequest, in
 // ── Item ────────────────────────────────────────────────
 
 type CreateItemIn struct {
-	SecretID    string        `json:"secret_id" jsonschema:"id секрета текущего app"`
+	SecretId    string        `json:"secret_id" jsonschema:"id секрета текущего app"`
 	Key         string        `json:"key" jsonschema:"ключ item-а (имя переменной в k8s-секрете)"`
 	ValueSource ValueSourceIn `json:"value_source" jsonschema:"источник значения (само значение агенту не раскрывается)"`
 	Active      *bool         `json:"active,omitempty"`
@@ -294,37 +336,42 @@ type CreateItemIn struct {
 
 // CreateItemOut — id созданного item-а + маскированные метаданные записанного значения.
 type CreateItemOut struct {
-	ID          string `json:"id"`
+	Id          string `json:"id"`
 	ValueChars  int    `json:"value_chars"`
 	ValueBytes  int    `json:"value_bytes"`
 	ValueSha256 string `json:"value_sha256"`
 }
 
-func (s *Server) createItem(ctx context.Context, _ *mcp.CallToolRequest, in CreateItemIn) (*mcp.CallToolResult, CreateItemOut, error) {
+func (s *sessionServer) createItem(ctx context.Context, req *mcpsdk.CallToolRequest, in CreateItemIn) (*mcpsdk.CallToolResult, CreateItemOut, error) {
+	ctx, err := s.toolCtx(ctx, req)
+	if err != nil {
+		return nil, CreateItemOut{}, err
+	}
+
 	app, err := s.currentApp()
 	if err != nil {
 		return nil, CreateItemOut{}, s.toolErr(err)
 	}
 
-	if _, err = s.secretInCurrentApp(ctx, in.SecretID); err != nil {
+	if _, err = s.secretInCurrentApp(ctx, in.SecretId); err != nil {
 		return nil, CreateItemOut{}, s.toolErr(err)
 	}
 
-	value, err := s.resolveValueSource(ctx, app.ID, in.ValueSource)
+	value, err := s.resolveValueSource(ctx, app.Id, in.ValueSource)
 	if err != nil {
 		return nil, CreateItemOut{}, s.toolErr(err)
 	}
 
-	id, err := s.api.ItemCreate(ctx, model.ItemCreateReq{
-		SecretID:    in.SecretID,
+	newId, err := s.h.itemUsecase.Create(ctx, &itemModel.Edit{
+		SecretId:    &in.SecretId,
 		Active:      in.Active,
-		Key:         in.Key,
-		Value:       value,
-		ValueFormat: in.ValueFormat,
-		Encoding:    in.Encoding,
-		FileName:    in.FileName,
-		ContentType: in.ContentType,
-		Description: in.Description,
+		Key:         &in.Key,
+		Value:       &value,
+		ValueFormat: optStr(in.ValueFormat),
+		Encoding:    optStr(in.Encoding),
+		FileName:    optStr(in.FileName),
+		ContentType: optStr(in.ContentType),
+		Description: &in.Description,
 	})
 	if err != nil {
 		return nil, CreateItemOut{}, s.toolErr(err)
@@ -333,7 +380,7 @@ func (s *Server) createItem(ctx context.Context, _ *mcp.CallToolRequest, in Crea
 	masked := maskValue(value)
 
 	return nil, CreateItemOut{
-		ID:          id,
+		Id:          newId,
 		ValueChars:  masked.Chars,
 		ValueBytes:  masked.Bytes,
 		ValueSha256: masked.Sha256,
@@ -341,8 +388,8 @@ func (s *Server) createItem(ctx context.Context, _ *mcp.CallToolRequest, in Crea
 }
 
 type UpdateItemIn struct {
-	ID          string         `json:"id" jsonschema:"id item-а"`
-	SecretID    *string        `json:"secret_id,omitempty" jsonschema:"перенос в другой секрет текущего app"`
+	Id          string         `json:"id" jsonschema:"id item-а"`
+	SecretId    *string        `json:"secret_id,omitempty" jsonschema:"перенос в другой секрет текущего app"`
 	Key         *string        `json:"key,omitempty"`
 	ValueSource *ValueSourceIn `json:"value_source,omitempty" jsonschema:"новое значение; если не задано — значение не меняется"`
 	Active      *bool          `json:"active,omitempty"`
@@ -353,25 +400,30 @@ type UpdateItemIn struct {
 	Description *string        `json:"description,omitempty"`
 }
 
-func (s *Server) updateItem(ctx context.Context, _ *mcp.CallToolRequest, in UpdateItemIn) (*mcp.CallToolResult, StatusOut, error) {
+func (s *sessionServer) updateItem(ctx context.Context, req *mcpsdk.CallToolRequest, in UpdateItemIn) (*mcpsdk.CallToolResult, StatusOut, error) {
+	ctx, err := s.toolCtx(ctx, req)
+	if err != nil {
+		return nil, StatusOut{}, err
+	}
+
 	app, err := s.currentApp()
 	if err != nil {
 		return nil, StatusOut{}, s.toolErr(err)
 	}
 
-	if _, err = s.itemInCurrentApp(ctx, in.ID); err != nil {
+	if _, err = s.itemInCurrentApp(ctx, in.Id); err != nil {
 		return nil, StatusOut{}, s.toolErr(err)
 	}
 
 	// перенос допустим только в секрет текущего app
-	if in.SecretID != nil {
-		if _, err = s.secretInCurrentApp(ctx, *in.SecretID); err != nil {
+	if in.SecretId != nil {
+		if _, err = s.secretInCurrentApp(ctx, *in.SecretId); err != nil {
 			return nil, StatusOut{}, s.toolErr(err)
 		}
 	}
 
-	req := model.ItemUpdateReq{
-		SecretID:    in.SecretID,
+	edit := &itemModel.Edit{
+		SecretId:    in.SecretId,
 		Active:      in.Active,
 		Key:         in.Key,
 		ValueFormat: in.ValueFormat,
@@ -382,14 +434,14 @@ func (s *Server) updateItem(ctx context.Context, _ *mcp.CallToolRequest, in Upda
 	}
 
 	if in.ValueSource != nil {
-		value, verr := s.resolveValueSource(ctx, app.ID, *in.ValueSource)
+		value, verr := s.resolveValueSource(ctx, app.Id, *in.ValueSource)
 		if verr != nil {
 			return nil, StatusOut{}, s.toolErr(verr)
 		}
-		req.Value = &value
+		edit.Value = &value
 	}
 
-	if err = s.api.ItemUpdate(ctx, in.ID, req); err != nil {
+	if err = s.h.itemUsecase.Update(ctx, in.Id, edit); err != nil {
 		return nil, StatusOut{}, s.toolErr(err)
 	}
 
@@ -399,7 +451,7 @@ func (s *Server) updateItem(ctx context.Context, _ *mcp.CallToolRequest, in Upda
 // ── ConfigItem ──────────────────────────────────────────
 
 type CreateConfigItemIn struct {
-	ConfigmapID string `json:"configmap_id" jsonschema:"id конфигмапа текущего app"`
+	ConfigmapId string `json:"configmap_id" jsonschema:"id конфигмапа текущего app"`
 	Key         string `json:"key" jsonschema:"ключ item-а"`
 	Value       string `json:"value" jsonschema:"значение (несекретное)"`
 	Active      *bool  `json:"active,omitempty"`
@@ -410,32 +462,37 @@ type CreateConfigItemIn struct {
 	Description string `json:"description,omitempty"`
 }
 
-func (s *Server) createConfigItem(ctx context.Context, _ *mcp.CallToolRequest, in CreateConfigItemIn) (*mcp.CallToolResult, CreateOut, error) {
-	if _, err := s.configMapInCurrentApp(ctx, in.ConfigmapID); err != nil {
+func (s *sessionServer) createConfigItem(ctx context.Context, req *mcpsdk.CallToolRequest, in CreateConfigItemIn) (*mcpsdk.CallToolResult, CreateOut, error) {
+	ctx, err := s.toolCtx(ctx, req)
+	if err != nil {
+		return nil, CreateOut{}, err
+	}
+
+	if _, err = s.configMapInCurrentApp(ctx, in.ConfigmapId); err != nil {
 		return nil, CreateOut{}, s.toolErr(err)
 	}
 
-	id, err := s.api.ConfigItemCreate(ctx, model.ConfigItemCreateReq{
-		ConfigmapID: in.ConfigmapID,
+	newId, err := s.h.configitemUsecase.Create(ctx, &configitemModel.Edit{
+		ConfigMapId: &in.ConfigmapId,
 		Active:      in.Active,
-		Key:         in.Key,
-		Value:       in.Value,
-		ValueFormat: in.ValueFormat,
-		Encoding:    in.Encoding,
-		FileName:    in.FileName,
-		ContentType: in.ContentType,
-		Description: in.Description,
+		Key:         &in.Key,
+		Value:       &in.Value,
+		ValueFormat: optStr(in.ValueFormat),
+		Encoding:    optStr(in.Encoding),
+		FileName:    optStr(in.FileName),
+		ContentType: optStr(in.ContentType),
+		Description: &in.Description,
 	})
 	if err != nil {
 		return nil, CreateOut{}, s.toolErr(err)
 	}
 
-	return nil, CreateOut{ID: id}, nil
+	return nil, CreateOut{Id: newId}, nil
 }
 
 type UpdateConfigItemIn struct {
-	ID          string  `json:"id" jsonschema:"id item-а конфигмапа"`
-	ConfigmapID *string `json:"configmap_id,omitempty" jsonschema:"перенос в другой configmap текущего app"`
+	Id          string  `json:"id" jsonschema:"id item-а конфигмапа"`
+	ConfigmapId *string `json:"configmap_id,omitempty" jsonschema:"перенос в другой configmap текущего app"`
 	Key         *string `json:"key,omitempty"`
 	Value       *string `json:"value,omitempty"`
 	Active      *bool   `json:"active,omitempty"`
@@ -446,24 +503,29 @@ type UpdateConfigItemIn struct {
 	Description *string `json:"description,omitempty"`
 }
 
-func (s *Server) updateConfigItem(ctx context.Context, _ *mcp.CallToolRequest, in UpdateConfigItemIn) (*mcp.CallToolResult, StatusOut, error) {
-	item, err := s.api.ConfigItemGet(ctx, in.ID)
+func (s *sessionServer) updateConfigItem(ctx context.Context, req *mcpsdk.CallToolRequest, in UpdateConfigItemIn) (*mcpsdk.CallToolResult, StatusOut, error) {
+	ctx, err := s.toolCtx(ctx, req)
+	if err != nil {
+		return nil, StatusOut{}, err
+	}
+
+	item, err := s.h.configitemUsecase.Get(ctx, in.Id)
 	if err != nil {
 		return nil, StatusOut{}, s.toolErr(err)
 	}
 
-	if _, err = s.configMapInCurrentApp(ctx, item.ConfigmapID); err != nil {
+	if _, err = s.configMapInCurrentApp(ctx, item.ConfigMapId); err != nil {
 		return nil, StatusOut{}, s.toolErr(err)
 	}
 
-	if in.ConfigmapID != nil {
-		if _, err = s.configMapInCurrentApp(ctx, *in.ConfigmapID); err != nil {
+	if in.ConfigmapId != nil {
+		if _, err = s.configMapInCurrentApp(ctx, *in.ConfigmapId); err != nil {
 			return nil, StatusOut{}, s.toolErr(err)
 		}
 	}
 
-	err = s.api.ConfigItemUpdate(ctx, in.ID, model.ConfigItemUpdateReq{
-		ConfigmapID: in.ConfigmapID,
+	err = s.h.configitemUsecase.Update(ctx, in.Id, &configitemModel.Edit{
+		ConfigMapId: in.ConfigmapId,
 		Active:      in.Active,
 		Key:         in.Key,
 		Value:       in.Value,

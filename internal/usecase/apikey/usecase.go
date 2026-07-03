@@ -61,8 +61,9 @@ func (u *Usecase) List(ctx context.Context, pars *model.ListReq) ([]*model.Main,
 }
 
 // Create создаёт ключ и возвращает (id, значение ключа) — значение
-// показывается только один раз, в БД хранится хэш.
-func (u *Usecase) Create(ctx context.Context, name string, usrId *int64) (string, string, error) {
+// показывается только один раз, в БД хранится хэш. mcpOnly-ключи принимает
+// только MCP-эндпоинт.
+func (u *Usecase) Create(ctx context.Context, name string, usrId *int64, mcpOnly bool) (string, string, error) {
 	if !u.sessionSvc.CtxIsAuthorized(ctx) {
 		return "", "", errs.NotAuthorized
 	}
@@ -94,6 +95,7 @@ func (u *Usecase) Create(ctx context.Context, name string, usrId *int64) (string
 	newId, err := u.svc.Create(ctx, &model.Edit{
 		UsrId:     &targetUsrId,
 		Active:    new(true),
+		McpOnly:   &mcpOnly,
 		Name:      &name,
 		KeyHash:   &hash,
 		KeyPrefix: &prefix,
@@ -105,14 +107,15 @@ func (u *Usecase) Create(ctx context.Context, name string, usrId *int64) (string
 	return newId, key, nil
 }
 
-func (u *Usecase) Update(ctx context.Context, id string, active *bool, name *string) error {
+func (u *Usecase) Update(ctx context.Context, id string, active *bool, name *string, mcpOnly *bool) error {
 	if err := u.requireOwnership(ctx, id); err != nil {
 		return err
 	}
 
 	err := u.svc.Update(ctx, id, &model.Edit{
-		Active: active,
-		Name:   name,
+		Active:  active,
+		McpOnly: mcpOnly,
+		Name:    name,
 	})
 	if err != nil {
 		return fmt.Errorf("svc.Update: %w", err)
@@ -154,9 +157,20 @@ func (u *Usecase) requireOwnership(ctx context.Context, id string) error {
 
 // ── Аутентификация по ключу ─────────────────────────────
 
-// SessionFromKey строит сессию по API-ключу: ключ активен, владелец активен —
-// сессия наследует права владельца. Используется session-интерсептором.
+// SessionFromKey строит сессию по API-ключу для основного API: mcp_only-ключи
+// здесь отвергаются. Используется session-интерсептором.
 func (u *Usecase) SessionFromKey(ctx context.Context, key string) (*sessionModel.Session, error) {
+	return u.sessionFromKey(ctx, key, false)
+}
+
+// McpSessionFromKey строит сессию по API-ключу для встроенного MCP-эндпоинта:
+// принимаются и обычные, и mcp_only-ключи.
+func (u *Usecase) McpSessionFromKey(ctx context.Context, key string) (*sessionModel.Session, error) {
+	return u.sessionFromKey(ctx, key, true)
+}
+
+// sessionFromKey: ключ активен, владелец активен — сессия наследует права владельца.
+func (u *Usecase) sessionFromKey(ctx context.Context, key string, allowMcpOnly bool) (*sessionModel.Session, error) {
 	if !strings.HasPrefix(key, constant.ApiKeyPrefix) {
 		return nil, errs.NotAuthorized
 	}
@@ -166,6 +180,9 @@ func (u *Usecase) SessionFromKey(ctx context.Context, key string) (*sessionModel
 		return nil, fmt.Errorf("svc.GetByKeyHash: %w", err)
 	}
 	if !found || !item.Active {
+		return nil, errs.NotAuthorized
+	}
+	if item.McpOnly && !allowMcpOnly {
 		return nil, errs.NotAuthorized
 	}
 

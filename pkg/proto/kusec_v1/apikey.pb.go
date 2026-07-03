@@ -32,7 +32,10 @@ type ApiKeyMain struct {
 	UpdatedAt *timestamppb.Timestamp `protobuf:"bytes,3,opt,name=updated_at,json=updatedAt,proto3" json:"updated_at,omitempty"`
 	UsrId     int64                  `protobuf:"varint,4,opt,name=usr_id,json=usrId,proto3" json:"usr_id,omitempty"`
 	Active    bool                   `protobuf:"varint,5,opt,name=active,proto3" json:"active,omitempty"`
-	Name      string                 `protobuf:"bytes,6,opt,name=name,proto3" json:"name,omitempty"`
+	// При true ключ принимается только MCP-эндпоинтом; основной API его
+	// отвергает. Рекомендуется для ключей AI-агентов.
+	McpOnly bool   `protobuf:"varint,9,opt,name=mcp_only,json=mcpOnly,proto3" json:"mcp_only,omitempty"`
+	Name    string `protobuf:"bytes,6,opt,name=name,proto3" json:"name,omitempty"`
 	// Первые символы ключа — для опознания; сам ключ не хранится.
 	KeyPrefix     string                 `protobuf:"bytes,7,opt,name=key_prefix,json=keyPrefix,proto3" json:"key_prefix,omitempty"`
 	LastUsedAt    *timestamppb.Timestamp `protobuf:"bytes,8,opt,name=last_used_at,json=lastUsedAt,proto3" json:"last_used_at,omitempty"`
@@ -101,6 +104,13 @@ func (x *ApiKeyMain) GetUsrId() int64 {
 func (x *ApiKeyMain) GetActive() bool {
 	if x != nil {
 		return x.Active
+	}
+	return false
+}
+
+func (x *ApiKeyMain) GetMcpOnly() bool {
+	if x != nil {
+		return x.McpOnly
 	}
 	return false
 }
@@ -287,7 +297,9 @@ type ApiKeyCreateReq struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
 	Name  string                 `protobuf:"bytes,1,opt,name=name,proto3" json:"name,omitempty"`
 	// Только для админов; не-админ создаёт ключи только себе.
-	UsrId         *int64 `protobuf:"varint,2,opt,name=usr_id,json=usrId,proto3,oneof" json:"usr_id,omitempty"`
+	UsrId *int64 `protobuf:"varint,2,opt,name=usr_id,json=usrId,proto3,oneof" json:"usr_id,omitempty"`
+	// Ключ только для MCP-эндпоинта (рекомендуется для AI-агентов).
+	McpOnly       bool `protobuf:"varint,3,opt,name=mcp_only,json=mcpOnly,proto3" json:"mcp_only,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -334,6 +346,13 @@ func (x *ApiKeyCreateReq) GetUsrId() int64 {
 		return *x.UsrId
 	}
 	return 0
+}
+
+func (x *ApiKeyCreateReq) GetMcpOnly() bool {
+	if x != nil {
+		return x.McpOnly
+	}
+	return false
 }
 
 type ApiKeyCreateRep struct {
@@ -394,6 +413,7 @@ type ApiKeyUpdateReq struct {
 	Id            string                 `protobuf:"bytes,1,opt,name=id,proto3" json:"id,omitempty"`
 	Active        *bool                  `protobuf:"varint,2,opt,name=active,proto3,oneof" json:"active,omitempty"`
 	Name          *string                `protobuf:"bytes,3,opt,name=name,proto3,oneof" json:"name,omitempty"`
+	McpOnly       *bool                  `protobuf:"varint,4,opt,name=mcp_only,json=mcpOnly,proto3,oneof" json:"mcp_only,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -449,11 +469,18 @@ func (x *ApiKeyUpdateReq) GetName() string {
 	return ""
 }
 
+func (x *ApiKeyUpdateReq) GetMcpOnly() bool {
+	if x != nil && x.McpOnly != nil {
+		return *x.McpOnly
+	}
+	return false
+}
+
 var File_kusec_v1_apikey_proto protoreflect.FileDescriptor
 
 const file_kusec_v1_apikey_proto_rawDesc = "" +
 	"\n" +
-	"\x15kusec_v1/apikey.proto\x12\bkusec_v1\x1a\x1cgoogle/api/annotations.proto\x1a\x1bgoogle/protobuf/empty.proto\x1a\x1fgoogle/protobuf/timestamp.proto\x1a\x13common/common.proto\"\xb2\x02\n" +
+	"\x15kusec_v1/apikey.proto\x12\bkusec_v1\x1a\x1cgoogle/api/annotations.proto\x1a\x1bgoogle/protobuf/empty.proto\x1a\x1fgoogle/protobuf/timestamp.proto\x1a\x13common/common.proto\"\xcd\x02\n" +
 	"\n" +
 	"ApiKeyMain\x12\x0e\n" +
 	"\x02id\x18\x01 \x01(\tR\x02id\x129\n" +
@@ -462,7 +489,8 @@ const file_kusec_v1_apikey_proto_rawDesc = "" +
 	"\n" +
 	"updated_at\x18\x03 \x01(\v2\x1a.google.protobuf.TimestampR\tupdatedAt\x12\x15\n" +
 	"\x06usr_id\x18\x04 \x01(\x03R\x05usrId\x12\x16\n" +
-	"\x06active\x18\x05 \x01(\bR\x06active\x12\x12\n" +
+	"\x06active\x18\x05 \x01(\bR\x06active\x12\x19\n" +
+	"\bmcp_only\x18\t \x01(\bR\amcpOnly\x12\x12\n" +
 	"\x04name\x18\x06 \x01(\tR\x04name\x12\x1d\n" +
 	"\n" +
 	"key_prefix\x18\a \x01(\tR\tkeyPrefix\x12<\n" +
@@ -479,20 +507,23 @@ const file_kusec_v1_apikey_proto_rawDesc = "" +
 	"\x0fpagination_info\x18\x01 \x01(\v2\x18.common.PaginationInfoStR\x0epaginationInfo\x12.\n" +
 	"\aresults\x18\x02 \x03(\v2\x14.kusec_v1.ApiKeyMainR\aresults\"\x1e\n" +
 	"\fApiKeyGetReq\x12\x0e\n" +
-	"\x02id\x18\x01 \x01(\tR\x02id\"L\n" +
+	"\x02id\x18\x01 \x01(\tR\x02id\"g\n" +
 	"\x0fApiKeyCreateReq\x12\x12\n" +
 	"\x04name\x18\x01 \x01(\tR\x04name\x12\x1a\n" +
-	"\x06usr_id\x18\x02 \x01(\x03H\x00R\x05usrId\x88\x01\x01B\t\n" +
+	"\x06usr_id\x18\x02 \x01(\x03H\x00R\x05usrId\x88\x01\x01\x12\x19\n" +
+	"\bmcp_only\x18\x03 \x01(\bR\amcpOnlyB\t\n" +
 	"\a_usr_id\"3\n" +
 	"\x0fApiKeyCreateRep\x12\x0e\n" +
 	"\x02id\x18\x01 \x01(\tR\x02id\x12\x10\n" +
-	"\x03key\x18\x02 \x01(\tR\x03key\"k\n" +
+	"\x03key\x18\x02 \x01(\tR\x03key\"\x98\x01\n" +
 	"\x0fApiKeyUpdateReq\x12\x0e\n" +
 	"\x02id\x18\x01 \x01(\tR\x02id\x12\x1b\n" +
 	"\x06active\x18\x02 \x01(\bH\x00R\x06active\x88\x01\x01\x12\x17\n" +
-	"\x04name\x18\x03 \x01(\tH\x01R\x04name\x88\x01\x01B\t\n" +
+	"\x04name\x18\x03 \x01(\tH\x01R\x04name\x88\x01\x01\x12\x1e\n" +
+	"\bmcp_only\x18\x04 \x01(\bH\x02R\amcpOnly\x88\x01\x01B\t\n" +
 	"\a_activeB\a\n" +
-	"\x05_name2\xd1\x02\n" +
+	"\x05_nameB\v\n" +
+	"\t_mcp_only2\xd1\x02\n" +
 	"\x06ApiKey\x12J\n" +
 	"\x04List\x12\x17.kusec_v1.ApiKeyListReq\x1a\x17.kusec_v1.ApiKeyListRep\"\x10\x82\xd3\xe4\x93\x02\n" +
 	"\x12\b/api-key\x12S\n" +

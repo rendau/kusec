@@ -1,12 +1,18 @@
-package mcpserver
+package mcp
 
 import (
 	"context"
+	"time"
 
-	"github.com/modelcontextprotocol/go-sdk/mcp"
+	mcpsdk "github.com/modelcontextprotocol/go-sdk/mcp"
 	"github.com/samber/lo"
 
-	"github.com/mechta-market/kusec/internal/mcpserver/client/model"
+	appModel "github.com/mechta-market/kusec/internal/domain/app/model"
+	commonModel "github.com/mechta-market/kusec/internal/domain/common/model"
+	configitemModel "github.com/mechta-market/kusec/internal/domain/configitem/model"
+	configmapModel "github.com/mechta-market/kusec/internal/domain/configmap/model"
+	itemModel "github.com/mechta-market/kusec/internal/domain/item/model"
+	secretModel "github.com/mechta-market/kusec/internal/domain/secret/model"
 )
 
 // ── Общие вход/выход ────────────────────────────────────
@@ -16,8 +22,11 @@ type PageIn struct {
 	PageSize int64 `json:"page_size,omitempty" jsonschema:"размер страницы, по умолчанию 100"`
 }
 
-func (p PageIn) listParams() model.ListParams {
-	return model.ListParams{Page: p.Page, PageSize: p.PageSize, WithTotalCount: true}
+func (p PageIn) listParams() commonModel.ListParams {
+	if p.PageSize <= 0 {
+		p.PageSize = 100
+	}
+	return commonModel.ListParams{Page: p.Page, PageSize: p.PageSize, WithTotalCount: true}
 }
 
 type PaginationOut struct {
@@ -26,16 +35,26 @@ type PaginationOut struct {
 	TotalCount int64 `json:"total_count"`
 }
 
-func paginationToOut(v model.PaginationInfo) PaginationOut {
-	return PaginationOut{
-		Page:       int64(v.Page),
-		PageSize:   int64(v.PageSize),
-		TotalCount: int64(v.TotalCount),
+func paginationOut(lp commonModel.ListParams, totalCount int64) PaginationOut {
+	return PaginationOut{Page: lp.Page, PageSize: lp.PageSize, TotalCount: totalCount}
+}
+
+func timeOut(v time.Time) string {
+	if v.IsZero() {
+		return ""
 	}
+	return v.Format(time.RFC3339)
+}
+
+func optStr(v string) *string {
+	if v == "" {
+		return nil
+	}
+	return &v
 }
 
 type AppOut struct {
-	ID          string `json:"id"`
+	Id          string `json:"id"`
 	Active      bool   `json:"active"`
 	Namespace   string `json:"namespace"`
 	Name        string `json:"name"`
@@ -45,22 +64,22 @@ type AppOut struct {
 	UpdatedAt   string `json:"updated_at,omitempty"`
 }
 
-func appToOut(v model.App, _ int) AppOut {
+func appToOut(v *appModel.Main, _ int) AppOut {
 	return AppOut{
-		ID:          v.ID,
+		Id:          v.Id,
 		Active:      v.Active,
 		Namespace:   v.Namespace,
 		Name:        v.Name,
 		SlugName:    v.SlugName,
 		Description: v.Description,
-		CreatedAt:   v.CreatedAt,
-		UpdatedAt:   v.UpdatedAt,
+		CreatedAt:   timeOut(v.CreatedAt),
+		UpdatedAt:   timeOut(v.UpdatedAt),
 	}
 }
 
 type SecretOut struct {
-	ID             string `json:"id"`
-	AppID          string `json:"app_id"`
+	Id             string `json:"id"`
+	AppId          string `json:"app_id"`
 	Active         bool   `json:"active"`
 	SlugName       string `json:"slug_name"`
 	Description    string `json:"description"`
@@ -71,24 +90,24 @@ type SecretOut struct {
 	UpdatedAt      string `json:"updated_at,omitempty"`
 }
 
-func secretToOut(v model.Secret, _ int) SecretOut {
+func secretToOut(v *secretModel.Main, _ int) SecretOut {
 	return SecretOut{
-		ID:             v.ID,
-		AppID:          v.AppID,
+		Id:             v.Id,
+		AppId:          v.AppId,
 		Active:         v.Active,
 		SlugName:       v.SlugName,
 		Description:    v.Description,
 		KubeSecretName: v.KubeSecretName,
 		KubeType:       v.KubeType,
 		ExactSlug:      v.ExactSlug,
-		CreatedAt:      v.CreatedAt,
-		UpdatedAt:      v.UpdatedAt,
+		CreatedAt:      timeOut(v.CreatedAt),
+		UpdatedAt:      timeOut(v.UpdatedAt),
 	}
 }
 
 type ConfigMapOut struct {
-	ID                string `json:"id"`
-	AppID             string `json:"app_id"`
+	Id                string `json:"id"`
+	AppId             string `json:"app_id"`
 	Active            bool   `json:"active"`
 	SlugName          string `json:"slug_name"`
 	Description       string `json:"description"`
@@ -98,24 +117,24 @@ type ConfigMapOut struct {
 	UpdatedAt         string `json:"updated_at,omitempty"`
 }
 
-func configMapToOut(v model.ConfigMap, _ int) ConfigMapOut {
+func configMapToOut(v *configmapModel.Main, _ int) ConfigMapOut {
 	return ConfigMapOut{
-		ID:                v.ID,
-		AppID:             v.AppID,
+		Id:                v.Id,
+		AppId:             v.AppId,
 		Active:            v.Active,
 		SlugName:          v.SlugName,
 		Description:       v.Description,
-		KubeConfigmapName: v.KubeConfigmapName,
+		KubeConfigmapName: v.KubeConfigMapName,
 		ExactSlug:         v.ExactSlug,
-		CreatedAt:         v.CreatedAt,
-		UpdatedAt:         v.UpdatedAt,
+		CreatedAt:         timeOut(v.CreatedAt),
+		UpdatedAt:         timeOut(v.UpdatedAt),
 	}
 }
 
 // ItemOut — item секрета без значения: вместо value только его метаданные.
 type ItemOut struct {
-	ID          string `json:"id"`
-	SecretID    string `json:"secret_id"`
+	Id          string `json:"id"`
+	SecretId    string `json:"secret_id"`
 	Active      bool   `json:"active"`
 	Key         string `json:"key"`
 	ValueChars  int    `json:"value_chars" jsonschema:"длина значения в символах (само значение агенту не выдаётся)"`
@@ -131,13 +150,13 @@ type ItemOut struct {
 }
 
 // maskItem конвертирует item в безопасный вид и запоминает значение для скраба ошибок.
-func (s *Server) maskItem(v model.Item, _ int) ItemOut {
+func (s *sessionServer) maskItem(v *itemModel.Main, _ int) ItemOut {
 	s.vault.markSeen(v.Value)
 	masked := maskValue(v.Value)
 
 	return ItemOut{
-		ID:          v.ID,
-		SecretID:    v.SecretID,
+		Id:          v.Id,
+		SecretId:    v.SecretId,
 		Active:      v.Active,
 		Key:         v.Key,
 		ValueChars:  masked.Chars,
@@ -148,15 +167,15 @@ func (s *Server) maskItem(v model.Item, _ int) ItemOut {
 		FileName:    v.FileName,
 		ContentType: v.ContentType,
 		Description: v.Description,
-		CreatedAt:   v.CreatedAt,
-		UpdatedAt:   v.UpdatedAt,
+		CreatedAt:   timeOut(v.CreatedAt),
+		UpdatedAt:   timeOut(v.UpdatedAt),
 	}
 }
 
 // ConfigItemOut — item конфигмапа; значения конфигмапов не секретны и выдаются как есть.
 type ConfigItemOut struct {
-	ID          string `json:"id"`
-	ConfigmapID string `json:"configmap_id"`
+	Id          string `json:"id"`
+	ConfigmapId string `json:"configmap_id"`
 	Active      bool   `json:"active"`
 	Key         string `json:"key"`
 	Value       string `json:"value"`
@@ -169,10 +188,10 @@ type ConfigItemOut struct {
 	UpdatedAt   string `json:"updated_at,omitempty"`
 }
 
-func configItemToOut(v model.ConfigItem, _ int) ConfigItemOut {
+func configItemToOut(v *configitemModel.Main, _ int) ConfigItemOut {
 	return ConfigItemOut{
-		ID:          v.ID,
-		ConfigmapID: v.ConfigmapID,
+		Id:          v.Id,
+		ConfigmapId: v.ConfigMapId,
 		Active:      v.Active,
 		Key:         v.Key,
 		Value:       v.Value,
@@ -181,60 +200,60 @@ func configItemToOut(v model.ConfigItem, _ int) ConfigItemOut {
 		FileName:    v.FileName,
 		ContentType: v.ContentType,
 		Description: v.Description,
-		CreatedAt:   v.CreatedAt,
-		UpdatedAt:   v.UpdatedAt,
+		CreatedAt:   timeOut(v.CreatedAt),
+		UpdatedAt:   timeOut(v.UpdatedAt),
 	}
 }
 
 // ── Регистрация ─────────────────────────────────────────
 
-func (s *Server) registerReadTools(srv *mcp.Server) {
-	mcp.AddTool(srv, &mcp.Tool{
+func (s *sessionServer) registerReadTools(srv *mcpsdk.Server) {
+	mcpsdk.AddTool(srv, &mcpsdk.Tool{
 		Name:        "list_app",
 		Description: "Список приложений (app) kusec с фильтрами и пагинацией.",
 	}, s.listApp)
 
-	mcp.AddTool(srv, &mcp.Tool{
+	mcpsdk.AddTool(srv, &mcpsdk.Tool{
 		Name:        "get_app",
 		Description: "Получить app по id.",
 	}, s.getApp)
 
-	mcp.AddTool(srv, &mcp.Tool{
+	mcpsdk.AddTool(srv, &mcpsdk.Tool{
 		Name:        "list_secret",
 		Description: "Список секретов (k8s Secret) с фильтрами и пагинацией.",
 	}, s.listSecret)
 
-	mcp.AddTool(srv, &mcp.Tool{
+	mcpsdk.AddTool(srv, &mcpsdk.Tool{
 		Name:        "get_secret",
 		Description: "Получить секрет по id (метаданные, без значений item-ов).",
 	}, s.getSecret)
 
-	mcp.AddTool(srv, &mcp.Tool{
+	mcpsdk.AddTool(srv, &mcpsdk.Tool{
 		Name:        "list_configmap",
 		Description: "Список конфигмапов (k8s ConfigMap) с фильтрами и пагинацией.",
 	}, s.listConfigMap)
 
-	mcp.AddTool(srv, &mcp.Tool{
+	mcpsdk.AddTool(srv, &mcpsdk.Tool{
 		Name:        "get_configmap",
 		Description: "Получить configmap по id.",
 	}, s.getConfigMap)
 
-	mcp.AddTool(srv, &mcp.Tool{
+	mcpsdk.AddTool(srv, &mcpsdk.Tool{
 		Name:        "list_item",
 		Description: "Список item-ов секретов. Значения замаскированы: вместо value — длина в символах/байтах и усечённый sha256 для сравнения.",
 	}, s.listItem)
 
-	mcp.AddTool(srv, &mcp.Tool{
+	mcpsdk.AddTool(srv, &mcpsdk.Tool{
 		Name:        "get_item",
 		Description: "Получить item секрета по id. Значение замаскировано (длина + усечённый sha256).",
 	}, s.getItem)
 
-	mcp.AddTool(srv, &mcp.Tool{
+	mcpsdk.AddTool(srv, &mcpsdk.Tool{
 		Name:        "list_config_item",
 		Description: "Список item-ов конфигмапов (значения не секретны и видны полностью).",
 	}, s.listConfigItem)
 
-	mcp.AddTool(srv, &mcp.Tool{
+	mcpsdk.AddTool(srv, &mcpsdk.Tool{
 		Name:        "get_config_item",
 		Description: "Получить item конфигмапа по id.",
 	}, s.getConfigItem)
@@ -254,44 +273,52 @@ type ListAppOut struct {
 	Results        []AppOut      `json:"results"`
 }
 
-func (s *Server) listApp(ctx context.Context, _ *mcp.CallToolRequest, in ListAppIn) (*mcp.CallToolResult, ListAppOut, error) {
-	req := model.AppListReq{ListParams: in.listParams(), Active: in.Active}
-	if in.Namespace != "" {
-		req.Namespace = &in.Namespace
-	}
-	if in.Search != "" {
-		req.Search = &in.Search
+func (s *sessionServer) listApp(ctx context.Context, req *mcpsdk.CallToolRequest, in ListAppIn) (*mcpsdk.CallToolResult, ListAppOut, error) {
+	ctx, err := s.toolCtx(ctx, req)
+	if err != nil {
+		return nil, ListAppOut{}, err
 	}
 
-	rep, err := s.api.AppList(ctx, req)
+	lp := in.listParams()
+	items, tCount, err := s.h.appUsecase.List(ctx, &appModel.ListReq{
+		ListParams: lp,
+		Active:     in.Active,
+		Namespace:  optStr(in.Namespace),
+		Search:     optStr(in.Search),
+	})
 	if err != nil {
 		return nil, ListAppOut{}, s.toolErr(err)
 	}
 
 	return nil, ListAppOut{
-		PaginationInfo: paginationToOut(rep.PaginationInfo),
-		Results:        lo.Map(rep.Results, appToOut),
+		PaginationInfo: paginationOut(lp, tCount),
+		Results:        lo.Map(items, appToOut),
 	}, nil
 }
 
 type GetByIdIn struct {
-	ID string `json:"id" jsonschema:"id сущности"`
+	Id string `json:"id" jsonschema:"id сущности"`
 }
 
-func (s *Server) getApp(ctx context.Context, _ *mcp.CallToolRequest, in GetByIdIn) (*mcp.CallToolResult, AppOut, error) {
-	rep, err := s.api.AppGet(ctx, in.ID)
+func (s *sessionServer) getApp(ctx context.Context, req *mcpsdk.CallToolRequest, in GetByIdIn) (*mcpsdk.CallToolResult, AppOut, error) {
+	ctx, err := s.toolCtx(ctx, req)
+	if err != nil {
+		return nil, AppOut{}, err
+	}
+
+	item, err := s.h.appUsecase.Get(ctx, in.Id)
 	if err != nil {
 		return nil, AppOut{}, s.toolErr(err)
 	}
 
-	return nil, appToOut(rep, 0), nil
+	return nil, appToOut(item, 0), nil
 }
 
 // ── Secret ──────────────────────────────────────────────
 
 type ListSecretIn struct {
 	PageIn
-	AppID  string `json:"app_id,omitempty" jsonschema:"фильтр по app"`
+	AppId  string `json:"app_id,omitempty" jsonschema:"фильтр по app"`
 	Active *bool  `json:"active,omitempty" jsonschema:"фильтр по активности"`
 	Search string `json:"search,omitempty" jsonschema:"поиск по слагу/описанию"`
 }
@@ -301,40 +328,48 @@ type ListSecretOut struct {
 	Results        []SecretOut   `json:"results"`
 }
 
-func (s *Server) listSecret(ctx context.Context, _ *mcp.CallToolRequest, in ListSecretIn) (*mcp.CallToolResult, ListSecretOut, error) {
-	req := model.SecretListReq{ListParams: in.listParams(), Active: in.Active}
-	if in.AppID != "" {
-		req.AppID = &in.AppID
-	}
-	if in.Search != "" {
-		req.Search = &in.Search
+func (s *sessionServer) listSecret(ctx context.Context, req *mcpsdk.CallToolRequest, in ListSecretIn) (*mcpsdk.CallToolResult, ListSecretOut, error) {
+	ctx, err := s.toolCtx(ctx, req)
+	if err != nil {
+		return nil, ListSecretOut{}, err
 	}
 
-	rep, err := s.api.SecretList(ctx, req)
+	lp := in.listParams()
+	items, tCount, err := s.h.secretUsecase.List(ctx, &secretModel.ListReq{
+		ListParams: lp,
+		AppId:      optStr(in.AppId),
+		Active:     in.Active,
+		Search:     optStr(in.Search),
+	})
 	if err != nil {
 		return nil, ListSecretOut{}, s.toolErr(err)
 	}
 
 	return nil, ListSecretOut{
-		PaginationInfo: paginationToOut(rep.PaginationInfo),
-		Results:        lo.Map(rep.Results, secretToOut),
+		PaginationInfo: paginationOut(lp, tCount),
+		Results:        lo.Map(items, secretToOut),
 	}, nil
 }
 
-func (s *Server) getSecret(ctx context.Context, _ *mcp.CallToolRequest, in GetByIdIn) (*mcp.CallToolResult, SecretOut, error) {
-	rep, err := s.api.SecretGet(ctx, in.ID)
+func (s *sessionServer) getSecret(ctx context.Context, req *mcpsdk.CallToolRequest, in GetByIdIn) (*mcpsdk.CallToolResult, SecretOut, error) {
+	ctx, err := s.toolCtx(ctx, req)
+	if err != nil {
+		return nil, SecretOut{}, err
+	}
+
+	item, err := s.h.secretUsecase.Get(ctx, in.Id)
 	if err != nil {
 		return nil, SecretOut{}, s.toolErr(err)
 	}
 
-	return nil, secretToOut(rep, 0), nil
+	return nil, secretToOut(item, 0), nil
 }
 
 // ── ConfigMap ───────────────────────────────────────────
 
 type ListConfigMapIn struct {
 	PageIn
-	AppID  string `json:"app_id,omitempty" jsonschema:"фильтр по app"`
+	AppId  string `json:"app_id,omitempty" jsonschema:"фильтр по app"`
 	Active *bool  `json:"active,omitempty" jsonschema:"фильтр по активности"`
 	Search string `json:"search,omitempty" jsonschema:"поиск по слагу/описанию"`
 }
@@ -344,41 +379,49 @@ type ListConfigMapOut struct {
 	Results        []ConfigMapOut `json:"results"`
 }
 
-func (s *Server) listConfigMap(ctx context.Context, _ *mcp.CallToolRequest, in ListConfigMapIn) (*mcp.CallToolResult, ListConfigMapOut, error) {
-	req := model.ConfigMapListReq{ListParams: in.listParams(), Active: in.Active}
-	if in.AppID != "" {
-		req.AppID = &in.AppID
-	}
-	if in.Search != "" {
-		req.Search = &in.Search
+func (s *sessionServer) listConfigMap(ctx context.Context, req *mcpsdk.CallToolRequest, in ListConfigMapIn) (*mcpsdk.CallToolResult, ListConfigMapOut, error) {
+	ctx, err := s.toolCtx(ctx, req)
+	if err != nil {
+		return nil, ListConfigMapOut{}, err
 	}
 
-	rep, err := s.api.ConfigMapList(ctx, req)
+	lp := in.listParams()
+	items, tCount, err := s.h.configmapUsecase.List(ctx, &configmapModel.ListReq{
+		ListParams: lp,
+		AppId:      optStr(in.AppId),
+		Active:     in.Active,
+		Search:     optStr(in.Search),
+	})
 	if err != nil {
 		return nil, ListConfigMapOut{}, s.toolErr(err)
 	}
 
 	return nil, ListConfigMapOut{
-		PaginationInfo: paginationToOut(rep.PaginationInfo),
-		Results:        lo.Map(rep.Results, configMapToOut),
+		PaginationInfo: paginationOut(lp, tCount),
+		Results:        lo.Map(items, configMapToOut),
 	}, nil
 }
 
-func (s *Server) getConfigMap(ctx context.Context, _ *mcp.CallToolRequest, in GetByIdIn) (*mcp.CallToolResult, ConfigMapOut, error) {
-	rep, err := s.api.ConfigMapGet(ctx, in.ID)
+func (s *sessionServer) getConfigMap(ctx context.Context, req *mcpsdk.CallToolRequest, in GetByIdIn) (*mcpsdk.CallToolResult, ConfigMapOut, error) {
+	ctx, err := s.toolCtx(ctx, req)
+	if err != nil {
+		return nil, ConfigMapOut{}, err
+	}
+
+	item, err := s.h.configmapUsecase.Get(ctx, in.Id)
 	if err != nil {
 		return nil, ConfigMapOut{}, s.toolErr(err)
 	}
 
-	return nil, configMapToOut(rep, 0), nil
+	return nil, configMapToOut(item, 0), nil
 }
 
 // ── Item ────────────────────────────────────────────────
 
 type ListItemIn struct {
 	PageIn
-	SecretID  string   `json:"secret_id,omitempty" jsonschema:"фильтр по секрету"`
-	SecretIDs []string `json:"secret_ids,omitempty" jsonschema:"выборка по нескольким секретам за один запрос"`
+	SecretId  string   `json:"secret_id,omitempty" jsonschema:"фильтр по секрету"`
+	SecretIds []string `json:"secret_ids,omitempty" jsonschema:"выборка по нескольким секретам за один запрос"`
 	Active    *bool    `json:"active,omitempty" jsonschema:"фильтр по активности"`
 	Search    string   `json:"search,omitempty" jsonschema:"поиск по ключу/описанию"`
 }
@@ -388,41 +431,50 @@ type ListItemOut struct {
 	Results        []ItemOut     `json:"results"`
 }
 
-func (s *Server) listItem(ctx context.Context, _ *mcp.CallToolRequest, in ListItemIn) (*mcp.CallToolResult, ListItemOut, error) {
-	req := model.ItemListReq{ListParams: in.listParams(), SecretIDs: in.SecretIDs, Active: in.Active}
-	if in.SecretID != "" {
-		req.SecretID = &in.SecretID
-	}
-	if in.Search != "" {
-		req.Search = &in.Search
+func (s *sessionServer) listItem(ctx context.Context, req *mcpsdk.CallToolRequest, in ListItemIn) (*mcpsdk.CallToolResult, ListItemOut, error) {
+	ctx, err := s.toolCtx(ctx, req)
+	if err != nil {
+		return nil, ListItemOut{}, err
 	}
 
-	rep, err := s.api.ItemList(ctx, req)
+	lp := in.listParams()
+	items, tCount, err := s.h.itemUsecase.List(ctx, &itemModel.ListReq{
+		ListParams: lp,
+		SecretId:   optStr(in.SecretId),
+		SecretIds:  in.SecretIds,
+		Active:     in.Active,
+		Search:     optStr(in.Search),
+	})
 	if err != nil {
 		return nil, ListItemOut{}, s.toolErr(err)
 	}
 
 	return nil, ListItemOut{
-		PaginationInfo: paginationToOut(rep.PaginationInfo),
-		Results:        lo.Map(rep.Results, s.maskItem),
+		PaginationInfo: paginationOut(lp, tCount),
+		Results:        lo.Map(items, s.maskItem),
 	}, nil
 }
 
-func (s *Server) getItem(ctx context.Context, _ *mcp.CallToolRequest, in GetByIdIn) (*mcp.CallToolResult, ItemOut, error) {
-	rep, err := s.api.ItemGet(ctx, in.ID)
+func (s *sessionServer) getItem(ctx context.Context, req *mcpsdk.CallToolRequest, in GetByIdIn) (*mcpsdk.CallToolResult, ItemOut, error) {
+	ctx, err := s.toolCtx(ctx, req)
+	if err != nil {
+		return nil, ItemOut{}, err
+	}
+
+	item, err := s.h.itemUsecase.Get(ctx, in.Id)
 	if err != nil {
 		return nil, ItemOut{}, s.toolErr(err)
 	}
 
-	return nil, s.maskItem(rep, 0), nil
+	return nil, s.maskItem(item, 0), nil
 }
 
 // ── ConfigItem ──────────────────────────────────────────
 
 type ListConfigItemIn struct {
 	PageIn
-	ConfigmapID  string   `json:"configmap_id,omitempty" jsonschema:"фильтр по конфигмапу"`
-	ConfigmapIDs []string `json:"configmap_ids,omitempty" jsonschema:"выборка по нескольким конфигмапам за один запрос"`
+	ConfigmapId  string   `json:"configmap_id,omitempty" jsonschema:"фильтр по конфигмапу"`
+	ConfigmapIds []string `json:"configmap_ids,omitempty" jsonschema:"выборка по нескольким конфигмапам за один запрос"`
 	Active       *bool    `json:"active,omitempty" jsonschema:"фильтр по активности"`
 	Search       string   `json:"search,omitempty" jsonschema:"поиск по ключу/описанию"`
 }
@@ -432,31 +484,40 @@ type ListConfigItemOut struct {
 	Results        []ConfigItemOut `json:"results"`
 }
 
-func (s *Server) listConfigItem(ctx context.Context, _ *mcp.CallToolRequest, in ListConfigItemIn) (*mcp.CallToolResult, ListConfigItemOut, error) {
-	req := model.ConfigItemListReq{ListParams: in.listParams(), ConfigmapIDs: in.ConfigmapIDs, Active: in.Active}
-	if in.ConfigmapID != "" {
-		req.ConfigmapID = &in.ConfigmapID
-	}
-	if in.Search != "" {
-		req.Search = &in.Search
+func (s *sessionServer) listConfigItem(ctx context.Context, req *mcpsdk.CallToolRequest, in ListConfigItemIn) (*mcpsdk.CallToolResult, ListConfigItemOut, error) {
+	ctx, err := s.toolCtx(ctx, req)
+	if err != nil {
+		return nil, ListConfigItemOut{}, err
 	}
 
-	rep, err := s.api.ConfigItemList(ctx, req)
+	lp := in.listParams()
+	items, tCount, err := s.h.configitemUsecase.List(ctx, &configitemModel.ListReq{
+		ListParams:   lp,
+		ConfigMapId:  optStr(in.ConfigmapId),
+		ConfigMapIds: in.ConfigmapIds,
+		Active:       in.Active,
+		Search:       optStr(in.Search),
+	})
 	if err != nil {
 		return nil, ListConfigItemOut{}, s.toolErr(err)
 	}
 
 	return nil, ListConfigItemOut{
-		PaginationInfo: paginationToOut(rep.PaginationInfo),
-		Results:        lo.Map(rep.Results, configItemToOut),
+		PaginationInfo: paginationOut(lp, tCount),
+		Results:        lo.Map(items, configItemToOut),
 	}, nil
 }
 
-func (s *Server) getConfigItem(ctx context.Context, _ *mcp.CallToolRequest, in GetByIdIn) (*mcp.CallToolResult, ConfigItemOut, error) {
-	rep, err := s.api.ConfigItemGet(ctx, in.ID)
+func (s *sessionServer) getConfigItem(ctx context.Context, req *mcpsdk.CallToolRequest, in GetByIdIn) (*mcpsdk.CallToolResult, ConfigItemOut, error) {
+	ctx, err := s.toolCtx(ctx, req)
+	if err != nil {
+		return nil, ConfigItemOut{}, err
+	}
+
+	item, err := s.h.configitemUsecase.Get(ctx, in.Id)
 	if err != nil {
 		return nil, ConfigItemOut{}, s.toolErr(err)
 	}
 
-	return nil, configItemToOut(rep, 0), nil
+	return nil, configItemToOut(item, 0), nil
 }

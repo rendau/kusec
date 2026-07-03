@@ -48,6 +48,9 @@ message ApiKeyMain {
   google.protobuf.Timestamp updated_at = 3;
   int64 usr_id = 4;
   bool active = 5;
+  // При true ключ принимается только MCP-эндпоинтом; основной API его
+  // отвергает. Рекомендуется для ключей AI-агентов.
+  bool mcp_only = 9;
   string name = 6;
   // Первые символы ключа — для опознания; сам ключ не хранится.
   string key_prefix = 7;
@@ -80,6 +83,8 @@ message ApiKeyCreateReq {
   string name = 1;
   // Только для админов; не-админ создаёт ключи только себе.
   optional int64 usr_id = 2;
+  // Ключ только для MCP-эндпоинта (рекомендуется для AI-агентов).
+  bool mcp_only = 3;
 }
 
 message ApiKeyCreateRep {
@@ -94,4 +99,5 @@ message ApiKeyUpdateReq {
   string id = 1;
   optional bool active = 2;
   optional string name = 3;
+  optional bool mcp_only = 4;
 }

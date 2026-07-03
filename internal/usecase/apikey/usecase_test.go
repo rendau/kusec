@@ -80,11 +80,14 @@ func TestSessionFromKey(t *testing.T) {
 	require.NoError(t, err)
 	orphanKey, orphanHash, _, err := apikeyService.GenerateKey()
 	require.NoError(t, err)
+	mcpOnlyKey, mcpOnlyHash, _, err := apikeyService.GenerateKey()
+	require.NoError(t, err)
 
 	svc := &svcMock{byHash: map[string]*model.Main{
 		activeHash:   {Id: "k1", UsrId: 10, Active: true},
 		inactiveHash: {Id: "k2", UsrId: 10, Active: false},
 		orphanHash:   {Id: "k3", UsrId: 66, Active: true},
+		mcpOnlyHash:  {Id: "k4", UsrId: 10, Active: true, McpOnly: true},
 	}}
 	usrSvc := &usrSvcMock{usrs: map[int64]*usrModel.Main{
 		10: {Id: 10, Active: true, IsAdmin: false, AppIds: []string{"app1"}},
@@ -122,6 +125,18 @@ func TestSessionFromKey(t *testing.T) {
 	require.NoError(t, err)
 	_, err = u.SessionFromKey(context.Background(), unknownKey)
 	assert.ErrorIs(t, err, errs.NotAuthorized)
+
+	// mcp_only-ключ: основной API отвергает, MCP-эндпоинт принимает
+	_, err = u.SessionFromKey(context.Background(), mcpOnlyKey)
+	assert.ErrorIs(t, err, errs.NotAuthorized)
+
+	session, err = u.McpSessionFromKey(context.Background(), mcpOnlyKey)
+	require.NoError(t, err)
+	assert.Equal(t, int64(10), session.Id)
+
+	// обычный ключ MCP-эндпоинт тоже принимает
+	_, err = u.McpSessionFromKey(context.Background(), activeKey)
+	require.NoError(t, err)
 }
 
 func TestCreate_Permissions(t *testing.T) {
@@ -136,27 +151,28 @@ func TestCreate_Permissions(t *testing.T) {
 	svc := &svcMock{}
 	u := New(svc, usrSvc, &sessionSvcMock{session: &sessionModel.Session{Id: 10}})
 
-	id, key, err := u.Create(context.Background(), "мой ключ", nil)
+	id, key, err := u.Create(context.Background(), "мой ключ", nil, true)
 	require.NoError(t, err)
 	assert.Equal(t, "new-id", id)
 	assert.NotEmpty(t, key)
 	require.Len(t, svc.created, 1)
 	assert.Equal(t, int64(10), *svc.created[0].UsrId)
+	assert.True(t, *svc.created[0].McpOnly)
 	// в БД уходит хэш, не сам ключ
 	assert.Equal(t, apikeyService.HashKey(key), *svc.created[0].KeyHash)
 
 	// не-админ не может выпустить ключ другому пользователю
-	_, _, err = u.Create(context.Background(), "чужой", new(int64(20)))
+	_, _, err = u.Create(context.Background(), "чужой", new(int64(20)), false)
 	assert.ErrorIs(t, err, errs.NoPermission)
 
 	// админ — может
 	uAdmin := New(svc, usrSvc, &sessionSvcMock{session: &sessionModel.Session{Id: 1, Admin: true}})
-	_, _, err = uAdmin.Create(context.Background(), "для сервисного", new(int64(20)))
+	_, _, err = uAdmin.Create(context.Background(), "для сервисного", new(int64(20)), false)
 	require.NoError(t, err)
 	assert.Equal(t, int64(20), *svc.created[len(svc.created)-1].UsrId)
 
 	// неавторизованный
 	uAnon := New(svc, usrSvc, &sessionSvcMock{})
-	_, _, err = uAnon.Create(context.Background(), "x", nil)
+	_, _, err = uAnon.Create(context.Background(), "x", nil, false)
 	assert.ErrorIs(t, err, errs.NotAuthorized)
 }

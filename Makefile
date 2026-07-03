@@ -15,11 +15,6 @@ build:
 	mkdir -p $(BUILD_PATH)
 	CGO_ENABLED=0 go build -o $(BUILD_PATH)/$(BINARY_NAME) cmd/main.go
 
-# MCP-сервер для AI-агентов (см. docs/mcp-server.md)
-build-mcp:
-	mkdir -p $(BUILD_PATH)
-	CGO_ENABLED=0 go build -o $(BUILD_PATH)/mcp cmd/mcp/main.go
-
 clean:
 	rm -rf $(BUILD_PATH)
 

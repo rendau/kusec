@@ -14,7 +14,12 @@ var Conf = struct {
 
 	GrpcPort string `env:"GRPC_PORT" envDefault:"5050"`
 	HttpPort string `env:"HTTP_PORT" envDefault:"80"`
-	HttpCors bool   `env:"HTTP_CORS" envDefault:"false"`
+
+	// Встроенный MCP-сервер для AI-агентов (см. docs/mcp-server.md):
+	// отдельный HTTP-порт, аутентификация по api-key.
+	McpEnabled bool   `env:"MCP_ENABLED" envDefault:"false"`
+	McpPort    string `env:"MCP_PORT" envDefault:"5060"`
+	HttpCors   bool   `env:"HTTP_CORS" envDefault:"false"`
 	// HttpCorsAllowedOrigins — белый список Origin для CORS (через запятую).
 	// Поддерживаются wildcard-шаблоны вида https://*.example.com. Действует
 	// только при HTTP_CORS=true. Если список пуст или содержит "*" —

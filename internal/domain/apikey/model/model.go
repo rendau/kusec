@@ -14,6 +14,7 @@ type Main struct {
 	UpdatedAt  time.Time
 	UsrId      int64
 	Active     bool
+	McpOnly    bool
 	Name       string
 	KeyHash    string
 	KeyPrefix  string
@@ -25,6 +26,7 @@ type Edit struct {
 	UpdatedAt  *time.Time
 	UsrId      *int64
 	Active     *bool
+	McpOnly    *bool
 	Name       *string
 	KeyHash    *string
 	KeyPrefix  *string

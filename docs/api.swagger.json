@@ -2134,6 +2134,10 @@
           "type": "string",
           "format": "int64",
           "description": "Только для админов; не-админ создаёт ключи только себе."
+        },
+        "mcp_only": {
+          "type": "boolean",
+          "description": "Ключ только для MCP-эндпоинта (рекомендуется для AI-агентов)."
         }
       }
     },
@@ -2173,6 +2177,10 @@
         "active": {
           "type": "boolean"
         },
+        "mcp_only": {
+          "type": "boolean",
+          "description": "При true ключ принимается только MCP-эндпоинтом; основной API его\nотвергает. Рекомендуется для ключей AI-агентов."
+        },
         "name": {
           "type": "string"
         },
@@ -2194,6 +2202,9 @@
         },
         "name": {
           "type": "string"
+        },
+        "mcp_only": {
+          "type": "boolean"
         }
       }
     },

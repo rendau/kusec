@@ -7,6 +7,9 @@ create table api_key (
     updated_at   timestamptz not null default now(),
     usr_id       bigint      not null,
     active       boolean     not null default true,
+    -- mcp_only: ключ принимается только встроенным MCP-эндпоинтом,
+    -- основной API его отвергает (агент не может обойти маскирование).
+    mcp_only     boolean     not null default false,
     name         text        not null default '',
     key_hash     text        not null,
     key_prefix   text        not null default '',

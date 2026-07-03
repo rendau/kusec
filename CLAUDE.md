@@ -11,9 +11,6 @@
 
 ### Верхний уровень
 - `cmd/main.go` — entrypoint, поднимает `internal/app.App`.
-- `cmd/mcp/` — MCP-сервер для AI-агентов (stdio, `make build-mcp`): доступ к API kusec
-  без раскрытия значений секретов (маскирование + декларативный `value_source`).
-  Код — `internal/mcpserver/`, подробности — `docs/mcp-server.md`.
 - `internal/` — бизнес-логика и инфраструктура (закрытые пакеты).
 - `apps/admin/` — фронтенд админки (Vue 3 SPA). Конвенции и тонкости — в
   `apps/admin/CLAUDE.md` (пакетный менеджер pnpm, обработка ошибок API,
@@ -42,6 +39,9 @@
 - `internal/handler/` — транспортный слой.
   - `grpc/` — gRPC handlers.
   - `grpc/dto/` — преобразование protobuf ↔ domain models.
+  - `mcp/` — встроенный MCP-сервер для AI-агентов (streamable HTTP, отдельный порт,
+    `MCP_ENABLED`/`MCP_PORT`): маскирование значений секретов + декларативный
+    `value_source`. Подробности — `docs/mcp-server.md`.
   - могут быть и другие транспортные каналы.
 - `internal/usecase/` — usecase-слой (валидация, оркестрация сервисов и доменных сервисов).
 - `internal/domain/` — доменная модель, сервисы и репозитории.
@@ -114,7 +114,8 @@ domain service → repo
   `apiPage = uiPage - 1`.
 - API-ключи для машинных клиентов: `/api-key` (значение `ksk_…` выдаётся один раз,
   хранится sha256-хэш; аутентификация — тем же заголовком `Authorization: Bearer`,
-  интерсептор различает ключ и JWT по префиксу). См. `docs/mcp-server.md`.
+  интерсептор различает ключ и JWT по префиксу). Ключи с `mcp_only=true` принимает
+  только встроенный MCP-эндпоинт. См. `docs/mcp-server.md`.
 - **Update-методы используют HTTP `PUT`** (не `PATCH`). В proto-аннотациях
   (`google.api.http`) для `Update`/`Update*` указывать `put: "/<entity>/{id}"`,
   все клиенты API шлют `PUT`. CORS (`internal/app/grpc_gateway.go`) должен

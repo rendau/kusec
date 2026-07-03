@@ -13,6 +13,7 @@ type Upsert struct {
 	UpdatedAt  *time.Time
 	UsrId      *int64
 	Active     *bool
+	McpOnly    *bool
 	Name       *string
 	KeyHash    *string
 	KeyPrefix  *string
@@ -29,6 +30,9 @@ func (m *Upsert) CreateColumnMap() map[string]any {
 	}
 	if m.Active != nil {
 		result["active"] = *m.Active
+	}
+	if m.McpOnly != nil {
+		result["mcp_only"] = *m.McpOnly
 	}
 	if m.Name != nil {
 		result["name"] = *m.Name
@@ -64,6 +68,7 @@ func DecodeUpsert(v *domainModel.Edit) *Upsert {
 		UpdatedAt:  v.UpdatedAt,
 		UsrId:      v.UsrId,
 		Active:     v.Active,
+		McpOnly:    v.McpOnly,
 		Name:       v.Name,
 		KeyHash:    v.KeyHash,
 		KeyPrefix:  v.KeyPrefix,

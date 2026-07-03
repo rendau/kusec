@@ -56,6 +56,12 @@ const routes: RouteRecordRaw[] = [
         component: () => import('@/views/UsrListView.vue'),
         meta: { title: 'Users', requiresAdmin: true },
       },
+      {
+        path: 'api-key',
+        name: 'api-key-list',
+        component: () => import('@/views/ApiKeyListView.vue'),
+        meta: { title: 'API keys' },
+      },
     ],
   },
   {

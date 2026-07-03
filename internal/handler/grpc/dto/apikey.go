@@ -20,6 +20,7 @@ func EncodeApiKeyMain(v *domainModel.Main, _ int) *proto.ApiKeyMain {
 		UpdatedAt: timestamppb.New(v.UpdatedAt),
 		UsrId:     v.UsrId,
 		Active:    v.Active,
+		McpOnly:   v.McpOnly,
 		Name:      v.Name,
 		KeyPrefix: v.KeyPrefix,
 	}
