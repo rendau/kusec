@@ -651,3 +651,60 @@ export interface ConfigItemUpdateReq {
   content_type?: string
   description?: string
 }
+
+// ── API keys ───────────────────────────────────────────────
+
+/**
+ * API key (`ApiKeyMain`) — long-lived machine credential (MCP agents, CI).
+ * Only a hash is stored server-side; `key_prefix` identifies the key in lists.
+ * Note: `usr_id` is an `int64` the gateway serialises as a JSON string.
+ */
+export interface ApiKeyMain {
+  id: string
+  created_at: string
+  updated_at: string
+  usr_id: number
+  active: boolean
+  /**
+   * Accepted only by the embedded MCP endpoint; the main API rejects such
+   * keys, so an agent cannot bypass secret-value masking.
+   */
+  mcp_only: boolean
+  name: string
+  key_prefix: string
+  last_used_at: string | null
+}
+
+/** `ApiKeyListReq` — non-admins always get only their own keys. */
+export interface ApiKeyListReq {
+  list_params?: ListParams
+  /** Admin-only filter by owner. */
+  usr_id?: number | string
+  active?: boolean
+}
+
+/** `ApiKeyListRep`. */
+export interface ApiKeyListRep {
+  pagination_info?: PaginationInfo
+  results: ApiKeyMain[]
+}
+
+/** `ApiKeyCreateReq` — `usr_id` (admin-only) targets another user. */
+export interface ApiKeyCreateReq {
+  name: string
+  usr_id?: number | string
+  mcp_only?: boolean
+}
+
+/** `ApiKeyCreateRep` — `key` is revealed once and cannot be fetched again. */
+export interface ApiKeyCreateRep {
+  id: string
+  key: string
+}
+
+/** `ApiKeyUpdateReq`. */
+export interface ApiKeyUpdateReq {
+  active?: boolean
+  name?: string
+  mcp_only?: boolean
+}

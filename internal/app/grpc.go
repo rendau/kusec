@@ -21,6 +21,7 @@ import (
 	"google.golang.org/grpc/status"
 
 	"github.com/rendau/kusec/internal/config"
+	"github.com/rendau/kusec/internal/constant"
 	sessionModel "github.com/rendau/kusec/internal/domain/session/model"
 	sessionService "github.com/rendau/kusec/internal/domain/session/service"
 	"github.com/rendau/kusec/internal/errs"
@@ -33,14 +34,14 @@ type GrpcServer struct {
 	server *grpc.Server
 }
 
-func NewGrpcServer(name string, sessionSvc *sessionService.Service, register func(*grpc.Server)) *GrpcServer {
+func NewGrpcServer(name string, sessionSvc *sessionService.Service, apiKeyAuth ApiKeyAuthI, register func(*grpc.Server)) *GrpcServer {
 	interceptors := make([]grpc.UnaryServerInterceptor, 0, 6)
 
 	// ctx without cancel
 	interceptors = append(interceptors, GrpcInterceptorCtxWithoutCancel())
 
 	// session (extract bearer token -> session in context)
-	interceptors = append(interceptors, GrpcInterceptorSession(sessionSvc))
+	interceptors = append(interceptors, GrpcInterceptorSession(sessionSvc, apiKeyAuth))
 
 	// recovery
 	interceptors = append(interceptors, GrpcInterceptorRecovery())
@@ -105,12 +106,26 @@ func GrpcInterceptorCtxWithoutCancel() grpc.UnaryServerInterceptor {
 	}
 }
 
-func GrpcInterceptorSession(sessionSvc *sessionService.Service) grpc.UnaryServerInterceptor {
+// ApiKeyAuthI — аутентификация по API-ключу (реализуется apikey usecase).
+type ApiKeyAuthI interface {
+	SessionFromKey(ctx context.Context, key string) (*sessionModel.Session, error)
+}
+
+func GrpcInterceptorSession(sessionSvc *sessionService.Service, apiKeyAuth ApiKeyAuthI) grpc.UnaryServerInterceptor {
 	return func(ctx context.Context, req any, _ *grpc.UnaryServerInfo, handler grpc.UnaryHandler) (resp any, err error) {
 		var session *sessionModel.Session
 
 		token := grpcExtractBearerToken(ctx)
-		if token != "" {
+		switch {
+		case token == "":
+		case strings.HasPrefix(token, constant.ApiKeyPrefix):
+			if apiKeyAuth != nil {
+				parsedSession, keyErr := apiKeyAuth.SessionFromKey(ctx, token)
+				if keyErr == nil && parsedSession.IsAuthorized() {
+					session = parsedSession
+				}
+			}
+		default:
 			parsedSession, parseErr := sessionSvc.FromToken(token)
 			if parseErr == nil && parsedSession != nil && parsedSession.Id != 0 {
 				session = parsedSession

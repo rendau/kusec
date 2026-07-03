@@ -1,0 +1,45 @@
+package dto
+
+import (
+	"google.golang.org/protobuf/types/known/timestamppb"
+
+	domainModel "github.com/rendau/kusec/internal/domain/apikey/model"
+	proto "github.com/rendau/kusec/pkg/proto/kusec_v1"
+)
+
+// domain → proto
+
+func EncodeApiKeyMain(v *domainModel.Main, _ int) *proto.ApiKeyMain {
+	if v == nil {
+		return nil
+	}
+
+	result := &proto.ApiKeyMain{
+		Id:        v.Id,
+		CreatedAt: timestamppb.New(v.CreatedAt),
+		UpdatedAt: timestamppb.New(v.UpdatedAt),
+		UsrId:     v.UsrId,
+		Active:    v.Active,
+		McpOnly:   v.McpOnly,
+		Name:      v.Name,
+		KeyPrefix: v.KeyPrefix,
+	}
+	if v.LastUsedAt != nil {
+		result.LastUsedAt = timestamppb.New(*v.LastUsedAt)
+	}
+
+	return result
+}
+
+// proto → domain
+
+func DecodeApiKeyListReq(v *proto.ApiKeyListReq) *domainModel.ListReq {
+	if v == nil {
+		return nil
+	}
+	return &domainModel.ListReq{
+		ListParams: DecodeListParams(v.ListParams),
+		UsrId:      v.UsrId,
+		Active:     v.Active,
+	}
+}

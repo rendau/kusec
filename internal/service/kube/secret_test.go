@@ -1,7 +1,6 @@
 package kube
 
 import (
-	"bytes"
 	"context"
 	"errors"
 	"slices"
@@ -411,32 +410,35 @@ func TestBuildDesired_PropagatesServiceError(t *testing.T) {
 	}
 }
 
-func TestSanitizeSecretValue(t *testing.T) {
-	t.Parallel()
-
-	cases := []struct {
-		name string
-		in   []byte
-		want []byte
-	}{
-		{"plain text untouched", []byte("hello"), []byte("hello")},
-		{"trailing nul stripped from text", []byte("cert\x00"), []byte("cert")},
-		{"embedded nul stripped from text", []byte("a\x00b\x00"), []byte("ab")},
-		{"empty stays empty", []byte(""), []byte("")},
-		{"binary with nul kept intact", []byte{0x89, 0x50, 0x00, 0xFF}, []byte{0x89, 0x50, 0x00, 0xFF}},
-	}
-
-	for _, c := range cases {
-		c := c
-		t.Run(c.name, func(t *testing.T) {
-			t.Parallel()
-			got := sanitizeSecretValue(c.in)
-			if !bytes.Equal(got, c.want) {
-				t.Fatalf("sanitizeSecretValue(%v) = %v, want %v", c.in, got, c.want)
-			}
-		})
-	}
-}
+// Тест на sanitizeSecretValue закомментирован вместе с самой функцией
+// (санитизация NUL-байтов отключена в secret.go). Раскомментировать при
+// возврате функции.
+// func TestSanitizeSecretValue(t *testing.T) {
+// 	t.Parallel()
+//
+// 	cases := []struct {
+// 		name string
+// 		in   []byte
+// 		want []byte
+// 	}{
+// 		{"plain text untouched", []byte("hello"), []byte("hello")},
+// 		{"trailing nul stripped from text", []byte("cert\x00"), []byte("cert")},
+// 		{"embedded nul stripped from text", []byte("a\x00b\x00"), []byte("ab")},
+// 		{"empty stays empty", []byte(""), []byte("")},
+// 		{"binary with nul kept intact", []byte{0x89, 0x50, 0x00, 0xFF}, []byte{0x89, 0x50, 0x00, 0xFF}},
+// 	}
+//
+// 	for _, c := range cases {
+// 		c := c
+// 		t.Run(c.name, func(t *testing.T) {
+// 			t.Parallel()
+// 			got := sanitizeSecretValue(c.in)
+// 			if !bytes.Equal(got, c.want) {
+// 				t.Fatalf("sanitizeSecretValue(%v) = %v, want %v", c.in, got, c.want)
+// 			}
+// 		})
+// 	}
+// }
 
 func containsSubstr(values []string, sub string) bool {
 	for _, v := range values {

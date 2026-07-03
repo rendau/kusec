@@ -104,6 +104,7 @@ watch(
 const navActiveKey = computed(() => {
   const name = route.name as string | undefined
   if (name === 'usr-list') return 'users'
+  if (name === 'api-key-list') return 'api-keys'
   if (name === 'home') return 'home'
   return null
 })
@@ -117,6 +118,7 @@ const navOptions = computed<MenuOption[]>(() => [
   ...(authStore.isAdmin
     ? [{ label: renderRouterLink('/usr', 'Users'), key: 'users' }]
     : []),
+  { label: renderRouterLink('/api-key', 'API keys'), key: 'api-keys' },
 ])
 
 const profileName = computed(
@@ -130,6 +132,7 @@ const userMenuOptions = computed<DropdownOption[]>(() => [
     ? [
         { label: 'Dashboard', key: 'home' },
         ...(authStore.isAdmin ? [{ label: 'Users', key: 'users' }] : []),
+        { label: 'API keys', key: 'api-keys' },
         { type: 'divider', key: 'd0' } as DropdownOption,
       ]
     : []),
@@ -143,6 +146,8 @@ function onUserMenuSelect(key: string | number): void {
     void router.push({ name: 'home' })
   } else if (key === 'users') {
     void router.push({ name: 'usr-list' })
+  } else if (key === 'api-keys') {
+    void router.push({ name: 'api-key-list' })
   } else if (key === 'profile') {
     void router.push({ name: 'profile' })
   } else if (key === 'logout') {

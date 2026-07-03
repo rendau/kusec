@@ -20,6 +20,8 @@ import (
 	"github.com/rendau/kusec/internal/config"
 	"github.com/rendau/kusec/internal/constant"
 
+	apikeyDb "github.com/rendau/kusec/internal/domain/apikey/repo/db"
+	apikeyService "github.com/rendau/kusec/internal/domain/apikey/service"
 	appDb "github.com/rendau/kusec/internal/domain/app/repo/db"
 	appService "github.com/rendau/kusec/internal/domain/app/service"
 	configitemDb "github.com/rendau/kusec/internal/domain/configitem/repo/db"
@@ -35,9 +37,11 @@ import (
 	usrService "github.com/rendau/kusec/internal/domain/usr/service"
 
 	grpcHandler "github.com/rendau/kusec/internal/handler/grpc"
+	mcpHandler "github.com/rendau/kusec/internal/handler/mcp"
 
 	kubeService "github.com/rendau/kusec/internal/service/kube"
 
+	apikeyUsc "github.com/rendau/kusec/internal/usecase/apikey"
 	appUsc "github.com/rendau/kusec/internal/usecase/app"
 	configitemUsc "github.com/rendau/kusec/internal/usecase/configitem"
 	configmapUsc "github.com/rendau/kusec/internal/usecase/configmap"
@@ -58,6 +62,7 @@ type App struct {
 
 	grpcServer       *GrpcServer
 	httpServer       *http.Server
+	mcpHttpServer    *http.Server
 	systemHttpServer *http.Server
 
 	ctx       context.Context
@@ -106,6 +111,10 @@ func (a *App) Init() {
 	itemSvc := itemService.New(itemDb.New(a.pgpool))
 	configMapSvc := configmapService.New(configmapDb.New(a.pgpool))
 	configItemSvc := configitemService.New(configitemDb.New(a.pgpool))
+	apikeySvc := apikeyService.New(apikeyDb.New(a.pgpool))
+
+	// api-key usecase используется и хендлером, и session-интерсептором
+	apikeyUsecase := apikeyUsc.New(apikeySvc, usrSvc, sessionSvc)
 
 	usrHandler := grpcHandler.NewUsr(usrUsc.New(usrSvc, sessionSvc))
 	appHandler := grpcHandler.NewApp(appUsc.New(appSvc, sessionSvc))
@@ -116,22 +125,24 @@ func (a *App) Init() {
 	dashboardHandler := grpcHandler.NewDashboard(
 		dashboardUsc.New(appSvc, secretSvc, itemSvc, configMapSvc, configItemSvc, usrSvc, sessionSvc),
 	)
-	kubeHandler := grpcHandler.NewKube(
-		kubeUsc.New(
-			kubeService.New(appSvc, secretSvc, itemSvc, configMapSvc, configItemSvc),
-			appSvc,
-			secretSvc,
-			configMapSvc,
-			sessionSvc,
-		),
+	// kube usecase общий для gRPC и MCP: лок «один sync одновременно» живёт
+	// в kube-сервисе и должен быть один на процесс
+	kubeUsecase := kubeUsc.New(
+		kubeService.New(appSvc, secretSvc, itemSvc, configMapSvc, configItemSvc),
+		appSvc,
+		secretSvc,
+		configMapSvc,
+		sessionSvc,
 	)
+	kubeHandler := grpcHandler.NewKube(kubeUsecase)
 	transferHandler := grpcHandler.NewTransfer(
 		transferUsc.New(appSvc, secretSvc, itemSvc, configMapSvc, configItemSvc, sessionSvc),
 	)
+	apikeyHandler := grpcHandler.NewApiKey(apikeyUsecase)
 
 	// grpc server
 	{
-		a.grpcServer = NewGrpcServer("main", sessionSvc, func(server *grpc.Server) {
+		a.grpcServer = NewGrpcServer("main", sessionSvc, apikeyUsecase, func(server *grpc.Server) {
 			proto.RegisterUsrServer(server, usrHandler)
 			proto.RegisterAppServer(server, appHandler)
 			proto.RegisterSecretServer(server, secretHandler)
@@ -141,6 +152,7 @@ func (a *App) Init() {
 			proto.RegisterDashboardServer(server, dashboardHandler)
 			proto.RegisterKubeServer(server, kubeHandler)
 			proto.RegisterTransferServer(server, transferHandler)
+			proto.RegisterApiKeyServer(server, apikeyHandler)
 		})
 	}
 
@@ -166,6 +178,7 @@ func (a *App) Init() {
 				proto.RegisterDashboardHandler,
 				proto.RegisterKubeHandler,
 				proto.RegisterTransferHandler,
+				proto.RegisterApiKeyHandler,
 			}
 			for _, h := range handlers {
 				err = h(context.Background(), mux, conn)
@@ -213,6 +226,27 @@ func (a *App) Init() {
 		}
 	}
 
+	// встроенный MCP-сервер для AI-агентов (отдельный порт, api-key auth)
+	if config.Conf.McpEnabled {
+		mcpH := mcpHandler.New(
+			sessionSvc,
+			apikeyUsecase,
+			appUsc.New(appSvc, sessionSvc),
+			secretUsc.New(secretSvc, appSvc, sessionSvc),
+			itemUsc.New(itemSvc, secretSvc, sessionSvc),
+			configmapUsc.New(configMapSvc, appSvc, sessionSvc),
+			configitemUsc.New(configItemSvc, configMapSvc, sessionSvc),
+			kubeUsecase,
+		)
+
+		a.mcpHttpServer = &http.Server{
+			Addr:              ":" + config.Conf.McpPort,
+			Handler:           mcpH.HTTPHandler(),
+			ReadHeaderTimeout: 2 * time.Second,
+			MaxHeaderBytes:    300 * 1024,
+		}
+	}
+
 	// system http server (healthcheck, docs, metrics)
 	{
 		a.systemHttpServer = SystemHttpServerCreate()
@@ -241,6 +275,17 @@ func (a *App) Start() {
 			}
 		}()
 		slog.Info("http-server started " + a.httpServer.Addr)
+	}
+
+	// mcp server
+	if a.mcpHttpServer != nil {
+		go func() {
+			err := a.mcpHttpServer.ListenAndServe()
+			if err != nil && !errors.Is(err, http.ErrServerClosed) {
+				// errCheck(err, "mcp-http-server stopped")
+			}
+		}()
+		slog.Info("mcp-http-server started " + a.mcpHttpServer.Addr)
 	}
 
 	// system http server
@@ -276,6 +321,17 @@ func (a *App) Stop() {
 
 		if err := a.httpServer.Shutdown(ctx); err != nil {
 			slog.Error("http-server shutdown error", "error", err)
+			a.exitCode = 1
+		}
+	}
+
+	// mcp server
+	if a.mcpHttpServer != nil {
+		ctx, ctxCancel := context.WithTimeout(context.Background(), 15*time.Second)
+		defer ctxCancel()
+
+		if err := a.mcpHttpServer.Shutdown(ctx); err != nil {
+			slog.Error("mcp-http-server shutdown error", "error", err)
 			a.exitCode = 1
 		}
 	}
