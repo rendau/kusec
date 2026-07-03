@@ -1,8 +1,9 @@
 <script setup lang="ts">
-import { watch } from 'vue'
+import { ref, watch } from 'vue'
 import {
   NDescriptions,
   NDescriptionsItem,
+  NDivider,
   NDrawer,
   NDrawerContent,
   NSpace,
@@ -11,9 +12,12 @@ import {
   NText,
 } from 'naive-ui'
 
+import { listApiKeys } from '@/api/apikey'
 import { getUser } from '@/api/usr'
+import type { ApiKeyMain } from '@/api/types'
 import { useAppOptions } from '@/composables/useAppOptions'
 import { useDrawerResource } from '@/composables/useDrawerResource'
+import { formatDate } from '@/utils/format'
 
 const props = defineProps<{
   show: boolean
@@ -34,9 +38,28 @@ const { loading, item: user } = useDrawerResource({
   onError: () => emit('update:show', false),
 })
 
-// Resolve app names for the access list whenever a user is loaded.
-watch(user, (value) => {
+// The user's API keys (the drawer is admin-only, so the owner filter is allowed).
+const apiKeys = ref<ApiKeyMain[]>([])
+const apiKeysLoading = ref(false)
+
+// Resolve app names + load the key list whenever a user is loaded.
+watch(user, async (value) => {
   for (const id of value?.app_ids ?? []) void ensure(id)
+
+  apiKeys.value = []
+  if (!value) return
+  apiKeysLoading.value = true
+  try {
+    const rep = await listApiKeys({
+      list_params: { page: 0, page_size: 100 },
+      usr_id: String(value.id),
+    })
+    apiKeys.value = rep.results ?? []
+  } catch {
+    // секция вспомогательная — ошибку не эскалируем
+  } finally {
+    apiKeysLoading.value = false
+  }
 })
 </script>
 
@@ -92,7 +115,43 @@ watch(user, (value) => {
           </NDescriptionsItem>
         </NDescriptions>
         <div v-else style="min-height: 120px" />
+
+        <template v-if="user">
+          <NDivider style="margin: 16px 0 12px">
+            API keys{{ apiKeys.length ? ` (${apiKeys.length})` : '' }}
+          </NDivider>
+          <NSpin :show="apiKeysLoading">
+            <NText v-if="!apiKeys.length && !apiKeysLoading" depth="3">
+              No API keys
+            </NText>
+            <NSpace v-else vertical :size="8">
+              <div v-for="key in apiKeys" :key="key.id" class="key-row">
+                <div class="key-row__top">
+                  <NText strong :delete="!key.active">{{ key.name || '—' }}</NText>
+                  <NSpace :size="4" :wrap-item="false">
+                    <NTag v-if="key.mcp_only" type="info" size="tiny">MCP only</NTag>
+                    <NTag v-if="!key.active" type="warning" size="tiny">off</NTag>
+                  </NSpace>
+                </div>
+                <NText code style="font-size: 12px">{{ key.key_prefix }}…</NText>
+                <NText depth="3" style="display: block; font-size: 12px">
+                  Last used:
+                  {{ key.last_used_at ? formatDate(key.last_used_at) : 'Never' }}
+                </NText>
+              </div>
+            </NSpace>
+          </NSpin>
+        </template>
       </NSpin>
     </NDrawerContent>
   </NDrawer>
 </template>
+
+<style scoped>
+.key-row__top {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+</style>

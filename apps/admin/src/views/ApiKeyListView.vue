@@ -233,6 +233,8 @@ const columns = computed<DataTableColumns<ApiKeyMain>>(() => [
   {
     title: 'Name',
     key: 'name',
+    minWidth: 160,
+    ellipsis: { tooltip: true },
     render: (row) =>
       h(
         NButton,
@@ -256,6 +258,8 @@ const columns = computed<DataTableColumns<ApiKeyMain>>(() => [
         {
           title: 'Owner',
           key: 'usr_id',
+          width: 180,
+          ellipsis: { tooltip: true },
           render: (row: ApiKeyMain) => ownerLabel(row),
         },
       ]
@@ -442,6 +446,8 @@ onMounted(() => {
         </NFlex>
       </template>
 
+      <!-- scroll-x: на узких десктопных окнах таблица скроллится по
+           горизонтали, а не давит колонки в вертикальные столбики букв. -->
       <NDataTable
         v-else
         remote
@@ -450,6 +456,7 @@ onMounted(() => {
         :loading="loading"
         :row-key="(row: ApiKeyMain) => row.id"
         :pagination="pagination"
+        :scroll-x="authStore.isAdmin ? 1140 : 960"
         @update:page="onPageChange"
         @update:page-size="onPageSizeChange"
       />
