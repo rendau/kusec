@@ -15,12 +15,6 @@ const SYNC_ERROR_HINTS: Record<string, string> = {
     'No response received in time — the deploy is likely still running on the server',
 }
 
-/** Coerce an int64-as-string counter into a number for display. */
-function toCount(value: number | string | undefined): number {
-  const parsed = Number(value ?? 0)
-  return Number.isFinite(parsed) ? parsed : 0
-}
-
 interface SyncOptions {
   /** Sync a single application; omit to sync every accessible application. */
   appId?: string
@@ -28,49 +22,27 @@ interface SyncOptions {
   appName?: string
 }
 
-/** One-line per-kind summary ("created X · updated Y · …"). */
-function summarize(
-  rep: KubeSyncSecretsRep | KubeSyncConfigMapsRep,
-): { line: string; errors: string[] } {
-  return {
-    line: [
-      `created ${rep.created?.length ?? 0}`,
-      `updated ${rep.updated?.length ?? 0}`,
-      `deleted ${rep.deleted?.length ?? 0}`,
-      `unchanged ${toCount(rep.unchanged)}`,
-    ].join(' · '),
-    errors: rep.errors ?? [],
-  }
+/** Finished-sync report shown in `KubeSyncReportModal`. */
+export interface KubeSyncReportSt {
+  /** Human-readable sync scope ("all accessible applications" / one app). */
+  scope: string
+  finishedAt: Date
+  secrets: KubeSyncSecretsRep
+  configmaps: KubeSyncConfigMapsRep
 }
 
-/**
- * Sync report VNode: errors first as a highlighted list (so real failures are
- * easy to spot), then the compact per-kind summary. Used for the
- * finished-with-errors notification.
- */
-function renderReport(errors: string[], summaryLines: string[]) {
-  return h('div', { style: 'display:flex;flex-direction:column;gap:8px' }, [
-    h(
-      'ul',
-      { style: 'margin:0;padding-left:18px;color:var(--n-text-color)' },
-      errors.map((e) =>
-        h('li', { style: 'margin-bottom:2px;word-break:break-word' }, e),
-      ),
-    ),
-    h(
-      'div',
-      { style: 'opacity:.7;white-space:pre-line' },
-      summaryLines.join('\n'),
-    ),
-  ])
-}
+// Shared across every useKubeSync() call site: the sync report is a global
+// concern, and the modal that renders it is mounted once in DefaultLayout.
+const report = ref<KubeSyncReportSt | null>(null)
+const reportVisible = ref(false)
 
 /**
  * Shared "sync to Kubernetes" flow used by the dashboard (all apps) and the
  * app workspace (one app). Reconciles both secrets and config maps in a single
- * call. Owns the confirm dialog, the request, and the result/error
- * notifications. Scope is enforced by the backend: the sync only touches apps
- * the caller can access.
+ * call. Owns the confirm dialog and the request; the result is presented in a
+ * report modal (see `KubeSyncReportModal`) that stays open until the user
+ * closes it. Scope is enforced by the backend: the sync only touches apps the
+ * caller can access.
  */
 export function useKubeSync() {
   const dialog = useDialog()
@@ -92,37 +64,22 @@ export function useKubeSync() {
       positiveText: 'Sync',
       negativeText: 'Cancel',
       onPositiveClick: () => {
-        void runSync(options.appId)
+        void runSync(options.appId, scope)
       },
     })
   }
 
-  async function runSync(appId?: string): Promise<void> {
+  async function runSync(appId: string | undefined, scope: string): Promise<void> {
     syncing.value = true
     try {
       const rep = await syncKube(appId)
-      const secrets = summarize(rep.secrets)
-      const configmaps = summarize(rep.configmaps)
-      const summaryLines = [
-        `Secrets: ${secrets.line}`,
-        `Config maps: ${configmaps.line}`,
-      ]
-      const errors = [...secrets.errors, ...configmaps.errors]
-
-      if (errors.length) {
-        notification.warning({
-          title: `Kubernetes sync finished with ${errors.length} error${errors.length > 1 ? 's' : ''}`,
-          // Errors need attention — dismissed manually.
-          content: () => renderReport(errors, summaryLines),
-          duration: 0,
-        })
-      } else {
-        notification.success({
-          title: 'Kubernetes sync finished',
-          content: summaryLines.join('\n'),
-          duration: 6000,
-        })
+      report.value = {
+        scope,
+        finishedAt: new Date(),
+        secrets: rep.secrets,
+        configmaps: rep.configmaps,
       }
+      reportVisible.value = true
     } catch (error) {
       const hint =
         error instanceof ApiError ? SYNC_ERROR_HINTS[error.code] : undefined
@@ -148,5 +105,5 @@ export function useKubeSync() {
     }
   }
 
-  return { syncing, confirmSync }
+  return { syncing, confirmSync, report, reportVisible }
 }

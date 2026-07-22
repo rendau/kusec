@@ -27,6 +27,7 @@ import { useBreakpoint } from '@/composables/useBreakpoint'
 
 import AppNavSidebar from '@/components/app/AppNavSidebar.vue'
 import KubeImportModal from '@/components/kube/KubeImportModal.vue'
+import KubeSyncReportModal from '@/components/kube/KubeSyncReportModal.vue'
 import { useAppsStore } from '@/stores/apps'
 
 const appStore = useAppStore()
@@ -80,7 +81,9 @@ const dialog = useDialog()
 
 // Global "sync all accessible apps" action — lives in the header so it stays
 // reachable from any page (per-app sync lives inside each app's workspace).
-const { syncing, confirmSync } = useKubeSync()
+// The report state is shared across call sites, so this single modal also
+// shows results of per-app syncs triggered from a workspace.
+const { syncing, confirmSync, report, reportVisible } = useKubeSync()
 
 // Importing cluster secrets creates applications, so it is admin-only.
 const appsStore = useAppsStore()
@@ -277,6 +280,7 @@ function confirmLogout(): void {
     </NLayout>
 
     <KubeImportModal v-model:show="showImport" @imported="onImported" />
+    <KubeSyncReportModal v-model:show="reportVisible" :report="report" />
   </NLayout>
 </template>
 

@@ -251,6 +251,7 @@ async function submit(): Promise<void> {
     preset="card"
     title="Import secrets from cluster"
     class="kube-import-modal"
+    style="width: 820px; max-width: calc(100vw - 32px)"
     :mask-closable="!importing"
     @update:show="emit('update:show', $event)"
   >
@@ -403,11 +404,6 @@ async function submit(): Promise<void> {
 </template>
 
 <style scoped>
-.kube-import-modal {
-  width: 820px;
-  max-width: calc(100vw - 32px);
-}
-
 .kube-import-modal__filters {
   display: flex;
   align-items: center;
