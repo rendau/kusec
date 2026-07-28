@@ -4,8 +4,8 @@
 //
 // Модель безопасности: агент видит всё, кроме значений секретов. Значения
 // item-ов маскируются (длина + усечённый hash), новые значения агент задаёт
-// декларативно через value_source (generate / reuse / copy_item / literal) —
-// сами значения в ответы инструментов не попадают. Ключи с mcp_only=true
+// декларативно через value_source (generate / reuse / copy_item / template /
+// literal) — сами значения в ответы инструментов не попадают. Ключи с mcp_only=true
 // работают только здесь, основной API их отвергает.
 package mcp
 
@@ -46,13 +46,14 @@ const (
    - generate — сгенерировать случайное значение (format: alnum|ascii|digits|hex|base64url|uuid; length, по умолчанию 32). Укажи name, чтобы значение можно было переиспользовать.
    - reuse — использовать ранее сгенерированное/скопированное значение по name (одно значение в нескольких item-ах, например пароль БД в POSTGRES_PASSWORD и в DATABASE_URL_PASSWORD). Реестр имён живёт в памяти сессии; текущие имена показывает list_value_name.
    - copy_item — скопировать значение существующего item по item_id (из любого доступного app).
+   - template — собрать значение из шаблона с плейсхолдерами {{имя}} (например DSN: "postgres://app:{{db_password}}@pg:5432/app"). Каждая переменная резолвится через vars (kind: generate|reuse|copy_item|literal) либо, без записи в vars, из реестра сессии по имени. Так собирается PG_DSN из значения существующего PG_PASSWORD: vars: {"db_password": {"kind": "copy_item", "item_id": "<id item-а PG_PASSWORD>"}}.
    - literal — явное значение, только для несекретного (хосты, порты, url, имена БД).
 4. Значения item-ов конфигмапов не секретны: видны полностью и задаются явно.
 5. Пагинация zero-based: page начинается с 0, page_size по умолчанию 100.
 6. Инструмент sync применяет секреты и конфигмапы в Kubernetes-кластер: укажи app либо all_apps=true. Вызывай его после завершения изменений, а не после каждого item-а; работает только когда kusec запущен внутри кластера.
 
 Типовой сценарий:
-create_secret {"app": "billing", "slug_name": "db"} → create_item {"secret_id": "…", "key": "POSTGRES_PASSWORD", "value_source": {"kind": "generate", "name": "db_password"}} → create_item {"secret_id": "…", "key": "DATABASE_URL_PASSWORD", "value_source": {"kind": "reuse", "name": "db_password"}} → sync {"app": "billing"}`
+create_secret {"app": "billing", "slug_name": "db"} → create_item {"secret_id": "…", "key": "POSTGRES_PASSWORD", "value_source": {"kind": "generate", "name": "db_password"}} → create_item {"secret_id": "…", "key": "PG_DSN", "value_source": {"kind": "template", "template": "postgres://billing:{{db_password}}@pg:5432/billing"}} → sync {"app": "billing"}`
 )
 
 type Handler struct {

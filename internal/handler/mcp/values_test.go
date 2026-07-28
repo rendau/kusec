@@ -107,6 +107,81 @@ func TestVault_RememberLookup(t *testing.T) {
 	assert.Equal(t, []string{"db_password"}, v.names())
 }
 
+func TestResolveTemplate_FromVault(t *testing.T) {
+	t.Parallel()
+
+	s := &sessionServer{vault: newVault()}
+	s.vault.remember("db_password", "pw-123")
+
+	value, err := s.resolveValueSource(t.Context(), ValueSourceIn{
+		Kind:     "template",
+		Template: "postgres://app:{{ db_password }}@pg:5432/app",
+	})
+	require.NoError(t, err)
+	assert.Equal(t, "postgres://app:pw-123@pg:5432/app", value)
+
+	// итоговое значение помечено увиденным — вычищается из ошибок
+	assert.Contains(t, s.vault.scrub("err: "+value), "[REDACTED]")
+}
+
+func TestResolveTemplate_Vars(t *testing.T) {
+	t.Parallel()
+
+	s := &sessionServer{vault: newVault()}
+
+	value, err := s.resolveValueSource(t.Context(), ValueSourceIn{
+		Kind:     "template",
+		Name:     "mq_dsn",
+		Template: "amqp://{{user}}:{{pass}}@mq:5672/",
+		Vars: map[string]TemplateVarIn{
+			"user": {Kind: "literal", Value: "app"},
+			"pass": {Kind: "generate", Length: 16, Name: "mq_password"},
+		},
+	})
+	require.NoError(t, err)
+
+	// сгенерированная переменная и итог зарегистрированы в реестре сессии
+	assert.Equal(t, []string{"mq_dsn", "mq_password"}, s.vault.names())
+
+	pass, ok := s.vault.lookup("mq_password")
+	require.True(t, ok)
+	assert.Equal(t, "amqp://app:"+pass+"@mq:5672/", value)
+}
+
+func TestResolveTemplate_RepeatedVar(t *testing.T) {
+	t.Parallel()
+
+	s := &sessionServer{vault: newVault()}
+
+	// один и тот же плейсхолдер с generate резолвится единожды
+	value, err := s.resolveValueSource(t.Context(), ValueSourceIn{
+		Kind:     "template",
+		Template: "{{tok}}:{{tok}}",
+		Vars:     map[string]TemplateVarIn{"tok": {Kind: "generate", Length: 8}},
+	})
+	require.NoError(t, err)
+
+	parts := strings.Split(value, ":")
+	require.Len(t, parts, 2)
+	assert.Equal(t, parts[0], parts[1])
+	assert.Len(t, parts[0], 8)
+}
+
+func TestResolveTemplate_Errors(t *testing.T) {
+	t.Parallel()
+
+	s := &sessionServer{vault: newVault()}
+
+	_, err := s.resolveValueSource(t.Context(), ValueSourceIn{Kind: "template"})
+	require.ErrorContains(t, err, "требуется template")
+
+	_, err = s.resolveValueSource(t.Context(), ValueSourceIn{Kind: "template", Template: "без плейсхолдеров"})
+	require.ErrorContains(t, err, "нет ни одного плейсхолдера")
+
+	_, err = s.resolveValueSource(t.Context(), ValueSourceIn{Kind: "template", Template: "x-{{unknown}}"})
+	require.ErrorContains(t, err, `"unknown"`)
+}
+
 func TestVault_Scrub(t *testing.T) {
 	t.Parallel()
 

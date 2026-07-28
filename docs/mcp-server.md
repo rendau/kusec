@@ -22,6 +22,11 @@ app/secret/configmap/item и управляет ею, но **значения с
      item-ов, в том числе в разных app). Реестр живёт в памяти MCP-сессии.
    - `copy_item` — скопировать значение существующего item-а по `item_id` (из любого
      app, доступного пользователю). С `name` — также зарегистрировать для reuse.
+   - `template` — собрать значение из шаблона с плейсхолдерами `{{имя}}` (например
+     DSN с паролем БД). Каждая переменная резолвится через `vars` (те же kind-ы:
+     `generate`/`reuse`/`copy_item`/`literal`) либо, без записи в `vars`, из реестра
+     сессии по имени. С `name` — итог также регистрируется для reuse. Итоговое
+     значение агенту не показывается.
    - `literal` — явное значение от агента (для несекретного: хосты, порты, url).
 3. **Аутентификация — по api-ключу** (`Authorization: Bearer ksk_…`) на каждом запросе.
    Сессия наследует права владельца ключа (`app_ids`, `is_admin`) — все проверки
@@ -134,5 +139,19 @@ create_item {"secret_id": "<id>", "key": "POSTGRES_PASSWORD",
              "value_source": {"kind": "generate", "name": "db_password", "length": 32}}
 create_item {"secret_id": "<id2>", "key": "DATABASE_URL_PASSWORD",
              "value_source": {"kind": "reuse", "name": "db_password"}}
+create_item {"secret_id": "<id2>", "key": "PG_DSN",
+             "value_source": {"kind": "template",
+                              "template": "postgres://billing:{{db_password}}@pg:5432/billing"}}
 sync {"app": "billing"}
+```
+
+Сборка `PG_DSN` из **уже существующего** `PG_PASSWORD` (значение заведено ранее,
+в реестре сессии его нет) — переменная описывается в `vars` через `copy_item`:
+
+```
+create_item {"secret_id": "<id>", "key": "PG_DSN",
+             "value_source": {"kind": "template",
+                              "template": "postgres://app:{{pg_password}}@pg:5432/app",
+                              "vars": {"pg_password": {"kind": "copy_item",
+                                                       "item_id": "<id item-а PG_PASSWORD>"}}}}
 ```
