@@ -180,10 +180,16 @@ function iconButton(
   )
 }
 
+// Dim inactive secrets so they stand out from active ones at a glance.
+function rowClassName(row: SecretMain): string {
+  return row.active ? '' : 'row--inactive'
+}
+
 const columns = computed<DataTableColumns<SecretMain>>(() => [
   {
     type: 'expand',
-    renderExpand: (row) => h(SecretItemsPanel, { secretId: row.id }),
+    renderExpand: (row) =>
+      h(SecretItemsPanel, { secretId: row.id, parentInactive: !row.active }),
   },
   {
     title: 'Slug',
@@ -253,6 +259,7 @@ const columns = computed<DataTableColumns<SecretMain>>(() => [
     title: 'Status',
     key: 'active',
     width: 110,
+    className: 'cell--full',
     render: (row) =>
       h(
         NTag,
@@ -264,6 +271,7 @@ const columns = computed<DataTableColumns<SecretMain>>(() => [
     title: 'Actions',
     key: 'actions',
     width: 140,
+    className: 'cell--full',
     render: (row) =>
       h(NSpace, { size: 4, wrapItem: false }, () => [
         iconButton(InfoCircle, 'Details', () => openDetail(row)),
@@ -353,6 +361,7 @@ defineExpose({ refresh: fetchSecrets, count: computed(() => rows.value.length) }
         :key="row.id"
         size="small"
         class="secret-card stack-header"
+        :class="{ 'secret-card--inactive': !row.active }"
         :segmented="{ content: true }"
       >
         <template #header>
@@ -441,7 +450,11 @@ defineExpose({ refresh: fetchSecrets, count: computed(() => rows.value.length) }
               </NPopconfirm>
             </NSpace>
           </NSpace>
-          <SecretItemsPanel v-if="isExpanded(row.id)" :secret-id="row.id" />
+          <SecretItemsPanel
+            v-if="isExpanded(row.id)"
+            :secret-id="row.id"
+            :parent-inactive="!row.active"
+          />
         </template>
       </NCard>
     </div>
@@ -451,6 +464,7 @@ defineExpose({ refresh: fetchSecrets, count: computed(() => rows.value.length) }
       :columns="columns"
       :data="rows"
       :loading="loading"
+      :row-class-name="rowClassName"
       :row-key="(row: SecretMain) => row.id"
       :pagination="false"
       :theme-overrides="{ tdColorHover: 'transparent' }"
@@ -518,5 +532,19 @@ defineExpose({ refresh: fetchSecrets, count: computed(() => rows.value.length) }
 .secret-card__mono {
   cursor: pointer;
   word-break: break-all;
+}
+
+/* Inactive secrets are dimmed; the status tag and actions stay full-strength. */
+.secrets-section :deep(tr.row--inactive > td) {
+  opacity: 0.55;
+}
+
+.secrets-section :deep(tr.row--inactive > td.cell--full) {
+  opacity: 1;
+}
+
+.secret-card--inactive :deep(.n-card-header__main),
+.secret-card--inactive :deep(.n-card__content) {
+  opacity: 0.55;
 }
 </style>

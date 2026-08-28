@@ -48,6 +48,8 @@ import { normalizeValueFormat } from '@/utils/format'
 
 const props = defineProps<{
   secretId: string
+  /** Dim the whole panel when the parent secret is inactive. */
+  parentInactive?: boolean
 }>()
 
 const message = useMessage()
@@ -168,7 +170,7 @@ onMounted(() => {
 </script>
 
 <template>
-  <div class="items-panel">
+  <div class="items-panel" :class="{ 'items-panel--dim': props.parentInactive }">
     <NFlex
       justify="space-between"
       align="center"
@@ -205,13 +207,16 @@ onMounted(() => {
         <template v-for="(row, i) in rows" :key="row.id">
           <div v-if="i > 0" class="items__sep" />
 
-          <div class="items__cell items__key">
+          <div
+            class="items__cell items__key"
+            :class="{ 'items__cell--dim': !row.active }"
+          >
             <NButton text type="primary" class="items__key-btn" @click="openDetail(row)">
               {{ row.key }}
             </NButton>
           </div>
 
-          <div class="items__cell">
+          <div class="items__cell" :class="{ 'items__cell--dim': !row.active }">
             <NSpace :size="4" align="center" :wrap-item="false">
               <template v-if="isFileRow(row)">
                 <NText depth="3" class="items__file-name">
@@ -332,7 +337,11 @@ onMounted(() => {
           </div>
 
           <Transition name="value">
-            <div v-if="!isFileRow(row) && isOpen(row.id)" class="items__value">
+            <div
+              v-if="!isFileRow(row) && isOpen(row.id)"
+              class="items__value"
+              :class="{ 'items__cell--dim': !row.active }"
+            >
               <ValueFormatChip :format="row.value_format" />
               <ValueEditor
                 :value="row.value"
@@ -348,7 +357,12 @@ onMounted(() => {
 
       <!-- Mobile: stacked item cards (no horizontal scroll). -->
       <div v-else class="items-m">
-        <div v-for="row in rows" :key="row.id" class="item-m">
+        <div
+          v-for="row in rows"
+          :key="row.id"
+          class="item-m"
+          :class="{ 'item-m--inactive': !row.active }"
+        >
           <div class="item-m__top">
             <NButton
               text
@@ -485,6 +499,18 @@ onMounted(() => {
 <style scoped>
 .items-panel {
   padding: 4px 8px 8px;
+}
+
+/* Whole panel is dimmed when the parent secret is inactive. */
+.items-panel--dim {
+  opacity: 0.6;
+}
+
+/* Inactive items are dimmed; the status tag and actions stay full-strength. */
+.items__cell--dim,
+.item-m--inactive .item-m__key,
+.item-m--inactive .item-m__value {
+  opacity: 0.55;
 }
 
 .items-empty {

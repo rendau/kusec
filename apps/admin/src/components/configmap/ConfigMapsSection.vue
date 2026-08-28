@@ -143,10 +143,16 @@ function iconButton(icon: typeof InfoCircle, tooltip: string, onClick: () => voi
   )
 }
 
+// Dim inactive config maps so they stand out from active ones at a glance.
+function rowClassName(row: ConfigMapMain): string {
+  return row.active ? '' : 'row--inactive'
+}
+
 const columns = computed<DataTableColumns<ConfigMapMain>>(() => [
   {
     type: 'expand',
-    renderExpand: (row) => h(ConfigMapItemsPanel, { configmapId: row.id }),
+    renderExpand: (row) =>
+      h(ConfigMapItemsPanel, { configmapId: row.id, parentInactive: !row.active }),
   },
   {
     title: 'Slug',
@@ -207,6 +213,7 @@ const columns = computed<DataTableColumns<ConfigMapMain>>(() => [
     title: 'Status',
     key: 'active',
     width: 110,
+    className: 'cell--full',
     render: (row) =>
       h(
         NTag,
@@ -218,6 +225,7 @@ const columns = computed<DataTableColumns<ConfigMapMain>>(() => [
     title: 'Actions',
     key: 'actions',
     width: 140,
+    className: 'cell--full',
     render: (row) =>
       h(NSpace, { size: 4, wrapItem: false }, () => [
         iconButton(InfoCircle, 'Details', () => openDetail(row)),
@@ -293,6 +301,7 @@ defineExpose({ refresh: fetchConfigMaps, count: computed(() => rows.value.length
         :key="row.id"
         size="small"
         class="cm-card stack-header"
+        :class="{ 'cm-card--inactive': !row.active }"
         :segmented="{ content: true }"
       >
         <template #header>
@@ -376,7 +385,11 @@ defineExpose({ refresh: fetchConfigMaps, count: computed(() => rows.value.length
               </NPopconfirm>
             </NSpace>
           </NSpace>
-          <ConfigMapItemsPanel v-if="isExpanded(row.id)" :configmap-id="row.id" />
+          <ConfigMapItemsPanel
+            v-if="isExpanded(row.id)"
+            :configmap-id="row.id"
+            :parent-inactive="!row.active"
+          />
         </template>
       </NCard>
     </div>
@@ -386,6 +399,7 @@ defineExpose({ refresh: fetchConfigMaps, count: computed(() => rows.value.length
       :columns="columns"
       :data="rows"
       :loading="loading"
+      :row-class-name="rowClassName"
       :row-key="(row: ConfigMapMain) => row.id"
       :pagination="false"
       :theme-overrides="{ tdColorHover: 'transparent' }"
@@ -453,5 +467,19 @@ defineExpose({ refresh: fetchConfigMaps, count: computed(() => rows.value.length
 .cm-card__mono {
   cursor: pointer;
   word-break: break-all;
+}
+
+/* Inactive config maps are dimmed; the status tag and actions stay full-strength. */
+.cm-section :deep(tr.row--inactive > td) {
+  opacity: 0.55;
+}
+
+.cm-section :deep(tr.row--inactive > td.cell--full) {
+  opacity: 1;
+}
+
+.cm-card--inactive :deep(.n-card-header__main),
+.cm-card--inactive :deep(.n-card__content) {
+  opacity: 0.55;
 }
 </style>
