@@ -90,15 +90,16 @@ func (u *Usecase) List(ctx context.Context, pars *model.ListReq) ([]*model.Main,
 		return nil, 0, errs.NotAuthorized
 	}
 	// Запрос считается узким (без обязательной пагинации), если ограничен
-	// одним configmap или набором configmap-ов.
-	scopedByConfigMap := pars.ConfigMapId != nil || len(pars.ConfigMapIds) > 0
+	// одним configmap, набором configmap-ов или приложением.
+	scopedByConfigMap := pars.ConfigMapId != nil || len(pars.ConfigMapIds) > 0 || pars.AppId != nil
 	if !scopedByConfigMap {
 		if err := util.RequirePageSize(pars.ListParams, 0); err != nil {
 			return nil, 0, err
 		}
 	}
 
-	if _, all := u.sessionSvc.FromContext(ctx).AccessibleAppIds(); !all {
+	session := u.sessionSvc.FromContext(ctx)
+	if _, all := session.AccessibleAppIds(); !all {
 		if !scopedByConfigMap {
 			return nil, 0, errs.NoPermission
 		}
@@ -111,6 +112,9 @@ func (u *Usecase) List(ctx context.Context, pars *model.ListReq) ([]*model.Main,
 			if err := u.requireConfigMapsAccess(ctx, pars.ConfigMapIds); err != nil {
 				return nil, 0, err
 			}
+		}
+		if pars.AppId != nil && !session.HasAppAccess(*pars.AppId) {
+			return nil, 0, errs.NoPermission
 		}
 	}
 

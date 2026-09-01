@@ -42,6 +42,7 @@ type ListReq struct {
 
 	SecretId  *string
 	SecretIds []string
+	AppId     *string
 	Active    *bool
 	Search    *string
 }

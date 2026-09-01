@@ -90,15 +90,16 @@ func (u *Usecase) List(ctx context.Context, pars *model.ListReq) ([]*model.Main,
 		return nil, 0, errs.NotAuthorized
 	}
 	// Запрос считается узким (без обязательной пагинации), если ограничен
-	// одним секретом или набором секретов.
-	scopedBySecret := pars.SecretId != nil || len(pars.SecretIds) > 0
+	// одним секретом, набором секретов или приложением.
+	scopedBySecret := pars.SecretId != nil || len(pars.SecretIds) > 0 || pars.AppId != nil
 	if !scopedBySecret {
 		if err := util.RequirePageSize(pars.ListParams, 0); err != nil {
 			return nil, 0, err
 		}
 	}
 
-	if _, all := u.sessionSvc.FromContext(ctx).AccessibleAppIds(); !all {
+	session := u.sessionSvc.FromContext(ctx)
+	if _, all := session.AccessibleAppIds(); !all {
 		if !scopedBySecret {
 			return nil, 0, errs.NoPermission
 		}
@@ -111,6 +112,9 @@ func (u *Usecase) List(ctx context.Context, pars *model.ListReq) ([]*model.Main,
 			if err := u.requireSecretsAccess(ctx, pars.SecretIds); err != nil {
 				return nil, 0, err
 			}
+		}
+		if pars.AppId != nil && !session.HasAppAccess(*pars.AppId) {
+			return nil, 0, errs.NoPermission
 		}
 	}
 

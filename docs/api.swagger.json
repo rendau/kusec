@@ -519,6 +519,13 @@
               "type": "string"
             },
             "collectionFormat": "multi"
+          },
+          {
+            "name": "app_id",
+            "description": "Выборка item-ов всех configmap-ов приложения за один запрос (без пагинации).",
+            "in": "query",
+            "required": false,
+            "type": "string"
           }
         ],
         "tags": [
@@ -972,6 +979,13 @@
               "type": "string"
             },
             "collectionFormat": "multi"
+          },
+          {
+            "name": "app_id",
+            "description": "Выборка item-ов всех секретов приложения за один запрос (без пагинации).",
+            "in": "query",
+            "required": false,
+            "type": "string"
           }
         ],
         "tags": [

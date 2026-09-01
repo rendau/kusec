@@ -39,6 +39,7 @@ func DecodeConfigItemListReq(v *proto.ConfigItemListReq) *domainModel.ListReq {
 		ListParams:   DecodeListParams(v.ListParams),
 		ConfigMapId:  v.ConfigmapId,
 		ConfigMapIds: v.ConfigmapIds,
+		AppId:        v.AppId,
 		Active:       v.Active,
 		Search:       v.Search,
 	}

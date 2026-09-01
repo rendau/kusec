@@ -25,6 +25,9 @@ func (r *Repo) getConditions(pars *model.ListReq) (map[string]any, map[string][]
 	if len(pars.ConfigMapIds) > 0 {
 		conditions["configmap_id"] = pars.ConfigMapIds
 	}
+	if pars.AppId != nil {
+		conditionExps["configmap_id IN (SELECT id FROM configmap WHERE app_id = ?)"] = []any{*pars.AppId}
+	}
 	if pars.Active != nil {
 		conditions["active"] = *pars.Active
 	}

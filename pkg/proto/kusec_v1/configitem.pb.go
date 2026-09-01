@@ -163,7 +163,9 @@ type ConfigItemListReq struct {
 	Active      *bool                  `protobuf:"varint,3,opt,name=active,proto3,oneof" json:"active,omitempty"`
 	Search      *string                `protobuf:"bytes,4,opt,name=search,proto3,oneof" json:"search,omitempty"`
 	// Выборка по нескольким configmap-ам за один запрос (без пагинации).
-	ConfigmapIds  []string `protobuf:"bytes,5,rep,name=configmap_ids,json=configmapIds,proto3" json:"configmap_ids,omitempty"`
+	ConfigmapIds []string `protobuf:"bytes,5,rep,name=configmap_ids,json=configmapIds,proto3" json:"configmap_ids,omitempty"`
+	// Выборка item-ов всех configmap-ов приложения за один запрос (без пагинации).
+	AppId         *string `protobuf:"bytes,6,opt,name=app_id,json=appId,proto3,oneof" json:"app_id,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -231,6 +233,13 @@ func (x *ConfigItemListReq) GetConfigmapIds() []string {
 		return x.ConfigmapIds
 	}
 	return nil
+}
+
+func (x *ConfigItemListReq) GetAppId() string {
+	if x != nil && x.AppId != nil {
+		return *x.AppId
+	}
+	return ""
 }
 
 type ConfigItemListRep struct {
@@ -617,17 +626,19 @@ const file_kusec_v1_configitem_proto_rawDesc = "" +
 	" \x01(\tR\bencoding\x12\x1b\n" +
 	"\tfile_name\x18\v \x01(\tR\bfileName\x12!\n" +
 	"\fcontent_type\x18\f \x01(\tR\vcontentType\x12 \n" +
-	"\vdescription\x18\b \x01(\tR\vdescription\"\xfa\x01\n" +
+	"\vdescription\x18\b \x01(\tR\vdescription\"\xa1\x02\n" +
 	"\x11ConfigItemListReq\x127\n" +
 	"\vlist_params\x18\x01 \x01(\v2\x16.kusec_v1.ListParamsStR\n" +
 	"listParams\x12&\n" +
 	"\fconfigmap_id\x18\x02 \x01(\tH\x00R\vconfigmapId\x88\x01\x01\x12\x1b\n" +
 	"\x06active\x18\x03 \x01(\bH\x01R\x06active\x88\x01\x01\x12\x1b\n" +
 	"\x06search\x18\x04 \x01(\tH\x02R\x06search\x88\x01\x01\x12#\n" +
-	"\rconfigmap_ids\x18\x05 \x03(\tR\fconfigmapIdsB\x0f\n" +
+	"\rconfigmap_ids\x18\x05 \x03(\tR\fconfigmapIds\x12\x1a\n" +
+	"\x06app_id\x18\x06 \x01(\tH\x03R\x05appId\x88\x01\x01B\x0f\n" +
 	"\r_configmap_idB\t\n" +
 	"\a_activeB\t\n" +
-	"\a_search\"\x8c\x01\n" +
+	"\a_searchB\t\n" +
+	"\a_app_id\"\x8c\x01\n" +
 	"\x11ConfigItemListRep\x12C\n" +
 	"\x0fpagination_info\x18\x01 \x01(\v2\x1a.kusec_v1.PaginationInfoStR\x0epaginationInfo\x122\n" +
 	"\aresults\x18\x02 \x03(\v2\x18.kusec_v1.ConfigItemMainR\aresults\"\"\n" +

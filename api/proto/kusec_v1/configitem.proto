@@ -69,6 +69,8 @@ message ConfigItemListReq {
   optional string search = 4;
   // Выборка по нескольким configmap-ам за один запрос (без пагинации).
   repeated string configmap_ids = 5;
+  // Выборка item-ов всех configmap-ов приложения за один запрос (без пагинации).
+  optional string app_id = 6;
 }
 
 message ConfigItemListRep {

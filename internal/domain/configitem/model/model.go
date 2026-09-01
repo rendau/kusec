@@ -42,6 +42,7 @@ type ListReq struct {
 
 	ConfigMapId  *string
 	ConfigMapIds []string
+	AppId        *string
 	Active       *bool
 	Search       *string
 }

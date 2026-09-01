@@ -25,6 +25,9 @@ func (r *Repo) getConditions(pars *model.ListReq) (map[string]any, map[string][]
 	if len(pars.SecretIds) > 0 {
 		conditions["secret_id"] = pars.SecretIds
 	}
+	if pars.AppId != nil {
+		conditionExps["secret_id IN (SELECT id FROM secret WHERE app_id = ?)"] = []any{*pars.AppId}
+	}
 	if pars.Active != nil {
 		conditions["active"] = *pars.Active
 	}

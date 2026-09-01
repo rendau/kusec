@@ -163,7 +163,9 @@ type ItemListReq struct {
 	Active     *bool                  `protobuf:"varint,3,opt,name=active,proto3,oneof" json:"active,omitempty"`
 	Search     *string                `protobuf:"bytes,4,opt,name=search,proto3,oneof" json:"search,omitempty"`
 	// Выборка по нескольким секретам за один запрос (без пагинации).
-	SecretIds     []string `protobuf:"bytes,5,rep,name=secret_ids,json=secretIds,proto3" json:"secret_ids,omitempty"`
+	SecretIds []string `protobuf:"bytes,5,rep,name=secret_ids,json=secretIds,proto3" json:"secret_ids,omitempty"`
+	// Выборка item-ов всех секретов приложения за один запрос (без пагинации).
+	AppId         *string `protobuf:"bytes,6,opt,name=app_id,json=appId,proto3,oneof" json:"app_id,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -231,6 +233,13 @@ func (x *ItemListReq) GetSecretIds() []string {
 		return x.SecretIds
 	}
 	return nil
+}
+
+func (x *ItemListReq) GetAppId() string {
+	if x != nil && x.AppId != nil {
+		return *x.AppId
+	}
+	return ""
 }
 
 type ItemListRep struct {
@@ -617,7 +626,7 @@ const file_kusec_v1_item_proto_rawDesc = "" +
 	" \x01(\tR\bencoding\x12\x1b\n" +
 	"\tfile_name\x18\v \x01(\tR\bfileName\x12!\n" +
 	"\fcontent_type\x18\f \x01(\tR\vcontentType\x12 \n" +
-	"\vdescription\x18\b \x01(\tR\vdescription\"\xe5\x01\n" +
+	"\vdescription\x18\b \x01(\tR\vdescription\"\x8c\x02\n" +
 	"\vItemListReq\x127\n" +
 	"\vlist_params\x18\x01 \x01(\v2\x16.kusec_v1.ListParamsStR\n" +
 	"listParams\x12 \n" +
@@ -625,11 +634,13 @@ const file_kusec_v1_item_proto_rawDesc = "" +
 	"\x06active\x18\x03 \x01(\bH\x01R\x06active\x88\x01\x01\x12\x1b\n" +
 	"\x06search\x18\x04 \x01(\tH\x02R\x06search\x88\x01\x01\x12\x1d\n" +
 	"\n" +
-	"secret_ids\x18\x05 \x03(\tR\tsecretIdsB\f\n" +
+	"secret_ids\x18\x05 \x03(\tR\tsecretIds\x12\x1a\n" +
+	"\x06app_id\x18\x06 \x01(\tH\x03R\x05appId\x88\x01\x01B\f\n" +
 	"\n" +
 	"_secret_idB\t\n" +
 	"\a_activeB\t\n" +
-	"\a_search\"\x80\x01\n" +
+	"\a_searchB\t\n" +
+	"\a_app_id\"\x80\x01\n" +
 	"\vItemListRep\x12C\n" +
 	"\x0fpagination_info\x18\x01 \x01(\v2\x1a.kusec_v1.PaginationInfoStR\x0epaginationInfo\x12,\n" +
 	"\aresults\x18\x02 \x03(\v2\x12.kusec_v1.ItemMainR\aresults\"\x1c\n" +
