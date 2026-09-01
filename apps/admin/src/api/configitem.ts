@@ -22,6 +22,7 @@ export function listConfigItems(
   const query = buildListQuery(req.list_params, {
     configmap_id: req.configmap_id,
     configmap_ids: req.configmap_ids,
+    app_id: req.app_id,
     active: req.active,
     search: req.search,
   })

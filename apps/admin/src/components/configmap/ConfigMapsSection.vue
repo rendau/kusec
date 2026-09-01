@@ -61,9 +61,10 @@ function toggleExpandAll(): void {
   if (allExpanded.value) {
     expandedKeys.value = []
   } else {
-    const ids = rows.value.map((r) => r.id)
-    void itemsStore.prefetch(ids)
-    expandedKeys.value = ids
+    // Items are already cached by the app-wide prefetch — this is a no-op
+    // safety net (e.g. after a failed load).
+    void itemsStore.prefetchApp(props.appId, rows.value.map((r) => r.id))
+    expandedKeys.value = rows.value.map((r) => r.id)
   }
 }
 
@@ -259,11 +260,14 @@ watch(
     expandedKeys.value = []
     itemsStore.reset()
     await fetchConfigMaps()
-    // Few config maps → expand them all by default for a quicker overview.
-    if (rows.value.length && rows.value.length <= AUTO_EXPAND_MAX) {
-      const ids = rows.value.map((r) => r.id)
-      void itemsStore.prefetch(ids)
-      expandedKeys.value = ids
+    if (rows.value.length) {
+      // Load every config item of the app in one request up front, so
+      // expanding (individually or via "Expand all") never hits the network.
+      void itemsStore.prefetchApp(props.appId, rows.value.map((r) => r.id))
+      // Few config maps → expand them all by default for a quicker overview.
+      if (rows.value.length <= AUTO_EXPAND_MAX) {
+        expandedKeys.value = rows.value.map((r) => r.id)
+      }
     }
   },
   { immediate: true },

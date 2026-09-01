@@ -19,6 +19,7 @@ export function listItems(req: ItemListReq = {}): Promise<ItemListRep> {
   const query = buildListQuery(req.list_params, {
     secret_id: req.secret_id,
     secret_ids: req.secret_ids,
+    app_id: req.app_id,
     active: req.active,
     search: req.search,
   })

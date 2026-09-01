@@ -88,10 +88,10 @@ function toggleExpandAll(): void {
     expandedKeys.value = []
     broadcastReveal(false)
   } else {
-    const ids = rows.value.map((r) => r.id)
-    // One batch request for all secrets instead of one per opened panel.
-    void itemsStore.prefetch(ids)
-    expandedKeys.value = ids
+    // Items are already cached by the app-wide prefetch — this is a no-op
+    // safety net (e.g. after a failed load).
+    void itemsStore.prefetchApp(props.appId, rows.value.map((r) => r.id))
+    expandedKeys.value = rows.value.map((r) => r.id)
   }
 }
 
@@ -306,12 +306,14 @@ watch(
     itemsStore.reset()
     broadcastReveal(false)
     await fetchSecrets()
-    // Few secrets → expand them all by default for quicker overview. Their
-    // items are fetched in a single batch request (not one per panel).
-    if (rows.value.length && rows.value.length <= AUTO_EXPAND_MAX) {
-      const ids = rows.value.map((r) => r.id)
-      void itemsStore.prefetch(ids)
-      expandedKeys.value = ids
+    if (rows.value.length) {
+      // Load every item of the app in one request up front, so expanding
+      // (individually or via "Expand all") never hits the network again.
+      void itemsStore.prefetchApp(props.appId, rows.value.map((r) => r.id))
+      // Few secrets → expand them all by default for quicker overview.
+      if (rows.value.length <= AUTO_EXPAND_MAX) {
+        expandedKeys.value = rows.value.map((r) => r.id)
+      }
     }
   },
   { immediate: true },

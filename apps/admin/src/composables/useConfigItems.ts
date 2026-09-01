@@ -7,8 +7,8 @@ import type { ConfigItemMain } from '@/api/types'
 /**
  * Shared config-items cache for the app workspace, provided by the ConfigMaps
  * section and consumed by every ConfigMapItemsPanel. Mirrors useSecretItems:
- * `prefetch` loads many config maps' items in a single
- * `/config-item?configmap_ids=...` call, while `ensure` lazily loads a single
+ * `prefetchApp` loads every config item of the application in a single
+ * `/config-item?app_id=...` call, while `ensure` lazily loads a single
  * config map only when the cache misses (manual expand). Panels read items
  * reactively from `itemsByConfigMap`.
  */
@@ -17,8 +17,8 @@ export interface ConfigItemsStore {
   itemsByConfigMap: Ref<Record<string, ConfigItemMain[] | undefined>>
   /** configmapId → a request is in flight. */
   loadingByConfigMap: Ref<Record<string, boolean>>
-  /** Load several config maps' items in one request (skips cached/loading). */
-  prefetch: (configmapIds: string[]) => Promise<void>
+  /** Load all items of the app's config maps in one request (skips cached/loading). */
+  prefetchApp: (appId: string, configmapIds: string[]) => Promise<void>
   /** Load a single config map's items if not cached/loading (lazy expand). */
   ensure: (configmapId: string) => Promise<void>
   /** Force a refetch of a single config map's items (after a mutation). */
@@ -47,7 +47,7 @@ export function createConfigItemsStore(): ConfigItemsStore {
     itemsByConfigMap.value = { ...itemsByConfigMap.value, ...entries }
   }
 
-  async function prefetch(configmapIds: string[]): Promise<void> {
+  async function prefetchApp(appId: string, configmapIds: string[]): Promise<void> {
     const pending = configmapIds.filter(
       (id) =>
         itemsByConfigMap.value[id] === undefined &&
@@ -57,10 +57,11 @@ export function createConfigItemsStore(): ConfigItemsStore {
 
     setLoading(pending, true)
     try {
-      const rep = await listConfigItems({ configmap_ids: pending })
+      // One request for the whole application instead of an id per config map.
+      const rep = await listConfigItems({ app_id: appId })
       // Seed empty arrays so config maps with no items count as loaded.
       const grouped: Record<string, ConfigItemMain[]> = {}
-      for (const id of pending) grouped[id] = []
+      for (const id of configmapIds) grouped[id] = []
       for (const item of rep.results ?? []) {
         ;(grouped[item.configmap_id] ??= []).push(item)
       }
@@ -98,7 +99,7 @@ export function createConfigItemsStore(): ConfigItemsStore {
   return {
     itemsByConfigMap,
     loadingByConfigMap,
-    prefetch,
+    prefetchApp,
     ensure,
     reload: fetchOne,
     reset,

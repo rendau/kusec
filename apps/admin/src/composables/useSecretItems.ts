@@ -5,20 +5,20 @@ import { listItems } from '@/api/item'
 import type { ItemMain } from '@/api/types'
 
 /**
- * Shared items cache for the app workspace, provided by AppWorkspaceView and
+ * Shared items cache for the app workspace, provided by the Secrets section and
  * consumed by every SecretItemsPanel. The point is to avoid one request per
- * secret when several panels expand at once: `prefetch` loads many secrets in a
- * single `/item?secret_ids=...` call, while `ensure` lazily loads a single
- * secret only when the cache misses (manual expand). Panels read items
- * reactively from `itemsBySecret`.
+ * secret when several panels expand at once: `prefetchApp` loads every item of
+ * the application in a single `/item?app_id=...` call, while `ensure` lazily
+ * loads a single secret only when the cache misses (manual expand). Panels
+ * read items reactively from `itemsBySecret`.
  */
 export interface SecretItemsStore {
   /** secretId → its items (`undefined` = not loaded yet). */
   itemsBySecret: Ref<Record<string, ItemMain[] | undefined>>
   /** secretId → a request is in flight. */
   loadingBySecret: Ref<Record<string, boolean>>
-  /** Load several secrets' items in one request (skips already cached/loading). */
-  prefetch: (secretIds: string[]) => Promise<void>
+  /** Load all items of the app's secrets in one request (skips cached/loading). */
+  prefetchApp: (appId: string, secretIds: string[]) => Promise<void>
   /** Load a single secret's items if not cached/loading (lazy expand). */
   ensure: (secretId: string) => Promise<void>
   /** Force a refetch of a single secret's items (after a mutation). */
@@ -46,7 +46,7 @@ export function createSecretItemsStore(): SecretItemsStore {
     itemsBySecret.value = { ...itemsBySecret.value, ...entries }
   }
 
-  async function prefetch(secretIds: string[]): Promise<void> {
+  async function prefetchApp(appId: string, secretIds: string[]): Promise<void> {
     const pending = secretIds.filter(
       (id) => itemsBySecret.value[id] === undefined && !loadingBySecret.value[id],
     )
@@ -54,10 +54,11 @@ export function createSecretItemsStore(): SecretItemsStore {
 
     setLoading(pending, true)
     try {
-      const rep = await listItems({ secret_ids: pending })
+      // One request for the whole application instead of an id per secret.
+      const rep = await listItems({ app_id: appId })
       // Seed empty arrays so secrets with no items count as loaded.
       const grouped: Record<string, ItemMain[]> = {}
-      for (const id of pending) grouped[id] = []
+      for (const id of secretIds) grouped[id] = []
       for (const item of rep.results ?? []) {
         ;(grouped[item.secret_id] ??= []).push(item)
       }
@@ -92,5 +93,5 @@ export function createSecretItemsStore(): SecretItemsStore {
     loadingBySecret.value = {}
   }
 
-  return { itemsBySecret, loadingBySecret, prefetch, ensure, reload: fetchOne, reset }
+  return { itemsBySecret, loadingBySecret, prefetchApp, ensure, reload: fetchOne, reset }
 }

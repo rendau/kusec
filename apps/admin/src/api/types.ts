@@ -469,6 +469,8 @@ export interface ItemListReq {
   secret_id?: string
   /** Fetch items for several secrets in one request (no pagination). */
   secret_ids?: string[]
+  /** Fetch items of every secret of an application in one request. */
+  app_id?: string
   active?: boolean
   search?: string
 }
@@ -611,6 +613,8 @@ export interface ConfigItemListReq {
   configmap_id?: string
   /** Fetch items for several config maps in one request (no pagination). */
   configmap_ids?: string[]
+  /** Fetch items of every config map of an application in one request. */
+  app_id?: string
   active?: boolean
   search?: string
 }

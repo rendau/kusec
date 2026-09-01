@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, defineAsyncComponent, onMounted, reactive, ref } from 'vue'
+import { computed, defineAsyncComponent, reactive, ref, watch } from 'vue'
 import {
   NButton,
   NDropdown,
@@ -170,9 +170,14 @@ const { formRef, submitting, isEdit, submit } = useEntityForm<ItemMain>({
   },
 })
 
-onMounted(() => {
-  void search()
-})
+// The modal is mounted inside every items panel — fetching picker options on
+// mount would fire one request per panel. Load them on first open instead.
+watch(
+  () => props.show,
+  (show) => {
+    if (show) void search()
+  },
+)
 
 function close(): void {
   emit('update:show', false)
