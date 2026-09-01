@@ -25,7 +25,7 @@ import {
 } from '@vicons/tabler'
 
 import { apiErrorMessage } from '@/api/http'
-import { deleteItem } from '@/api/item'
+import { deleteItem, updateItem } from '@/api/item'
 import type { ItemMain } from '@/api/types'
 import { itemsRevealCommandKey } from '@/constants/injection'
 import { useBreakpoint } from '@/composables/useBreakpoint'
@@ -35,8 +35,7 @@ import { createSecretItemsStore, secretItemsKey } from '@/composables/useSecretI
 import ItemBulkPasteModal from '@/components/item/ItemBulkPasteModal.vue'
 import ItemDetailDrawer from '@/components/item/ItemDetailDrawer.vue'
 import ItemFormModal from '@/components/item/ItemFormModal.vue'
-import ValueEditor from '@/components/common/ValueEditor.vue'
-import ValueFormatChip from '@/components/common/ValueFormatChip.vue'
+import ItemValueBlock from '@/components/common/ItemValueBlock.vue'
 import {
   base64ByteSize,
   base64ToText,
@@ -44,7 +43,6 @@ import {
   formatBytes,
   isProbablyBase64,
 } from '@/utils/binary'
-import { normalizeValueFormat } from '@/utils/format'
 
 const props = defineProps<{
   secretId: string
@@ -116,9 +114,17 @@ function applyRevealCommand(): void {
 }
 
 watch(() => revealCommand.value.seq, applyRevealCommand)
-// Items arrive asynchronously from the shared store — apply the current
-// reveal state once they load (or reload).
-watch(rows, applyRevealCommand)
+// Items arrive asynchronously from the shared store. Under "show all" newly
+// loaded rows get revealed too; otherwise keep individually revealed rows
+// revealed across reloads (e.g. after an inline value edit), dropping stale ids.
+watch(rows, () => {
+  if (revealCommand.value.action === 'show') {
+    applyRevealCommand()
+    return
+  }
+  const ids = new Set(rows.value.map((r) => r.id))
+  opened.value = new Set([...opened.value].filter((id) => ids.has(id)))
+})
 
 const detailId = ref<string | null>(null)
 const showDetail = ref(false)
@@ -159,6 +165,18 @@ async function removeItem(row: ItemMain): Promise<void> {
     await refresh()
   } catch (error) {
     message.error(apiErrorMessage(error, 'Failed to delete item'))
+  }
+}
+
+/** Inline value edit from the list (the full form stays in the modal). */
+async function saveValue(row: ItemMain, value: string): Promise<void> {
+  try {
+    await updateItem(row.id, { value })
+    message.success('Value updated')
+    await refresh()
+  } catch (error) {
+    message.error(apiErrorMessage(error, 'Failed to update value'))
+    throw error
   }
 }
 
@@ -342,13 +360,10 @@ onMounted(() => {
               class="items__value"
               :class="{ 'items__cell--dim': !row.active }"
             >
-              <ValueFormatChip :format="row.value_format" />
-              <ValueEditor
+              <ItemValueBlock
                 :value="row.value"
-                :format="normalizeValueFormat(row.value_format)"
-                readonly
-                min-height="0"
-                max-height="320px"
+                :format="row.value_format"
+                :save="(v: string) => saveValue(row, v)"
               />
             </div>
           </Transition>
@@ -465,13 +480,10 @@ onMounted(() => {
 
           <Transition name="value">
             <div v-if="!isFileRow(row) && isOpen(row.id)" class="item-m__value">
-              <ValueFormatChip :format="row.value_format" />
-              <ValueEditor
+              <ItemValueBlock
                 :value="row.value"
-                :format="normalizeValueFormat(row.value_format)"
-                readonly
-                min-height="0"
-                max-height="320px"
+                :format="row.value_format"
+                :save="(v: string) => saveValue(row, v)"
               />
             </div>
           </Transition>

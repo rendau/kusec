@@ -15,7 +15,7 @@ import {
 import { Binary, Clipboard, Copy, Download, Pencil, Plus, Trash } from '@vicons/tabler'
 
 import { apiErrorMessage } from '@/api/http'
-import { deleteConfigItem } from '@/api/configitem'
+import { deleteConfigItem, updateConfigItem } from '@/api/configitem'
 import type { ConfigItemMain } from '@/api/types'
 import { useBreakpoint } from '@/composables/useBreakpoint'
 import { useClipboard } from '@/composables/useClipboard'
@@ -24,8 +24,7 @@ import { createConfigItemsStore, configItemsKey } from '@/composables/useConfigI
 import ConfigItemBulkPasteModal from '@/components/configitem/ConfigItemBulkPasteModal.vue'
 import ConfigItemDetailDrawer from '@/components/configitem/ConfigItemDetailDrawer.vue'
 import ConfigItemFormModal from '@/components/configitem/ConfigItemFormModal.vue'
-import ValueEditor from '@/components/common/ValueEditor.vue'
-import ValueFormatChip from '@/components/common/ValueFormatChip.vue'
+import ItemValueBlock from '@/components/common/ItemValueBlock.vue'
 import {
   base64ByteSize,
   base64ToText,
@@ -33,7 +32,6 @@ import {
   formatBytes,
   isProbablyBase64,
 } from '@/utils/binary'
-import { normalizeValueFormat } from '@/utils/format'
 
 const props = defineProps<{
   configmapId: string
@@ -117,6 +115,18 @@ async function removeItem(row: ConfigItemMain): Promise<void> {
     await refresh()
   } catch (error) {
     message.error(apiErrorMessage(error, 'Failed to delete config item'))
+  }
+}
+
+/** Inline value edit from the list (the full form stays in the modal). */
+async function saveValue(row: ConfigItemMain, value: string): Promise<void> {
+  try {
+    await updateConfigItem(row.id, { value })
+    message.success('Value updated')
+    await refresh()
+  } catch (error) {
+    message.error(apiErrorMessage(error, 'Failed to update value'))
+    throw error
   }
 }
 
@@ -288,13 +298,10 @@ onMounted(() => {
             class="items__value"
             :class="{ 'items__cell--dim': !row.active }"
           >
-            <ValueFormatChip :format="row.value_format" />
-            <ValueEditor
+            <ItemValueBlock
               :value="row.value"
-              :format="normalizeValueFormat(row.value_format)"
-              readonly
-              min-height="0"
-              max-height="320px"
+              :format="row.value_format"
+              :save="(v: string) => saveValue(row, v)"
             />
           </div>
         </template>
@@ -398,13 +405,10 @@ onMounted(() => {
           </div>
 
           <div v-if="!isFileRow(row)" class="item-m__value">
-            <ValueFormatChip :format="row.value_format" />
-            <ValueEditor
+            <ItemValueBlock
               :value="row.value"
-              :format="normalizeValueFormat(row.value_format)"
-              readonly
-              min-height="0"
-              max-height="320px"
+              :format="row.value_format"
+              :save="(v: string) => saveValue(row, v)"
             />
           </div>
         </div>
