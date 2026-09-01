@@ -4,12 +4,11 @@ import {
   NButton,
   NFlex,
   NIcon,
-  NPopconfirm,
   NSpace,
   NSpin,
   NTag,
   NText,
-  NTooltip,
+  useDialog,
   useMessage,
 } from 'naive-ui'
 import {
@@ -51,6 +50,7 @@ const props = defineProps<{
 }>()
 
 const message = useMessage()
+const dialog = useDialog()
 const { copy } = useClipboard()
 const { isMobile } = useBreakpoint()
 
@@ -168,6 +168,18 @@ async function removeItem(row: ItemMain): Promise<void> {
   }
 }
 
+// One shared confirm dialog instead of an NPopconfirm per row: with hundreds
+// of items, per-row popover components froze the tab on "Expand all".
+function confirmRemove(row: ItemMain): void {
+  dialog.warning({
+    title: 'Delete item',
+    content: `Delete "${row.key}"?`,
+    positiveText: 'Delete',
+    negativeText: 'Cancel',
+    onPositiveClick: () => removeItem(row),
+  })
+}
+
 /** Inline value edit from the list (the full form stays in the modal). */
 async function saveValue(row: ItemMain, value: string): Promise<void> {
   try {
@@ -236,77 +248,65 @@ onMounted(() => {
 
           <div class="items__cell" :class="{ 'items__cell--dim': !row.active }">
             <NSpace :size="4" align="center" :wrap-item="false">
+              <!-- Plain title attrs instead of NTooltip: these buttons render
+                   per item row, and per-row popover components froze the tab
+                   on "Expand all". -->
               <template v-if="isFileRow(row)">
                 <NText depth="3" class="items__file-name">
                   {{ row.file_name || 'file' }}
                 </NText>
                 <NTag size="tiny" :bordered="false">{{ fileSize(row) }}</NTag>
-                <NTooltip>
-                  <template #trigger>
-                    <NButton
-                      quaternary
-                      circle
-                      size="tiny"
-                      aria-label="Download file"
-                      @click="downloadFile(row)"
-                    >
-                      <template #icon>
-                        <NIcon :component="Download" />
-                      </template>
-                    </NButton>
+                <NButton
+                  quaternary
+                  circle
+                  size="tiny"
+                  title="Download"
+                  aria-label="Download file"
+                  @click="downloadFile(row)"
+                >
+                  <template #icon>
+                    <NIcon :component="Download" />
                   </template>
-                  Download
-                </NTooltip>
+                </NButton>
               </template>
               <template v-else>
-                <NTooltip>
-                  <template #trigger>
-                    <NButton
-                      quaternary
-                      circle
-                      size="tiny"
-                      :aria-label="isOpen(row.id) ? 'Hide value' : 'Show value'"
-                      @click="toggleReveal(row.id)"
-                    >
-                      <template #icon>
-                        <NIcon :component="isOpen(row.id) ? EyeOff : Eye" />
-                      </template>
-                    </NButton>
+                <NButton
+                  quaternary
+                  circle
+                  size="tiny"
+                  :title="isOpen(row.id) ? 'Hide value' : 'Show value'"
+                  :aria-label="isOpen(row.id) ? 'Hide value' : 'Show value'"
+                  @click="toggleReveal(row.id)"
+                >
+                  <template #icon>
+                    <NIcon :component="isOpen(row.id) ? EyeOff : Eye" />
                   </template>
-                  {{ isOpen(row.id) ? 'Hide value' : 'Show value' }}
-                </NTooltip>
-                <NTooltip>
-                  <template #trigger>
-                    <NButton
-                      quaternary
-                      circle
-                      size="tiny"
-                      aria-label="Copy value"
-                      @click="copy(row.value)"
-                    >
-                      <template #icon>
-                        <NIcon :component="Copy" />
-                      </template>
-                    </NButton>
+                </NButton>
+                <NButton
+                  quaternary
+                  circle
+                  size="tiny"
+                  title="Copy value"
+                  aria-label="Copy value"
+                  @click="copy(row.value)"
+                >
+                  <template #icon>
+                    <NIcon :component="Copy" />
                   </template>
-                  Copy value
-                </NTooltip>
-                <NTooltip v-if="isProbablyBase64(row.value)">
-                  <template #trigger>
-                    <NButton
-                      quaternary
-                      circle
-                      size="tiny"
-                      aria-label="Copy decoded value"
-                      @click="copyDecoded(row.value)"
-                    >
-                      <template #icon>
-                        <NIcon :component="Binary" />
-                      </template>
-                    </NButton>
+                </NButton>
+                <NButton
+                  v-if="isProbablyBase64(row.value)"
+                  quaternary
+                  circle
+                  size="tiny"
+                  title="Copy decoded (base64)"
+                  aria-label="Copy decoded value"
+                  @click="copyDecoded(row.value)"
+                >
+                  <template #icon>
+                    <NIcon :component="Binary" />
                   </template>
-                  Copy decoded (base64)
-                </NTooltip>
+                </NButton>
               </template>
             </NSpace>
           </div>
@@ -319,38 +319,31 @@ onMounted(() => {
 
           <div class="items__cell">
             <NSpace :size="4" :wrap-item="false">
-              <NTooltip>
-                <template #trigger>
-                  <NButton
-                    quaternary
-                    circle
-                    size="tiny"
-                    aria-label="Edit item"
-                    @click="openEdit(row)"
-                  >
-                    <template #icon>
-                      <NIcon :component="Pencil" />
-                    </template>
-                  </NButton>
+              <NButton
+                quaternary
+                circle
+                size="tiny"
+                title="Edit"
+                aria-label="Edit item"
+                @click="openEdit(row)"
+              >
+                <template #icon>
+                  <NIcon :component="Pencil" />
                 </template>
-                Edit
-              </NTooltip>
-              <NPopconfirm @positive-click="removeItem(row)">
-                <template #trigger>
-                  <NButton
-                    quaternary
-                    circle
-                    size="tiny"
-                    type="error"
-                    aria-label="Delete item"
-                  >
-                    <template #icon>
-                      <NIcon :component="Trash" />
-                    </template>
-                  </NButton>
+              </NButton>
+              <NButton
+                quaternary
+                circle
+                size="tiny"
+                type="error"
+                title="Delete"
+                aria-label="Delete item"
+                @click="confirmRemove(row)"
+              >
+                <template #icon>
+                  <NIcon :component="Trash" />
                 </template>
-                Delete "{{ row.key }}"?
-              </NPopconfirm>
+              </NButton>
             </NSpace>
           </div>
 
@@ -460,22 +453,18 @@ onMounted(() => {
                 <NIcon :component="Pencil" />
               </template>
             </NButton>
-            <NPopconfirm @positive-click="removeItem(row)">
-              <template #trigger>
-                <NButton
-                  quaternary
-                  circle
-                  size="tiny"
-                  type="error"
-                  aria-label="Delete item"
-                >
-                  <template #icon>
-                    <NIcon :component="Trash" />
-                  </template>
-                </NButton>
+            <NButton
+              quaternary
+              circle
+              size="tiny"
+              type="error"
+              aria-label="Delete item"
+              @click="confirmRemove(row)"
+            >
+              <template #icon>
+                <NIcon :component="Trash" />
               </template>
-              Delete "{{ row.key }}"?
-            </NPopconfirm>
+            </NButton>
           </div>
 
           <Transition name="value">

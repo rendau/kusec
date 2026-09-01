@@ -34,6 +34,7 @@ import { useClipboard } from '@/composables/useClipboard'
 import { itemsRevealCommandKey } from '@/constants/injection'
 import type { RevealCommand } from '@/constants/injection'
 import { createSecretItemsStore, secretItemsKey } from '@/composables/useSecretItems'
+import { useChunkedExpand } from '@/composables/useChunkedExpand'
 
 import SecretDetailDrawer from '@/components/secret/SecretDetailDrawer.vue'
 import SecretFormModal from '@/components/secret/SecretFormModal.vue'
@@ -54,6 +55,10 @@ const AUTO_EXPAND_MAX = 5
 const rows = ref<SecretMain[]>([])
 const loading = ref(false)
 const expandedKeys = ref<string[]>([])
+
+// "Expand all" reveals panels a few per frame instead of all in one task.
+const { expandAll: expandAllChunked, cancel: cancelExpand } =
+  useChunkedExpand(expandedKeys)
 
 function isExpanded(id: string): boolean {
   return expandedKeys.value.includes(id)
@@ -85,13 +90,14 @@ function broadcastReveal(show: boolean): void {
 function toggleExpandAll(): void {
   if (allExpanded.value) {
     // Collapsing all secrets also hides all revealed values.
+    cancelExpand()
     expandedKeys.value = []
     broadcastReveal(false)
   } else {
     // Items are already cached by the app-wide prefetch — this is a no-op
     // safety net (e.g. after a failed load).
     void itemsStore.prefetchApp(props.appId, rows.value.map((r) => r.id))
-    expandedKeys.value = rows.value.map((r) => r.id)
+    void expandAllChunked(rows.value.map((r) => r.id))
   }
 }
 
@@ -302,6 +308,7 @@ const columns = computed<DataTableColumns<SecretMain>>(() => [
 watch(
   () => props.appId,
   async () => {
+    cancelExpand()
     expandedKeys.value = []
     itemsStore.reset()
     broadcastReveal(false)

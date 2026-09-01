@@ -23,6 +23,7 @@ import type { ConfigMapMain } from '@/api/types'
 import { useBreakpoint } from '@/composables/useBreakpoint'
 import { useClipboard } from '@/composables/useClipboard'
 import { configItemsKey, createConfigItemsStore } from '@/composables/useConfigItems'
+import { useChunkedExpand } from '@/composables/useChunkedExpand'
 
 import ConfigMapDetailDrawer from '@/components/configmap/ConfigMapDetailDrawer.vue'
 import ConfigMapFormModal from '@/components/configmap/ConfigMapFormModal.vue'
@@ -44,6 +45,10 @@ const rows = ref<ConfigMapMain[]>([])
 const loading = ref(false)
 const expandedKeys = ref<string[]>([])
 
+// "Expand all" reveals panels a few per frame instead of all in one task.
+const { expandAll: expandAllChunked, cancel: cancelExpand } =
+  useChunkedExpand(expandedKeys)
+
 function isExpanded(id: string): boolean {
   return expandedKeys.value.includes(id)
 }
@@ -59,12 +64,13 @@ const allExpanded = computed(
 
 function toggleExpandAll(): void {
   if (allExpanded.value) {
+    cancelExpand()
     expandedKeys.value = []
   } else {
     // Items are already cached by the app-wide prefetch — this is a no-op
     // safety net (e.g. after a failed load).
     void itemsStore.prefetchApp(props.appId, rows.value.map((r) => r.id))
-    expandedKeys.value = rows.value.map((r) => r.id)
+    void expandAllChunked(rows.value.map((r) => r.id))
   }
 }
 
@@ -257,6 +263,7 @@ const columns = computed<DataTableColumns<ConfigMapMain>>(() => [
 watch(
   () => props.appId,
   async () => {
+    cancelExpand()
     expandedKeys.value = []
     itemsStore.reset()
     await fetchConfigMaps()

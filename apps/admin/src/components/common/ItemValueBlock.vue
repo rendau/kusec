@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { computed, defineAsyncComponent, ref } from 'vue'
-import { NButton, NIcon, NSpace, NTooltip } from 'naive-ui'
+import { NButton, NIcon, NSpace } from 'naive-ui'
 import { Pencil } from '@vicons/tabler'
 
 import ValueFormatChip from '@/components/common/ValueFormatChip.vue'
@@ -54,23 +54,21 @@ async function submit(): Promise<void> {
     <ValueFormatChip :format="format ?? ''" />
 
     <template v-if="!editing">
-      <NTooltip>
-        <template #trigger>
-          <NButton
-            class="value-block__edit"
-            quaternary
-            circle
-            size="tiny"
-            aria-label="Edit value"
-            @click="startEdit"
-          >
-            <template #icon>
-              <NIcon :component="Pencil" />
-            </template>
-          </NButton>
+      <!-- Plain title instead of NTooltip: this block renders once per item,
+           and popover components are what froze "Expand all" on big apps. -->
+      <NButton
+        class="value-block__edit"
+        quaternary
+        circle
+        size="tiny"
+        title="Edit value"
+        aria-label="Edit value"
+        @click="startEdit"
+      >
+        <template #icon>
+          <NIcon :component="Pencil" />
         </template>
-        Edit value
-      </NTooltip>
+      </NButton>
       <pre class="value-block__pre" @dblclick="startEdit">{{ value }}</pre>
     </template>
 
