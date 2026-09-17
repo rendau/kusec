@@ -116,7 +116,7 @@ func TestMaskingE2E(t *testing.T) {
 		auditRecStub{},
 	)
 
-	h := New(sessionSvc, apikeyUsecase, nil, nil, itemUsecase, nil, nil, nil)
+	h := New(sessionSvc, apikeyUsecase, nil, nil, itemUsecase, nil, nil, nil, nil, nil)
 
 	httpSrv := httptest.NewServer(h.HTTPHandler())
 	defer httpSrv.Close()
@@ -144,7 +144,7 @@ func TestMaskingE2E(t *testing.T) {
 		require.NoError(t, err, name)
 
 		assert.NotContains(t, string(raw), secretValue, "%s: значение секрета утекло в ответ", name)
-		assert.Contains(t, string(raw), expectedMask.Sha256, "%s: нет усечённого sha256", name)
+		assert.Contains(t, string(raw), expectedMask.Hash, "%s: нет отпечатка значения", name)
 		assert.Contains(t, string(raw), `"value_chars"`, name)
 	}
 }

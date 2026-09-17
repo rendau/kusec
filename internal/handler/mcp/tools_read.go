@@ -139,7 +139,7 @@ type ItemOut struct {
 	Key         string `json:"key"`
 	ValueChars  int    `json:"value_chars" jsonschema:"длина значения в символах (само значение агенту не выдаётся)"`
 	ValueBytes  int    `json:"value_bytes" jsonschema:"длина значения в байтах"`
-	ValueSha256 string `json:"value_sha256" jsonschema:"усечённый sha256 значения — для сравнения значений между собой"`
+	ValueHash   string `json:"value_hash" jsonschema:"усечённый HMAC-отпечаток значения — для сравнения значений между собой"`
 	ValueFormat string `json:"value_format,omitempty"`
 	Encoding    string `json:"encoding,omitempty"`
 	FileName    string `json:"file_name,omitempty"`
@@ -161,7 +161,7 @@ func (s *sessionServer) maskItem(v *itemModel.Main, _ int) ItemOut {
 		Key:         v.Key,
 		ValueChars:  masked.Chars,
 		ValueBytes:  masked.Bytes,
-		ValueSha256: masked.Sha256,
+		ValueHash:   masked.Hash,
 		ValueFormat: v.ValueFormat,
 		Encoding:    v.Encoding,
 		FileName:    v.FileName,

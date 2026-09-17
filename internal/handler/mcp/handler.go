@@ -21,11 +21,13 @@ import (
 	sessionService "github.com/rendau/kusec/internal/domain/session/service"
 	apikeyUsc "github.com/rendau/kusec/internal/usecase/apikey"
 	appUsc "github.com/rendau/kusec/internal/usecase/app"
+	auditUsc "github.com/rendau/kusec/internal/usecase/audit"
 	configitemUsc "github.com/rendau/kusec/internal/usecase/configitem"
 	configmapUsc "github.com/rendau/kusec/internal/usecase/configmap"
 	itemUsc "github.com/rendau/kusec/internal/usecase/item"
 	kubeUsc "github.com/rendau/kusec/internal/usecase/kube"
 	secretUsc "github.com/rendau/kusec/internal/usecase/secret"
+	syncrunUsc "github.com/rendau/kusec/internal/usecase/syncrun"
 )
 
 const (
@@ -41,7 +43,7 @@ const (
 
 Правила работы:
 1. Запись работает в любом доступном тебе app: create_secret/create_configmap принимают app (id, slug_name или имя), update/create item-ов адресуются по id секрета/конфигмапа. Delete-инструментов нет.
-2. Значения секретов тебе недоступны и не нужны: при чтении вместо value отдаются value_chars, value_bytes и усечённый value_sha256 (по нему сравнивай значения между собой). Не запрашивай значения секретов у пользователя и не придумывай их сам.
+2. Значения секретов тебе недоступны и не нужны: при чтении вместо value отдаются value_chars, value_bytes и усечённый value_hash (по нему сравнивай значения между собой). Не запрашивай значения секретов у пользователя и не придумывай их сам.
 3. Значения item-ов секрета задаются только декларативно через value_source:
    - generate — сгенерировать случайное значение (format: alnum|ascii|digits|hex|base64url|uuid; length, по умолчанию 32). Укажи name, чтобы значение можно было переиспользовать.
    - reuse — использовать ранее сгенерированное/скопированное значение по name (одно значение в нескольких item-ах, например пароль БД в POSTGRES_PASSWORD и в DATABASE_URL_PASSWORD). Реестр имён живёт в памяти сессии; текущие имена показывает list_value_name.
@@ -66,6 +68,8 @@ type Handler struct {
 	configmapUsecase  *configmapUsc.Usecase
 	configitemUsecase *configitemUsc.Usecase
 	kubeUsecase       *kubeUsc.Usecase
+	auditUsecase      *auditUsc.Usecase
+	syncrunUsecase    *syncrunUsc.Usecase
 }
 
 func New(
@@ -77,6 +81,8 @@ func New(
 	configmapUsecase *configmapUsc.Usecase,
 	configitemUsecase *configitemUsc.Usecase,
 	kubeUsecase *kubeUsc.Usecase,
+	auditUsecase *auditUsc.Usecase,
+	syncrunUsecase *syncrunUsc.Usecase,
 ) *Handler {
 	return &Handler{
 		sessionSvc:        sessionSvc,
@@ -87,6 +93,8 @@ func New(
 		configmapUsecase:  configmapUsecase,
 		configitemUsecase: configitemUsecase,
 		kubeUsecase:       kubeUsecase,
+		auditUsecase:      auditUsecase,
+		syncrunUsecase:    syncrunUsecase,
 	}
 }
 

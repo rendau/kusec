@@ -286,6 +286,8 @@ func (a *App) Init() {
 			configmapUsc.New(configMapSvc, appSvc, configItemSvc, sessionSvc, txm, auditRec),
 			configitemUsc.New(configItemSvc, configMapSvc, sessionSvc, txm, auditRec),
 			kubeUsecase,
+			auditUsc.New(auditSvc, sessionSvc),
+			syncrunUsc.New(syncRunSvc, appSvc, sessionSvc),
 		)
 
 		a.mcpHttpServer = &http.Server{

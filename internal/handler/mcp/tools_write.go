@@ -291,10 +291,10 @@ type CreateItemIn struct {
 
 // CreateItemOut — id созданного item-а + маскированные метаданные записанного значения.
 type CreateItemOut struct {
-	Id          string `json:"id"`
-	ValueChars  int    `json:"value_chars"`
-	ValueBytes  int    `json:"value_bytes"`
-	ValueSha256 string `json:"value_sha256"`
+	Id         string `json:"id"`
+	ValueChars int    `json:"value_chars"`
+	ValueBytes int    `json:"value_bytes"`
+	ValueHash  string `json:"value_hash"`
 }
 
 func (s *sessionServer) createItem(ctx context.Context, req *mcpsdk.CallToolRequest, in CreateItemIn) (*mcpsdk.CallToolResult, CreateItemOut, error) {
@@ -326,10 +326,10 @@ func (s *sessionServer) createItem(ctx context.Context, req *mcpsdk.CallToolRequ
 	masked := maskValue(value)
 
 	return nil, CreateItemOut{
-		Id:          newId,
-		ValueChars:  masked.Chars,
-		ValueBytes:  masked.Bytes,
-		ValueSha256: masked.Sha256,
+		Id:         newId,
+		ValueChars: masked.Chars,
+		ValueBytes: masked.Bytes,
+		ValueHash:  masked.Hash,
 	}, nil
 }
 

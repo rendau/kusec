@@ -84,11 +84,11 @@ func TestMaskValue(t *testing.T) {
 
 	assert.Equal(t, 6, masked.Chars)
 	assert.Equal(t, 12, masked.Bytes)
-	assert.Len(t, masked.Sha256, valueHashLen)
+	assert.Len(t, masked.Hash, 16)
 
 	// детерминированность и различимость
-	assert.Equal(t, masked.Sha256, maskValue("пароль").Sha256)
-	assert.NotEqual(t, masked.Sha256, maskValue("другой").Sha256)
+	assert.Equal(t, masked.Hash, maskValue("пароль").Hash)
+	assert.NotEqual(t, masked.Hash, maskValue("другой").Hash)
 }
 
 func TestVault_RememberLookup(t *testing.T) {

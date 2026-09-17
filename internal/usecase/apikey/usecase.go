@@ -263,6 +263,11 @@ func (u *Usecase) sessionFromKey(ctx context.Context, key string, allowMcpOnly b
 	if item.Scope == constant.ApiKeyScopeMcpOnly && !allowMcpOnly {
 		return nil, errs.NotAuthorized
 	}
+	// read_only-ключи — только для основного API (белый список методов);
+	// у MCP своя модель маскирования, и такие ключи он не принимает
+	if item.Scope == constant.ApiKeyScopeReadOnly && allowMcpOnly {
+		return nil, errs.NotAuthorized
+	}
 
 	usr, found, err := u.usrSvc.Get(ctx, item.UsrId, false)
 	if err != nil {

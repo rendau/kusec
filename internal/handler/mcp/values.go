@@ -2,7 +2,6 @@ package mcp
 
 import (
 	"crypto/rand"
-	"crypto/sha256"
 	"encoding/base64"
 	"encoding/hex"
 	"fmt"
@@ -10,6 +9,9 @@ import (
 	"strings"
 	"sync"
 	"unicode/utf8"
+
+	"github.com/rendau/kusec/internal/config"
+	"github.com/rendau/kusec/internal/util"
 )
 
 // ── Генерация значений ──────────────────────────────────
@@ -92,23 +94,21 @@ func randString(charset string, length int) (string, error) {
 
 // ── Маскирование ────────────────────────────────────────
 
-const valueHashLen = 12
-
 type maskedValue struct {
-	Chars  int
-	Bytes  int
-	Sha256 string
+	Chars int
+	Bytes int
+	Hash  string
 }
 
 // maskValue сводит значение к безопасным метаданным: длина в символах и
-// байтах + усечённый sha256 (для сравнения значений между собой).
+// байтах + HMAC-отпечаток (для сравнения значений между собой). Голый sha256
+// не годится: короткие значения перебираются по словарю. Отпечаток сравним
+// с value_hash в основном API, аудите и журнале sync.
 func maskValue(value string) maskedValue {
-	sum := sha256.Sum256([]byte(value))
-
 	return maskedValue{
-		Chars:  utf8.RuneCountInString(value),
-		Bytes:  len(value),
-		Sha256: hex.EncodeToString(sum[:])[:valueHashLen],
+		Chars: utf8.RuneCountInString(value),
+		Bytes: len(value),
+		Hash:  util.ValueFingerprint(config.Conf.AuditHashKey, value),
 	}
 }
 

@@ -109,7 +109,7 @@ func TestSyncE2E(t *testing.T) {
 	}
 	kubeUsecase := kubeUsc.New(kubeMock, nil, nil, nil, sessionSvc)
 
-	h := New(sessionSvc, apikeyUsecase, nil, nil, itemUsecase, nil, nil, kubeUsecase)
+	h := New(sessionSvc, apikeyUsecase, nil, nil, itemUsecase, nil, nil, kubeUsecase, nil, nil)
 
 	httpSrv := httptest.NewServer(h.HTTPHandler())
 	defer httpSrv.Close()
