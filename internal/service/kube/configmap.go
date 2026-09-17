@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"sort"
 	"strings"
+	"time"
 
 	"github.com/samber/lo"
 	corev1 "k8s.io/api/core/v1"
@@ -18,6 +19,7 @@ import (
 	appModel "github.com/rendau/kusec/internal/domain/app/model"
 	configitemModel "github.com/rendau/kusec/internal/domain/configitem/model"
 	configmapModel "github.com/rendau/kusec/internal/domain/configmap/model"
+	syncrunModel "github.com/rendau/kusec/internal/domain/syncrun/model"
 	"github.com/rendau/kusec/internal/errs"
 )
 
@@ -40,11 +42,21 @@ func (s *Service) SyncConfigMaps(ctx context.Context, appIds []string) (*SyncRes
 		return nil, err
 	}
 
-	return s.syncConfigMapsLocked(ctx, client, appIds)
+	runId, meta, err := s.startSyncRun(ctx, appIds)
+	if err != nil {
+		return nil, err
+	}
+	startedAt := time.Now()
+	journal := &syncJournal{}
+
+	result, err := s.syncConfigMapsLocked(ctx, client, appIds, journal, meta)
+	s.finishSyncRun(ctx, runId, startedAt, appIds, journal, resultErrorCount(result), err)
+
+	return result, err
 }
 
 // syncConfigMapsLocked выполняет реконсиляцию configmap-ов; вызывается под s.mu.
-func (s *Service) syncConfigMapsLocked(ctx context.Context, client kubernetes.Interface, appIds []string) (*SyncResult, error) {
+func (s *Service) syncConfigMapsLocked(ctx context.Context, client kubernetes.Interface, appIds []string, journal *syncJournal, meta *runMeta) (*SyncResult, error) {
 	result := &SyncResult{}
 
 	desired, err := s.buildDesiredConfigMaps(ctx, result, appIds)
@@ -83,15 +95,21 @@ func (s *Service) syncConfigMapsLocked(ctx context.Context, client kubernetes.In
 		if !found {
 			if err = s.ensureNamespace(ctx, client, want.namespace, ensuredNamespaces); err != nil {
 				result.Errors = append(result.Errors, fmt.Sprintf("%s: %v", key, err))
+				journal.addError(kubeKindConfigMap, want.namespace, want.name, err.Error())
 				continue
 			}
-			_, err = client.CoreV1().ConfigMaps(want.namespace).Create(ctx, buildConfigMap(want), metav1.CreateOptions{})
+			contentHash := contentFingerprint(configMapContent(want.data, want.binaryData))
+			_, err = client.CoreV1().ConfigMaps(want.namespace).Create(ctx, buildConfigMap(want, meta, contentHash), metav1.CreateOptions{})
 			if err == nil {
 				result.Created = append(result.Created, key)
+				journal.add(kubeKindConfigMap, want.namespace, want.name, syncrunModel.OpCreated, contentHash,
+					allKeys(configMapContent(want.data, want.binaryData)))
+				touchSynced(ctx, s.configMapSvc.TouchSynced, want.configMapId, contentHash, key)
 				continue
 			}
 			if !k8serrors.IsAlreadyExists(err) {
 				result.Errors = append(result.Errors, fmt.Sprintf("%s: create: %v", key, err))
+				journal.addError(kubeKindConfigMap, want.namespace, want.name, "create: "+err.Error())
 				continue
 			}
 			// ConfigMap уже есть, но без нашего лейбла (создан вне kusec/старой
@@ -99,11 +117,12 @@ func (s *Service) syncConfigMapsLocked(ctx context.Context, client kubernetes.In
 			current, err = client.CoreV1().ConfigMaps(want.namespace).Get(ctx, want.name, metav1.GetOptions{})
 			if err != nil {
 				result.Errors = append(result.Errors, fmt.Sprintf("%s: adopt: %v", key, err))
+				journal.addError(kubeKindConfigMap, want.namespace, want.name, "adopt: "+err.Error())
 				continue
 			}
 		}
 
-		s.reconcileExistingConfigMap(ctx, client, current, want, key, result)
+		s.reconcileExistingConfigMap(ctx, client, current, want, key, result, journal, meta)
 	}
 
 	// Управляемые configmap-ы, которым больше нет активных записей в базе.
@@ -111,9 +130,14 @@ func (s *Service) syncConfigMapsLocked(ctx context.Context, client kubernetes.In
 		err = client.CoreV1().ConfigMaps(stale.Namespace).Delete(ctx, stale.Name, metav1.DeleteOptions{})
 		if err != nil && !k8serrors.IsNotFound(err) {
 			result.Errors = append(result.Errors, fmt.Sprintf("%s: delete: %v", key, err))
+			journal.addError(kubeKindConfigMap, stale.Namespace, stale.Name, "delete: "+err.Error())
 			continue
 		}
 		result.Deleted = append(result.Deleted, key)
+		journal.add(kubeKindConfigMap, stale.Namespace, stale.Name, syncrunModel.OpDeleted, "",
+			allKeys(liveConfigMapContent(stale)))
+		// применённый снимок записи — «объекта нет» (напр. деактивированный configmap)
+		touchSynced(ctx, s.configMapSvc.TouchSynced, stale.Annotations[configMapIdAnnotation], "", key)
 	}
 
 	sort.Strings(result.Created)
@@ -135,11 +159,20 @@ func (s *Service) reconcileExistingConfigMap(
 	want *desiredConfigMap,
 	key string,
 	result *SyncResult,
+	journal *syncJournal,
+	meta *runMeta,
 ) {
+	wantContent := configMapContent(want.data, want.binaryData)
+	contentHash := contentFingerprint(wantContent)
+
 	if configMapUpToDate(current, want) {
 		result.Unchanged++
+		journal.add(kubeKindConfigMap, want.namespace, want.name, syncrunModel.OpUnchanged, contentHash, nil)
+		touchSynced(ctx, s.configMapSvc.TouchSynced, want.configMapId, contentHash, key)
 		return
 	}
+
+	diffKeys := changedKeys(liveConfigMapContent(current), wantContent)
 
 	updated := current.DeepCopy()
 	updated.Data = want.data
@@ -153,12 +186,16 @@ func (s *Service) reconcileExistingConfigMap(
 	}
 	updated.Annotations[appIdAnnotation] = want.appId
 	updated.Annotations[configMapIdAnnotation] = want.configMapId
+	meta.annotate(updated.Annotations, contentHash)
 
 	if _, err := client.CoreV1().ConfigMaps(want.namespace).Update(ctx, updated, metav1.UpdateOptions{}); err != nil {
 		result.Errors = append(result.Errors, fmt.Sprintf("%s: update: %v", key, err))
+		journal.addError(kubeKindConfigMap, want.namespace, want.name, "update: "+err.Error())
 		return
 	}
 	result.Updated = append(result.Updated, key)
+	journal.add(kubeKindConfigMap, want.namespace, want.name, syncrunModel.OpUpdated, contentHash, diffKeys)
+	touchSynced(ctx, s.configMapSvc.TouchSynced, want.configMapId, contentHash, key)
 }
 
 // buildDesiredConfigMaps собирает желаемое состояние из базы: только
@@ -263,7 +300,13 @@ func (s *Service) buildConfigMapData(ctx context.Context, configMapId string) (m
 	return data, binaryData, nil
 }
 
-func buildConfigMap(want *desiredConfigMap) *corev1.ConfigMap {
+func buildConfigMap(want *desiredConfigMap, meta *runMeta, contentHash string) *corev1.ConfigMap {
+	annotations := map[string]string{
+		appIdAnnotation:       want.appId,
+		configMapIdAnnotation: want.configMapId,
+	}
+	meta.annotate(annotations, contentHash)
+
 	return &corev1.ConfigMap{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      want.name,
@@ -271,10 +314,7 @@ func buildConfigMap(want *desiredConfigMap) *corev1.ConfigMap {
 			Labels: map[string]string{
 				managedByLabelKey: managedByLabelValue,
 			},
-			Annotations: map[string]string{
-				appIdAnnotation:       want.appId,
-				configMapIdAnnotation: want.configMapId,
-			},
+			Annotations: annotations,
 		},
 		Data:       want.data,
 		BinaryData: want.binaryData,

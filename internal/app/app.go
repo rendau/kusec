@@ -131,7 +131,6 @@ func (a *App) Init() {
 	apikeySvc := apikeyService.New(apikeyDb.New(a.pgpool))
 	auditSvc := auditService.New(auditDb.New(a.pgpool))
 	syncRunSvc := syncrunService.New(syncrunDb.New(a.pgpool))
-	_ = syncRunSvc // подключается к kube-сервису журналом sync
 
 	// регистратор аудита: пишется usecase-ами внутри транзакции мутации
 	auditRec := auditRecorder.New(auditSvc, usrSvc, appSvc, secretSvc, configMapSvc, sessionSvc, config.Conf.AuditHashKey)
@@ -155,7 +154,7 @@ func (a *App) Init() {
 	// kube usecase общий для gRPC и MCP: лок «один sync одновременно» живёт
 	// в kube-сервисе и должен быть один на процесс
 	kubeUsecase := kubeUsc.New(
-		kubeService.New(appSvc, secretSvc, itemSvc, configMapSvc, configItemSvc, txm, auditRec),
+		kubeService.New(appSvc, secretSvc, itemSvc, configMapSvc, configItemSvc, txm, auditRec, syncRunSvc),
 		appSvc,
 		secretSvc,
 		configMapSvc,

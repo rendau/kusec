@@ -6,6 +6,7 @@ import (
 	"slices"
 	"strings"
 	"testing"
+	"time"
 
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -14,6 +15,7 @@ import (
 	appModel "github.com/rendau/kusec/internal/domain/app/model"
 	itemModel "github.com/rendau/kusec/internal/domain/item/model"
 	secretModel "github.com/rendau/kusec/internal/domain/secret/model"
+	syncrunModel "github.com/rendau/kusec/internal/domain/syncrun/model"
 )
 
 type secretSvcStub struct {
@@ -36,6 +38,8 @@ func (s secretSvcStub) Get(ctx context.Context, id string, errNE bool) (*secretM
 func (s secretSvcStub) Create(ctx context.Context, obj *secretModel.Edit) (string, error) {
 	return s.createFn(ctx, obj)
 }
+
+func (s secretSvcStub) TouchSynced(context.Context, string, time.Time, string) error { return nil }
 
 type itemSvcStub struct {
 	listFn   func(_ context.Context, req *itemModel.ListReq) ([]*itemModel.Main, int64, error)
@@ -84,6 +88,21 @@ func (auditRecStub) RecordItem(context.Context, *itemModel.Main, *itemModel.Main
 }
 
 func (auditRecStub) RecordSyncRun(context.Context, string, *string) error { return nil }
+
+func (auditRecStub) NewSyncRun(context.Context, *string) *syncrunModel.Main {
+	return &syncrunModel.Main{}
+}
+
+// syncRunSvcStub — no-op журнал sync.
+type syncRunSvcStub struct{}
+
+func (syncRunSvcStub) Start(context.Context, *syncrunModel.Main) (string, error) {
+	return "run-test", nil
+}
+func (syncRunSvcStub) Finish(context.Context, string, *syncrunModel.Edit) error { return nil }
+func (syncRunSvcStub) AddObjects(context.Context, string, []*syncrunModel.Object) error {
+	return nil
+}
 
 func TestBuildSecretData_OK(t *testing.T) {
 	t.Parallel()
@@ -263,7 +282,10 @@ func TestSyncSecrets_ScopedSyncUpdatesAndDeletesOnlyScopedApp(t *testing.T) {
 	)
 
 	svc := &Service{
-		client: client,
+		client:     client,
+		txm:        txmStub{},
+		auditRec:   auditRecStub{},
+		syncRunSvc: syncRunSvcStub{},
 		appSvc: appSvcStub{
 			listFn: func(_ context.Context, req *appModel.ListReq) ([]*appModel.Main, int64, error) {
 				if len(req.Ids) != 1 || req.Ids[0] != "app-1" {
@@ -349,7 +371,10 @@ func TestSyncSecrets_GlobalSyncAdoptsExistingWithoutErrors(t *testing.T) {
 	)
 
 	svc := &Service{
-		client: client,
+		client:     client,
+		txm:        txmStub{},
+		auditRec:   auditRecStub{},
+		syncRunSvc: syncRunSvcStub{},
 		appSvc: appSvcStub{
 			listFn: func(_ context.Context, req *appModel.ListReq) ([]*appModel.Main, int64, error) {
 				if len(req.Ids) != 0 {
@@ -419,7 +444,7 @@ func TestSecretUpToDate(t *testing.T) {
 		secretId:  "sec-1",
 		data:      map[string][]byte{"A": []byte("v")},
 	}
-	current := buildSecret(want)
+	current := buildSecret(want, nil, "")
 	if !secretUpToDate(current, want) {
 		t.Fatal("expected up-to-date secret")
 	}

@@ -1,6 +1,10 @@
 package db
 
 import (
+	"context"
+	"fmt"
+	"time"
+
 	"github.com/rendau/kusec/internal/domain/secret/model"
 )
 
@@ -39,4 +43,17 @@ func (r *Repo) getConditions(pars *model.ListReq) (map[string]any, map[string][]
 	}
 
 	return conditions, conditionExps
+}
+
+// TouchSynced отмечает последний применённый в кластер снимок записи.
+// Пишется напрямую (мимо ModelStore.Update), чтобы не трогать updated_at:
+// sync — не изменение конфигурации.
+func (r *Repo) TouchSynced(ctx context.Context, id string, at time.Time, hash string) error {
+	_, err := r.TxM.GetConnection(ctx).Exec(ctx,
+		`update secret set last_synced_at = $2, last_synced_hash = $3 where id = $1`,
+		id, at, hash)
+	if err != nil {
+		return fmt.Errorf("exec: %w", err)
+	}
+	return nil
 }

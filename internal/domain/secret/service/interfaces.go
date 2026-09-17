@@ -2,6 +2,7 @@ package service
 
 import (
 	"context"
+	"time"
 
 	"github.com/rendau/kusec/internal/domain/secret/model"
 )
@@ -12,4 +13,5 @@ type RepoDbI interface {
 	Create(ctx context.Context, obj *model.Edit) (string, error)
 	Update(ctx context.Context, id string, obj *model.Edit) error
 	Delete(ctx context.Context, id string) error
+	TouchSynced(ctx context.Context, id string, at time.Time, hash string) error
 }

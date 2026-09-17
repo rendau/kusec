@@ -42,6 +42,7 @@ type Service struct {
 	configItemSvc ConfigItemServiceI
 	txm           TransactionManagerI
 	auditRec      AuditRecorderI
+	syncRunSvc    SyncRunServiceI
 
 	mu sync.Mutex // один sync одновременно
 
@@ -57,6 +58,7 @@ func New(
 	configItemSvc ConfigItemServiceI,
 	txm TransactionManagerI,
 	auditRec AuditRecorderI,
+	syncRunSvc SyncRunServiceI,
 ) *Service {
 	return &Service{
 		appSvc:        appSvc,
@@ -66,6 +68,7 @@ func New(
 		configItemSvc: configItemSvc,
 		txm:           txm,
 		auditRec:      auditRec,
+		syncRunSvc:    syncRunSvc,
 	}
 }
 
@@ -149,16 +152,25 @@ func (s *Service) Sync(ctx context.Context, appIds []string) (*SyncResult, *Sync
 		return nil, nil, err
 	}
 
-	secrets, err := s.syncSecretsLocked(ctx, client, appIds)
+	// общий запуск журнала: секреты и configmap-ы — объекты одной записи
+	runId, meta, err := s.startSyncRun(ctx, appIds)
 	if err != nil {
 		return nil, nil, err
 	}
+	startedAt := time.Now()
+	journal := &syncJournal{}
 
-	configMaps, err := s.syncConfigMapsLocked(ctx, client, appIds)
+	var secrets, configMaps *SyncResult
+	secrets, err = s.syncSecretsLocked(ctx, client, appIds, journal, meta)
+	if err == nil {
+		configMaps, err = s.syncConfigMapsLocked(ctx, client, appIds, journal, meta)
+	}
+
+	s.finishSyncRun(ctx, runId, startedAt, appIds, journal, resultErrorCount(secrets, configMaps), err)
+
 	if err != nil {
 		return nil, nil, err
 	}
-
 	return secrets, configMaps, nil
 }
 

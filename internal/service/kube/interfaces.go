@@ -2,12 +2,14 @@ package kube
 
 import (
 	"context"
+	"time"
 
 	appModel "github.com/rendau/kusec/internal/domain/app/model"
 	configitemModel "github.com/rendau/kusec/internal/domain/configitem/model"
 	configmapModel "github.com/rendau/kusec/internal/domain/configmap/model"
 	itemModel "github.com/rendau/kusec/internal/domain/item/model"
 	secretModel "github.com/rendau/kusec/internal/domain/secret/model"
+	syncrunModel "github.com/rendau/kusec/internal/domain/syncrun/model"
 )
 
 type AppServiceI interface {
@@ -19,6 +21,7 @@ type SecretServiceI interface {
 	List(ctx context.Context, pars *secretModel.ListReq) ([]*secretModel.Main, int64, error)
 	Get(ctx context.Context, id string, errNE bool) (*secretModel.Main, bool, error)
 	Create(ctx context.Context, obj *secretModel.Edit) (string, error)
+	TouchSynced(ctx context.Context, id string, at time.Time, hash string) error
 }
 
 type ItemServiceI interface {
@@ -30,6 +33,7 @@ type ItemServiceI interface {
 
 type ConfigMapServiceI interface {
 	List(ctx context.Context, pars *configmapModel.ListReq) ([]*configmapModel.Main, int64, error)
+	TouchSynced(ctx context.Context, id string, at time.Time, hash string) error
 }
 
 type ConfigItemServiceI interface {
@@ -48,4 +52,12 @@ type AuditRecorderI interface {
 	RecordSecret(ctx context.Context, old, cur *secretModel.Main, action string, batchId *string) error
 	RecordItem(ctx context.Context, old, cur *itemModel.Main, action string, batchId *string) error
 	RecordSyncRun(ctx context.Context, runId string, appId *string) error
+	NewSyncRun(ctx context.Context, appId *string) *syncrunModel.Main
+}
+
+// SyncRunServiceI — журнал запусков sync (домен syncrun).
+type SyncRunServiceI interface {
+	Start(ctx context.Context, obj *syncrunModel.Main) (string, error)
+	Finish(ctx context.Context, id string, obj *syncrunModel.Edit) error
+	AddObjects(ctx context.Context, runId string, objects []*syncrunModel.Object) error
 }

@@ -5,6 +5,7 @@ import (
 	"slices"
 	"strings"
 	"testing"
+	"time"
 
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -20,6 +21,8 @@ import (
 type configMapSvcStub struct {
 	listFn func(_ context.Context, req *configmapModel.ListReq) ([]*configmapModel.Main, int64, error)
 }
+
+func (s configMapSvcStub) TouchSynced(context.Context, string, time.Time, string) error { return nil }
 
 func (s configMapSvcStub) List(ctx context.Context, req *configmapModel.ListReq) ([]*configmapModel.Main, int64, error) {
 	return s.listFn(ctx, req)
@@ -74,7 +77,10 @@ func TestSync_ReconcilesSecretsAndConfigMaps(t *testing.T) {
 	)
 
 	svc := &Service{
-		client: client,
+		client:     client,
+		txm:        txmStub{},
+		auditRec:   auditRecStub{},
+		syncRunSvc: syncRunSvcStub{},
 		appSvc: appSvcStub{
 			listFn: func(_ context.Context, _ *appModel.ListReq) ([]*appModel.Main, int64, error) {
 				return []*appModel.Main{{Id: "app-1", Namespace: "team-a", SlugName: "web"}}, 1, nil

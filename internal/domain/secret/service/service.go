@@ -64,3 +64,12 @@ func (s *Service) Delete(ctx context.Context, id string) error {
 	}
 	return nil
 }
+
+// TouchSynced отмечает последний применённый в кластер снимок записи
+// (updated_at не меняется, аудит не пишется — это не изменение конфигурации).
+func (s *Service) TouchSynced(ctx context.Context, id string, at time.Time, hash string) error {
+	if err := s.repoDb.TouchSynced(ctx, id, at, hash); err != nil {
+		return fmt.Errorf("repoDb.TouchSynced: %w", err)
+	}
+	return nil
+}

@@ -15,18 +15,23 @@ type Select struct {
 	SlugName    string
 	Description string
 	ExactSlug   bool
+
+	LastSyncedAt   *time.Time
+	LastSyncedHash string
 }
 
 func (m *Select) ListColumnMap() map[string]any {
 	return map[string]any{
-		"id":          &m.Id,
-		"created_at":  &m.CreatedAt,
-		"updated_at":  &m.UpdatedAt,
-		"app_id":      &m.AppId,
-		"active":      &m.Active,
-		"slug_name":   &m.SlugName,
-		"description": &m.Description,
-		"exact_slug":  &m.ExactSlug,
+		"id":               &m.Id,
+		"created_at":       &m.CreatedAt,
+		"updated_at":       &m.UpdatedAt,
+		"app_id":           &m.AppId,
+		"active":           &m.Active,
+		"slug_name":        &m.SlugName,
+		"description":      &m.Description,
+		"exact_slug":       &m.ExactSlug,
+		"last_synced_at":   &m.LastSyncedAt,
+		"last_synced_hash": &m.LastSyncedHash,
 	}
 }
 
@@ -50,5 +55,8 @@ func EncodeSelect(v *Select, _ int) *domainModel.Main {
 		SlugName:    v.SlugName,
 		Description: v.Description,
 		ExactSlug:   v.ExactSlug,
+
+		LastSyncedAt:   v.LastSyncedAt,
+		LastSyncedHash: v.LastSyncedHash,
 	}
 }

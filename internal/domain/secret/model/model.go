@@ -21,6 +21,11 @@ type Main struct {
 	// Менять флаг могут только админы.
 	ExactSlug bool
 
+	// Последний применённый в кластер снимок (обновляется sync-ом, минуя
+	// updated_at): nil — ещё ни разу не синхронизирован.
+	LastSyncedAt   *time.Time
+	LastSyncedHash string
+
 	// Вычисляемое поле: не хранится в базе, заполняется в usecase.
 	KubeSecretName string
 }

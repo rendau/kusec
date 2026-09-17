@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"sort"
 	"strings"
+	"time"
 
 	"github.com/samber/lo"
 	corev1 "k8s.io/api/core/v1"
@@ -18,6 +19,7 @@ import (
 	appModel "github.com/rendau/kusec/internal/domain/app/model"
 	itemModel "github.com/rendau/kusec/internal/domain/item/model"
 	secretModel "github.com/rendau/kusec/internal/domain/secret/model"
+	syncrunModel "github.com/rendau/kusec/internal/domain/syncrun/model"
 	"github.com/rendau/kusec/internal/errs"
 )
 
@@ -40,11 +42,32 @@ func (s *Service) SyncSecrets(ctx context.Context, appIds []string) (*SyncResult
 		return nil, err
 	}
 
-	return s.syncSecretsLocked(ctx, client, appIds)
+	runId, meta, err := s.startSyncRun(ctx, appIds)
+	if err != nil {
+		return nil, err
+	}
+	startedAt := time.Now()
+	journal := &syncJournal{}
+
+	result, err := s.syncSecretsLocked(ctx, client, appIds, journal, meta)
+	s.finishSyncRun(ctx, runId, startedAt, appIds, journal, resultErrorCount(result), err)
+
+	return result, err
+}
+
+// resultErrorCount — количество ошибок результата (nil-safe).
+func resultErrorCount(results ...*SyncResult) int {
+	count := 0
+	for _, result := range results {
+		if result != nil {
+			count += len(result.Errors)
+		}
+	}
+	return count
 }
 
 // syncSecretsLocked выполняет реконсиляцию секретов; вызывается под s.mu.
-func (s *Service) syncSecretsLocked(ctx context.Context, client kubernetes.Interface, appIds []string) (*SyncResult, error) {
+func (s *Service) syncSecretsLocked(ctx context.Context, client kubernetes.Interface, appIds []string, journal *syncJournal, meta *runMeta) (*SyncResult, error) {
 	result := &SyncResult{}
 
 	desired, err := s.buildDesired(ctx, result, appIds)
@@ -83,15 +106,20 @@ func (s *Service) syncSecretsLocked(ctx context.Context, client kubernetes.Inter
 		if !found {
 			if err = s.ensureNamespace(ctx, client, want.namespace, ensuredNamespaces); err != nil {
 				result.Errors = append(result.Errors, fmt.Sprintf("%s: %v", key, err))
+				journal.addError(kubeKindSecret, want.namespace, want.name, err.Error())
 				continue
 			}
-			_, err = client.CoreV1().Secrets(want.namespace).Create(ctx, buildSecret(want), metav1.CreateOptions{})
+			contentHash := contentFingerprint(want.data)
+			_, err = client.CoreV1().Secrets(want.namespace).Create(ctx, buildSecret(want, meta, contentHash), metav1.CreateOptions{})
 			if err == nil {
 				result.Created = append(result.Created, key)
+				journal.add(kubeKindSecret, want.namespace, want.name, syncrunModel.OpCreated, contentHash, allKeys(want.data))
+				touchSynced(ctx, s.secretSvc.TouchSynced, want.secretId, contentHash, key)
 				continue
 			}
 			if !k8serrors.IsAlreadyExists(err) {
 				result.Errors = append(result.Errors, fmt.Sprintf("%s: create: %v", key, err))
+				journal.addError(kubeKindSecret, want.namespace, want.name, "create: "+err.Error())
 				continue
 			}
 			// Секрет уже есть, но без нашего лейбла (создан вне kusec/старой
@@ -99,11 +127,12 @@ func (s *Service) syncSecretsLocked(ctx context.Context, client kubernetes.Inter
 			current, err = client.CoreV1().Secrets(want.namespace).Get(ctx, want.name, metav1.GetOptions{})
 			if err != nil {
 				result.Errors = append(result.Errors, fmt.Sprintf("%s: adopt: %v", key, err))
+				journal.addError(kubeKindSecret, want.namespace, want.name, "adopt: "+err.Error())
 				continue
 			}
 		}
 
-		s.reconcileExistingSecret(ctx, client, current, want, key, result)
+		s.reconcileExistingSecret(ctx, client, current, want, key, result, journal, meta)
 	}
 
 	// Управляемые секреты, которым больше нет активных записей в базе.
@@ -111,9 +140,13 @@ func (s *Service) syncSecretsLocked(ctx context.Context, client kubernetes.Inter
 		err = client.CoreV1().Secrets(stale.Namespace).Delete(ctx, stale.Name, metav1.DeleteOptions{})
 		if err != nil && !k8serrors.IsNotFound(err) {
 			result.Errors = append(result.Errors, fmt.Sprintf("%s: delete: %v", key, err))
+			journal.addError(kubeKindSecret, stale.Namespace, stale.Name, "delete: "+err.Error())
 			continue
 		}
 		result.Deleted = append(result.Deleted, key)
+		journal.add(kubeKindSecret, stale.Namespace, stale.Name, syncrunModel.OpDeleted, "", allKeys(stale.Data))
+		// применённый снимок записи — «объекта нет» (напр. деактивированный секрет)
+		touchSynced(ctx, s.secretSvc.TouchSynced, stale.Annotations[secretIdAnnotation], "", key)
 	}
 
 	sort.Strings(result.Created)
@@ -134,23 +167,35 @@ func (s *Service) reconcileExistingSecret(
 	want *desiredSecret,
 	key string,
 	result *SyncResult,
+	journal *syncJournal,
+	meta *runMeta,
 ) {
+	contentHash := contentFingerprint(want.data)
+
 	if secretUpToDate(current, want) {
 		result.Unchanged++
+		journal.add(kubeKindSecret, want.namespace, want.name, syncrunModel.OpUnchanged, contentHash, nil)
+		touchSynced(ctx, s.secretSvc.TouchSynced, want.secretId, contentHash, key)
 		return
 	}
+
+	diffKeys := changedKeys(secretContent(current), want.data)
 
 	// Тип k8s-секрета immutable: при его смене секрет пересоздаётся.
 	if current.Type != desiredSecretType(want) {
 		if err := client.CoreV1().Secrets(want.namespace).Delete(ctx, want.name, metav1.DeleteOptions{}); err != nil && !k8serrors.IsNotFound(err) {
 			result.Errors = append(result.Errors, fmt.Sprintf("%s: recreate (delete): %v", key, err))
+			journal.addError(kubeKindSecret, want.namespace, want.name, "recreate (delete): "+err.Error())
 			return
 		}
-		if _, err := client.CoreV1().Secrets(want.namespace).Create(ctx, buildSecret(want), metav1.CreateOptions{}); err != nil {
+		if _, err := client.CoreV1().Secrets(want.namespace).Create(ctx, buildSecret(want, meta, contentHash), metav1.CreateOptions{}); err != nil {
 			result.Errors = append(result.Errors, fmt.Sprintf("%s: recreate (create): %v", key, err))
+			journal.addError(kubeKindSecret, want.namespace, want.name, "recreate (create): "+err.Error())
 			return
 		}
 		result.Updated = append(result.Updated, key)
+		journal.add(kubeKindSecret, want.namespace, want.name, syncrunModel.OpUpdated, contentHash, diffKeys)
+		touchSynced(ctx, s.secretSvc.TouchSynced, want.secretId, contentHash, key)
 		return
 	}
 
@@ -166,12 +211,16 @@ func (s *Service) reconcileExistingSecret(
 	}
 	updated.Annotations[appIdAnnotation] = want.appId
 	updated.Annotations[secretIdAnnotation] = want.secretId
+	meta.annotate(updated.Annotations, contentHash)
 
 	if _, err := client.CoreV1().Secrets(want.namespace).Update(ctx, updated, metav1.UpdateOptions{}); err != nil {
 		result.Errors = append(result.Errors, fmt.Sprintf("%s: update: %v", key, err))
+		journal.addError(kubeKindSecret, want.namespace, want.name, "update: "+err.Error())
 		return
 	}
 	result.Updated = append(result.Updated, key)
+	journal.add(kubeKindSecret, want.namespace, want.name, syncrunModel.OpUpdated, contentHash, diffKeys)
+	touchSynced(ctx, s.secretSvc.TouchSynced, want.secretId, contentHash, key)
 }
 
 // buildDesired собирает желаемое состояние из базы: только active-записи
@@ -294,7 +343,13 @@ func desiredSecretType(want *desiredSecret) corev1.SecretType {
 	return corev1.SecretType(want.kubeType)
 }
 
-func buildSecret(want *desiredSecret) *corev1.Secret {
+func buildSecret(want *desiredSecret, meta *runMeta, contentHash string) *corev1.Secret {
+	annotations := map[string]string{
+		appIdAnnotation:    want.appId,
+		secretIdAnnotation: want.secretId,
+	}
+	meta.annotate(annotations, contentHash)
+
 	return &corev1.Secret{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      want.name,
@@ -302,10 +357,7 @@ func buildSecret(want *desiredSecret) *corev1.Secret {
 			Labels: map[string]string{
 				managedByLabelKey: managedByLabelValue,
 			},
-			Annotations: map[string]string{
-				appIdAnnotation:    want.appId,
-				secretIdAnnotation: want.secretId,
-			},
+			Annotations: annotations,
 		},
 		Type: desiredSecretType(want),
 		Data: want.data,

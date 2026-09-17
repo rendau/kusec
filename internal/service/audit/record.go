@@ -11,8 +11,10 @@ import (
 	configmapModel "github.com/rendau/kusec/internal/domain/configmap/model"
 	itemModel "github.com/rendau/kusec/internal/domain/item/model"
 	secretModel "github.com/rendau/kusec/internal/domain/secret/model"
+	syncrunModel "github.com/rendau/kusec/internal/domain/syncrun/model"
 	usrModel "github.com/rendau/kusec/internal/domain/usr/model"
 	kubeService "github.com/rendau/kusec/internal/service/kube"
+	"github.com/rendau/kusec/internal/util"
 )
 
 // Во всех Record* old=nil означает создание, cur=nil — удаление, обе стороны —
@@ -146,6 +148,29 @@ func (s *Service) RecordUsr(ctx context.Context, old, cur *usrModel.Main, batchI
 		BatchId:    batchId,
 	}
 	return s.record(ctx, entry)
+}
+
+// NewSyncRun готовит запись запуска sync с актором из сессии (для журнала
+// sync_run; сам запуск создаёт kube-сервис через syncrun domain service).
+func (s *Service) NewSyncRun(ctx context.Context, appId *string) *syncrunModel.Main {
+	session := s.sessionSvc.FromContext(ctx)
+
+	run := &syncrunModel.Main{
+		ActorName: s.actorName(ctx, session),
+		Source:    session.Source,
+		RequestId: util.RequestIdFromContext(ctx),
+		AppId:     appId,
+	}
+	if run.Source == "" {
+		run.Source = "system"
+	}
+	if session.IsAuthorized() {
+		run.ActorUsrId = new(session.Id)
+	}
+	if session.ApiKeyId != "" {
+		run.ActorApiKeyId = new(session.ApiKeyId)
+	}
+	return run
 }
 
 // RecordSyncRun — одна запись на запуск sync (детали — в журнале sync_run,
