@@ -170,6 +170,56 @@ domain service → repo
   исходников, финальный alpine-образ получает бинарник + `docs/` + `migrations/` +
   админку в `admin-dist/` (раздаётся бэком с `/`, API под `/api`).
 
+### Аудит, журнал sync и read-only доступ
+
+- **Аудит** (`internal/domain/audit` + регистратор `internal/service/audit`):
+  каждая мутация app/secret/item/configmap/config_item/api_key/usr пишет запись
+  в таблицу `audit` **в одной транзакции** с изменением (mobone `TxFn`; все
+  `ModelStore` подключены к `TransactionManager`). Значения item (secret) в
+  аудит не попадают никогда — только HMAC-отпечаток (`util.Fingerprint`, ключ
+  `AUDIT_HASH_KEY`, 16 hex) и размер; значения config_item — целиком с лимитом
+  4КБ; пароли/TOTP/хэши ключей — никогда. Каскадные удаления и импорт пишут
+  запись на каждого ребёнка с общим `batch_id`. Записи не редактируются и не
+  удаляются через API; чистка — только фоновый ретеншн
+  (`internal/service/retention`, `AUDIT_RETENTION_DAYS`, дефолт 180).
+- **Журнал sync** (`internal/domain/syncrun`): каждый запуск sync — запись
+  `sync_run` (создаётся на старте, финализируется статусом ok|partial|error) +
+  `sync_run_object` по каждому k8s-объекту (op, имена изменившихся ключей,
+  отпечаток содержимого — без значений). На созданные/обновлённые объекты
+  ставятся аннотации `kusec.io/synced-at|sync-run-id|content-hash`; у
+  secret/configmap ведутся `last_synced_at`/`last_synced_hash` (обновляются
+  мимо `updated_at`).
+- **Scope API-ключей**: `api_key.scope` = `full` | `read_only` | `mcp_only`.
+  `read_only` проходит только по белому списку методов чтения
+  (`readOnlyMethodWhitelist` в `internal/app/grpc.go` — новый метод по
+  умолчанию закрыт), значения item/config_item маскируются в usecase
+  (`value_size`/`value_hash`); MCP такие ключи не принимает. `full` и
+  `read_only` выпускает только админ.
+- **Ручки мониторинга** (контракт для pulse — `docs/monitoring-api.md`):
+  `GET /audit`, `GET /sync-run[/{id}]`, `GET /app/resolve`, `GET /app/{id}/keys`,
+  `GET /app/{id}/drift`; фильтры `updated_at_gte/lt` во всех List-методах.
+- **Env**: `AUDIT_HASH_KEY` обязателен (сервис не стартует без него; менять
+  нельзя — сломается сравнимость отпечатков), `AUDIT_RETENTION_DAYS`.
+
+### Тестовый стенд
+
+Интеграционные тесты (`internal/integration`) гоняются на одноразовом docker
+Postgres и пропускаются без `TEST_PG_DSN`:
+
+```
+docker run --rm -d --name kusec-test-pg \
+  -e POSTGRES_PASSWORD=postgres -e POSTGRES_DB=kusec_test \
+  -p 55432:5432 postgres:17
+
+TEST_PG_DSN='postgres://postgres:postgres@localhost:55432/kusec_test?sslmode=disable' \
+  go test ./internal/integration/
+
+docker stop kusec-test-pg
+```
+
+- контейнер: `kusec-test-pg`, порт `55432`, логин/пароль `postgres`/`postgres`,
+  БД `kusec_test`; миграции тесты применяют сами (`migrations/`).
+
 ### Flow проверки изменений
 ```
 make generate-proto  →  gofmt  →  go test ./...  →  go run ./cmd/.
