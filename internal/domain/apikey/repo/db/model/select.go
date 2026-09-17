@@ -12,7 +12,7 @@ type Select struct {
 	UpdatedAt  time.Time
 	UsrId      int64
 	Active     bool
-	McpOnly    bool
+	Scope      string
 	Name       string
 	KeyHash    string
 	KeyPrefix  string
@@ -26,7 +26,7 @@ func (m *Select) ListColumnMap() map[string]any {
 		"updated_at":   &m.UpdatedAt,
 		"usr_id":       &m.UsrId,
 		"active":       &m.Active,
-		"mcp_only":     &m.McpOnly,
+		"scope":        &m.Scope,
 		"name":         &m.Name,
 		"key_hash":     &m.KeyHash,
 		"key_prefix":   &m.KeyPrefix,
@@ -51,7 +51,7 @@ func EncodeSelect(v *Select, _ int) *domainModel.Main {
 		UpdatedAt:  v.UpdatedAt,
 		UsrId:      v.UsrId,
 		Active:     v.Active,
-		McpOnly:    v.McpOnly,
+		Scope:      v.Scope,
 		Name:       v.Name,
 		KeyHash:    v.KeyHash,
 		KeyPrefix:  v.KeyPrefix,

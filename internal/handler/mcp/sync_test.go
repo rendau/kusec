@@ -78,7 +78,7 @@ func TestSyncE2E(t *testing.T) {
 	sessionSvc := sessionService.New("test-secret")
 	apikeyUsecase := apikeyUsc.New(
 		&apikeySvcMock{byHash: map[string]*apikeyModel.Main{
-			keyHash: {Id: "k1", UsrId: 10, Active: true, McpOnly: true},
+			keyHash: {Id: "k1", UsrId: 10, Active: true, Scope: "mcp_only"},
 		}},
 		&usrSvcMock{usrs: map[int64]*usrModel.Main{
 			10: {Id: 10, Active: true, AppIds: []string{"app1"}},

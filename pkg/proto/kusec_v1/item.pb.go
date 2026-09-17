@@ -25,19 +25,23 @@ const (
 )
 
 type ItemMain struct {
-	state         protoimpl.MessageState `protogen:"open.v1"`
-	Id            string                 `protobuf:"bytes,1,opt,name=id,proto3" json:"id,omitempty"`
-	CreatedAt     *timestamppb.Timestamp `protobuf:"bytes,2,opt,name=created_at,json=createdAt,proto3" json:"created_at,omitempty"`
-	UpdatedAt     *timestamppb.Timestamp `protobuf:"bytes,3,opt,name=updated_at,json=updatedAt,proto3" json:"updated_at,omitempty"`
-	SecretId      string                 `protobuf:"bytes,4,opt,name=secret_id,json=secretId,proto3" json:"secret_id,omitempty"`
-	Active        bool                   `protobuf:"varint,5,opt,name=active,proto3" json:"active,omitempty"`
-	Key           string                 `protobuf:"bytes,6,opt,name=key,proto3" json:"key,omitempty"`
-	Value         string                 `protobuf:"bytes,7,opt,name=value,proto3" json:"value,omitempty"`
-	ValueFormat   string                 `protobuf:"bytes,9,opt,name=value_format,json=valueFormat,proto3" json:"value_format,omitempty"`
-	Encoding      string                 `protobuf:"bytes,10,opt,name=encoding,proto3" json:"encoding,omitempty"`
-	FileName      string                 `protobuf:"bytes,11,opt,name=file_name,json=fileName,proto3" json:"file_name,omitempty"`
-	ContentType   string                 `protobuf:"bytes,12,opt,name=content_type,json=contentType,proto3" json:"content_type,omitempty"`
-	Description   string                 `protobuf:"bytes,8,opt,name=description,proto3" json:"description,omitempty"`
+	state       protoimpl.MessageState `protogen:"open.v1"`
+	Id          string                 `protobuf:"bytes,1,opt,name=id,proto3" json:"id,omitempty"`
+	CreatedAt   *timestamppb.Timestamp `protobuf:"bytes,2,opt,name=created_at,json=createdAt,proto3" json:"created_at,omitempty"`
+	UpdatedAt   *timestamppb.Timestamp `protobuf:"bytes,3,opt,name=updated_at,json=updatedAt,proto3" json:"updated_at,omitempty"`
+	SecretId    string                 `protobuf:"bytes,4,opt,name=secret_id,json=secretId,proto3" json:"secret_id,omitempty"`
+	Active      bool                   `protobuf:"varint,5,opt,name=active,proto3" json:"active,omitempty"`
+	Key         string                 `protobuf:"bytes,6,opt,name=key,proto3" json:"key,omitempty"`
+	Value       string                 `protobuf:"bytes,7,opt,name=value,proto3" json:"value,omitempty"`
+	ValueFormat string                 `protobuf:"bytes,9,opt,name=value_format,json=valueFormat,proto3" json:"value_format,omitempty"`
+	Encoding    string                 `protobuf:"bytes,10,opt,name=encoding,proto3" json:"encoding,omitempty"`
+	FileName    string                 `protobuf:"bytes,11,opt,name=file_name,json=fileName,proto3" json:"file_name,omitempty"`
+	ContentType string                 `protobuf:"bytes,12,opt,name=content_type,json=contentType,proto3" json:"content_type,omitempty"`
+	Description string                 `protobuf:"bytes,8,opt,name=description,proto3" json:"description,omitempty"`
+	// Размер значения в байтах и его HMAC-отпечаток (усечён до 16 hex).
+	// Для read_only-ключей value пуст — доступны только эти поля.
+	ValueSize     int64  `protobuf:"varint,13,opt,name=value_size,json=valueSize,proto3" json:"value_size,omitempty"`
+	ValueHash     string `protobuf:"bytes,14,opt,name=value_hash,json=valueHash,proto3" json:"value_hash,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -152,6 +156,20 @@ func (x *ItemMain) GetContentType() string {
 func (x *ItemMain) GetDescription() string {
 	if x != nil {
 		return x.Description
+	}
+	return ""
+}
+
+func (x *ItemMain) GetValueSize() int64 {
+	if x != nil {
+		return x.ValueSize
+	}
+	return 0
+}
+
+func (x *ItemMain) GetValueHash() string {
+	if x != nil {
+		return x.ValueHash
 	}
 	return ""
 }
@@ -610,7 +628,7 @@ var File_kusec_v1_item_proto protoreflect.FileDescriptor
 
 const file_kusec_v1_item_proto_rawDesc = "" +
 	"\n" +
-	"\x13kusec_v1/item.proto\x12\bkusec_v1\x1a\x1cgoogle/api/annotations.proto\x1a\x1bgoogle/protobuf/empty.proto\x1a\x1fgoogle/protobuf/timestamp.proto\x1a\x15kusec_v1/common.proto\"\x8e\x03\n" +
+	"\x13kusec_v1/item.proto\x12\bkusec_v1\x1a\x1cgoogle/api/annotations.proto\x1a\x1bgoogle/protobuf/empty.proto\x1a\x1fgoogle/protobuf/timestamp.proto\x1a\x15kusec_v1/common.proto\"\xcc\x03\n" +
 	"\bItemMain\x12\x0e\n" +
 	"\x02id\x18\x01 \x01(\tR\x02id\x129\n" +
 	"\n" +
@@ -626,7 +644,11 @@ const file_kusec_v1_item_proto_rawDesc = "" +
 	" \x01(\tR\bencoding\x12\x1b\n" +
 	"\tfile_name\x18\v \x01(\tR\bfileName\x12!\n" +
 	"\fcontent_type\x18\f \x01(\tR\vcontentType\x12 \n" +
-	"\vdescription\x18\b \x01(\tR\vdescription\"\x8c\x02\n" +
+	"\vdescription\x18\b \x01(\tR\vdescription\x12\x1d\n" +
+	"\n" +
+	"value_size\x18\r \x01(\x03R\tvalueSize\x12\x1d\n" +
+	"\n" +
+	"value_hash\x18\x0e \x01(\tR\tvalueHash\"\x8c\x02\n" +
 	"\vItemListReq\x127\n" +
 	"\vlist_params\x18\x01 \x01(\v2\x16.kusec_v1.ListParamsStR\n" +
 	"listParams\x12 \n" +

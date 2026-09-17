@@ -6,9 +6,9 @@ import (
 	"github.com/rendau/kusec/internal/config"
 )
 
+// Не t.Parallel(): тест мутирует глобальный config.Conf, и параллельный
+// запуск утёк бы префиксом в соседние тесты пакета.
 func TestSecretName_UsesConfiguredPrefix(t *testing.T) {
-	t.Parallel()
-
 	originalPrefix := config.Conf.KubeSecretNamePrefix
 	config.Conf.KubeSecretNamePrefix = "pref-"
 	t.Cleanup(func() {

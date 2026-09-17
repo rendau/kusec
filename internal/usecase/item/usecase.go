@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 
+	"github.com/rendau/kusec/internal/config"
 	"github.com/rendau/kusec/internal/domain/item/model"
 	secretModel "github.com/rendau/kusec/internal/domain/secret/model"
 	"github.com/rendau/kusec/internal/errs"
@@ -132,6 +133,7 @@ func (u *Usecase) List(ctx context.Context, pars *model.ListReq) ([]*model.Main,
 	if err != nil {
 		return nil, 0, fmt.Errorf("svc.List: %w", err)
 	}
+	u.applyValuePolicy(ctx, items)
 	return items, tCount, nil
 }
 
@@ -146,7 +148,21 @@ func (u *Usecase) Get(ctx context.Context, id string) (*model.Main, error) {
 	if err = u.requireSecretAccess(ctx, result.SecretId); err != nil {
 		return nil, err
 	}
+	u.applyValuePolicy(ctx, []*model.Main{result})
 	return result, nil
+}
+
+// applyValuePolicy заполняет вычисляемые value_size/value_hash и прячет
+// значения от read_only-сессий (им отдаются только размер и отпечаток).
+func (u *Usecase) applyValuePolicy(ctx context.Context, items []*model.Main) {
+	readOnly := u.sessionSvc.FromContext(ctx).IsReadOnly()
+	for _, item := range items {
+		item.ValueSize = int64(len(item.Value))
+		item.ValueHash = util.ValueFingerprint(config.Conf.AuditHashKey, item.Value)
+		if readOnly {
+			item.Value = ""
+		}
+	}
 }
 
 func (u *Usecase) Create(ctx context.Context, obj *model.Edit) (string, error) {

@@ -199,7 +199,7 @@ func apiKeyChanges(old, cur *apikeyModel.Main) []auditModel.Change {
 		n = *cur
 	}
 	c.boolF("active", o.Active, n.Active)
-	c.boolF("mcp_only", o.McpOnly, n.McpOnly)
+	c.str("scope", o.Scope, n.Scope)
 	c.str("name", o.Name, n.Name)
 	c.int64F("usr_id", o.UsrId, n.UsrId)
 	c.str("key_prefix", o.KeyPrefix, n.KeyPrefix)

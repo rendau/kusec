@@ -3,6 +3,7 @@ package dto
 import (
 	"google.golang.org/protobuf/types/known/timestamppb"
 
+	"github.com/rendau/kusec/internal/constant"
 	domainModel "github.com/rendau/kusec/internal/domain/apikey/model"
 	proto "github.com/rendau/kusec/pkg/proto/kusec_v1"
 )
@@ -14,13 +15,19 @@ func EncodeApiKeyMain(v *domainModel.Main, _ int) *proto.ApiKeyMain {
 		return nil
 	}
 
+	scope := v.Scope
+	if scope == "" {
+		scope = constant.ApiKeyScopeFull
+	}
+
 	result := &proto.ApiKeyMain{
 		Id:        v.Id,
 		CreatedAt: timestamppb.New(v.CreatedAt),
 		UpdatedAt: timestamppb.New(v.UpdatedAt),
 		UsrId:     v.UsrId,
 		Active:    v.Active,
-		McpOnly:   v.McpOnly,
+		Scope:     scope,
+		McpOnly:   scope == constant.ApiKeyScopeMcpOnly, //nolint:staticcheck // deprecated-поле для совместимости
 		Name:      v.Name,
 		KeyPrefix: v.KeyPrefix,
 	}

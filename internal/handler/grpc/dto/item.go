@@ -26,6 +26,8 @@ func EncodeItemMain(v *domainModel.Main, _ int) *proto.ItemMain {
 		FileName:    v.FileName,
 		ContentType: v.ContentType,
 		Description: v.Description,
+		ValueSize:   v.ValueSize,
+		ValueHash:   v.ValueHash,
 	}
 }
 

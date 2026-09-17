@@ -2106,7 +2106,11 @@
         },
         "mcp_only": {
           "type": "boolean",
-          "description": "Ключ только для MCP-эндпоинта (рекомендуется для AI-агентов)."
+          "description": "Deprecated: используйте scope. true трактуется как scope=\"mcp_only\"."
+        },
+        "scope": {
+          "type": "string",
+          "description": "full | read_only | mcp_only; пусто = full. full и read_only выпускают\nтолько админы; mcp_only может выпустить себе любой пользователь."
         }
       }
     },
@@ -2148,7 +2152,11 @@
         },
         "mcp_only": {
           "type": "boolean",
-          "description": "При true ключ принимается только MCP-эндпоинтом; основной API его\nотвергает. Рекомендуется для ключей AI-агентов."
+          "description": "Deprecated: используйте scope. true = scope==\"mcp_only\"."
+        },
+        "scope": {
+          "type": "string",
+          "description": "Область доступа ключа:\n  full      — полный доступ (наследует права владельца);\n  read_only — только методы чтения из белого списка, значения\n              item/config_item в ответах маскируются;\n  mcp_only  — ключ принимается только встроенным MCP-эндпоинтом\n              (рекомендуется для AI-агентов)."
         },
         "name": {
           "type": "string"
@@ -2173,7 +2181,12 @@
           "type": "string"
         },
         "mcp_only": {
-          "type": "boolean"
+          "type": "boolean",
+          "description": "Deprecated: используйте scope (true → \"mcp_only\", false → \"full\")."
+        },
+        "scope": {
+          "type": "string",
+          "description": "full | read_only | mcp_only. Не-админ может только сузить свой\nfull-ключ; остальные изменения — только админ."
         }
       }
     },
@@ -2365,6 +2378,14 @@
           "type": "string"
         },
         "description": {
+          "type": "string"
+        },
+        "value_size": {
+          "type": "string",
+          "format": "int64",
+          "description": "Размер значения в байтах и его HMAC-отпечаток (усечён до 16 hex).\nДля read_only-ключей value пуст — доступны только эти поля."
+        },
+        "value_hash": {
           "type": "string"
         }
       }
@@ -2672,6 +2693,14 @@
           "type": "string"
         },
         "description": {
+          "type": "string"
+        },
+        "value_size": {
+          "type": "string",
+          "format": "int64",
+          "description": "Размер значения в байтах и его HMAC-отпечаток (усечён до 16 hex).\nДля read_only-ключей value пуст — доступны только эти поля."
+        },
+        "value_hash": {
           "type": "string"
         }
       }

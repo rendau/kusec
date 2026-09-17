@@ -58,6 +58,10 @@ message ItemMain {
   string file_name = 11;
   string content_type = 12;
   string description = 8;
+  // Размер значения в байтах и его HMAC-отпечаток (усечён до 16 hex).
+  // Для read_only-ключей value пуст — доступны только эти поля.
+  int64 value_size = 13;
+  string value_hash = 14;
 }
 
 // List

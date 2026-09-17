@@ -70,18 +70,36 @@ func (u *Usecase) List(ctx context.Context, pars *model.ListReq) ([]*model.Main,
 	return items, tCount, nil
 }
 
+// validScope — известные значения scope; пустая строка трактуется как full.
+func validScope(scope string) bool {
+	switch scope {
+	case constant.ApiKeyScopeFull, constant.ApiKeyScopeReadOnly, constant.ApiKeyScopeMcpOnly:
+		return true
+	}
+	return false
+}
+
 // Create создаёт ключ и возвращает (id, значение ключа) — значение
-// показывается только один раз, в БД хранится хэш. mcpOnly-ключи принимает
-// только MCP-эндпоинт.
-func (u *Usecase) Create(ctx context.Context, name string, usrId *int64, mcpOnly bool) (string, string, error) {
+// показывается только один раз, в БД хранится хэш. scope: full | read_only |
+// mcp_only; full и read_only выпускают только админы, mcp_only-ключи
+// принимает только MCP-эндпоинт.
+func (u *Usecase) Create(ctx context.Context, name string, usrId *int64, scope string) (string, string, error) {
 	if !u.sessionSvc.CtxIsAuthorized(ctx) {
 		return "", "", errs.NotAuthorized
 	}
 
+	if scope == "" {
+		scope = constant.ApiKeyScopeFull
+	}
+	if !validScope(scope) {
+		return "", "", errs.InvalidRequest
+	}
+
 	session := u.sessionSvc.FromContext(ctx)
 
-	// ключи с полным доступом к API выпускают только админы
-	if !mcpOnly && !session.IsAdmin() {
+	// ключи с доступом к основному API (full и read_only) выпускают только
+	// админы; mcp_only может выпустить себе любой пользователь
+	if scope != constant.ApiKeyScopeMcpOnly && !session.IsAdmin() {
 		return "", "", errs.NoPermission
 	}
 
@@ -112,7 +130,7 @@ func (u *Usecase) Create(ctx context.Context, name string, usrId *int64, mcpOnly
 		newId, err = u.svc.Create(ctx, &model.Edit{
 			UsrId:     &targetUsrId,
 			Active:    new(true),
-			McpOnly:   &mcpOnly,
+			Scope:     &scope,
 			Name:      &name,
 			KeyHash:   &hash,
 			KeyPrefix: &prefix,
@@ -137,22 +155,29 @@ func (u *Usecase) Create(ctx context.Context, name string, usrId *int64, mcpOnly
 	return newId, key, nil
 }
 
-func (u *Usecase) Update(ctx context.Context, id string, active *bool, name *string, mcpOnly *bool) error {
+func (u *Usecase) Update(ctx context.Context, id string, active *bool, name *string, scope *string) error {
 	item, err := u.requireOwnership(ctx, id)
 	if err != nil {
 		return err
 	}
 
-	// снять ограничение mcp_only с ключа может только админ
-	if mcpOnly != nil && !*mcpOnly && item.McpOnly && !u.sessionSvc.CtxIsAdmin(ctx) {
-		return errs.NoPermission
+	if scope != nil {
+		if !validScope(*scope) {
+			return errs.InvalidRequest
+		}
+		// не-админ может только сузить свой full-ключ (до read_only или
+		// mcp_only); любое другое изменение scope — только админ
+		narrowing := item.Scope == constant.ApiKeyScopeFull && *scope != constant.ApiKeyScopeFull
+		if *scope != item.Scope && !narrowing && !u.sessionSvc.CtxIsAdmin(ctx) {
+			return errs.NoPermission
+		}
 	}
 
 	return u.txm.TxFn(ctx, func(ctx context.Context) error {
 		err = u.svc.Update(ctx, id, &model.Edit{
-			Active:  active,
-			McpOnly: mcpOnly,
-			Name:    name,
+			Active: active,
+			Scope:  scope,
+			Name:   name,
 		})
 		if err != nil {
 			return fmt.Errorf("svc.Update: %w", err)
@@ -235,7 +260,7 @@ func (u *Usecase) sessionFromKey(ctx context.Context, key string, allowMcpOnly b
 	if !found || !item.Active {
 		return nil, errs.NotAuthorized
 	}
-	if item.McpOnly && !allowMcpOnly {
+	if item.Scope == constant.ApiKeyScopeMcpOnly && !allowMcpOnly {
 		return nil, errs.NotAuthorized
 	}
 
@@ -254,11 +279,17 @@ func (u *Usecase) sessionFromKey(ctx context.Context, key string, allowMcpOnly b
 		source = constant.SourceMcp
 	}
 
+	scope := item.Scope
+	if scope == "" {
+		scope = constant.ApiKeyScopeFull
+	}
+
 	return &sessionModel.Session{
 		Id:         usr.Id,
 		Admin:      usr.IsAdmin,
 		AppIds:     usr.AppIds,
 		Name:       usr.Name,
+		Scope:      scope,
 		Source:     source,
 		ApiKeyId:   item.Id,
 		ApiKeyName: item.Name,

@@ -6,6 +6,7 @@ import (
 	"github.com/samber/lo"
 	"google.golang.org/protobuf/types/known/emptypb"
 
+	"github.com/rendau/kusec/internal/constant"
 	"github.com/rendau/kusec/internal/handler/grpc/dto"
 	usecase "github.com/rendau/kusec/internal/usecase/apikey"
 	proto "github.com/rendau/kusec/pkg/proto/kusec_v1"
@@ -41,7 +42,14 @@ func (h *ApiKey) List(ctx context.Context, req *proto.ApiKeyListReq) (*proto.Api
 }
 
 func (h *ApiKey) Create(ctx context.Context, req *proto.ApiKeyCreateReq) (*proto.ApiKeyCreateRep, error) {
-	newId, key, err := h.usecase.Create(ctx, req.Name, req.UsrId, req.McpOnly)
+	scope := ""
+	if req.Scope != nil {
+		scope = *req.Scope
+	} else if req.McpOnly { //nolint:staticcheck // совместимость со старым полем
+		scope = constant.ApiKeyScopeMcpOnly
+	}
+
+	newId, key, err := h.usecase.Create(ctx, req.Name, req.UsrId, scope)
 	if err != nil {
 		return nil, err
 	}
@@ -49,7 +57,16 @@ func (h *ApiKey) Create(ctx context.Context, req *proto.ApiKeyCreateReq) (*proto
 }
 
 func (h *ApiKey) Update(ctx context.Context, req *proto.ApiKeyUpdateReq) (*emptypb.Empty, error) {
-	if err := h.usecase.Update(ctx, req.Id, req.Active, req.Name, req.McpOnly); err != nil {
+	scope := req.Scope
+	if scope == nil && req.McpOnly != nil { //nolint:staticcheck // совместимость со старым полем
+		if *req.McpOnly { //nolint:staticcheck
+			scope = new(constant.ApiKeyScopeMcpOnly)
+		} else {
+			scope = new(constant.ApiKeyScopeFull)
+		}
+	}
+
+	if err := h.usecase.Update(ctx, req.Id, req.Active, req.Name, scope); err != nil {
 		return nil, err
 	}
 	return &emptypb.Empty{}, nil

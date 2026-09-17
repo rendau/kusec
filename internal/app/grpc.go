@@ -36,7 +36,7 @@ type GrpcServer struct {
 }
 
 func NewGrpcServer(name string, sessionSvc *sessionService.Service, apiKeyAuth ApiKeyAuthI, register func(*grpc.Server)) *GrpcServer {
-	interceptors := make([]grpc.UnaryServerInterceptor, 0, 7)
+	interceptors := make([]grpc.UnaryServerInterceptor, 0, 8)
 
 	// ctx without cancel
 	interceptors = append(interceptors, GrpcInterceptorCtxWithoutCancel())
@@ -52,6 +52,10 @@ func NewGrpcServer(name string, sessionSvc *sessionService.Service, apiKeyAuth A
 
 	// error
 	interceptors = append(interceptors, GrpcInterceptorError())
+
+	// read_only scope (после error-интерсептора, чтобы отказ форматировался
+	// как обычная ошибка API)
+	interceptors = append(interceptors, GrpcInterceptorReadOnlyScope(sessionSvc))
 
 	// tracing
 	if config.Conf.WithTracing {
@@ -184,6 +188,42 @@ func grpcExtractBearerToken(ctx context.Context) string {
 	}
 
 	return ""
+}
+
+// readOnlyMethodWhitelist — методы, разрешённые сессиям scope=read_only.
+// Именно белый список, а не «всё, кроме мутаций»: новый метод по умолчанию
+// закрыт. Значения item/config_item в ответах разрешённых методов
+// дополнительно маскируются в usecase-слое. Kube.* закрыт целиком, включая
+// GetClusterSecret/GetClusterConfigMap (отдают значения из кластера).
+var readOnlyMethodWhitelist = map[string]bool{
+	"/kusec_v1.App/List":        true,
+	"/kusec_v1.App/Get":         true,
+	"/kusec_v1.App/Resolve":     true,
+	"/kusec_v1.App/Keys":        true,
+	"/kusec_v1.App/Drift":       true,
+	"/kusec_v1.Secret/List":     true,
+	"/kusec_v1.Secret/Get":      true,
+	"/kusec_v1.ConfigMap/List":  true,
+	"/kusec_v1.ConfigMap/Get":   true,
+	"/kusec_v1.Item/List":       true,
+	"/kusec_v1.Item/Get":        true,
+	"/kusec_v1.ConfigItem/List": true,
+	"/kusec_v1.ConfigItem/Get":  true,
+	"/kusec_v1.Audit/List":      true,
+	"/kusec_v1.SyncRun/List":    true,
+	"/kusec_v1.SyncRun/Get":     true,
+	"/kusec_v1.Transfer/Tree":   true,
+}
+
+// GrpcInterceptorReadOnlyScope пропускает read_only-сессии только к методам
+// из белого списка.
+func GrpcInterceptorReadOnlyScope(sessionSvc *sessionService.Service) grpc.UnaryServerInterceptor {
+	return func(ctx context.Context, req any, info *grpc.UnaryServerInfo, handler grpc.UnaryHandler) (resp any, err error) {
+		if sessionSvc.FromContext(ctx).IsReadOnly() && !readOnlyMethodWhitelist[info.FullMethod] {
+			return nil, errs.NoPermission
+		}
+		return handler(ctx, req)
+	}
 }
 
 func GrpcInterceptorTracing() grpc.UnaryServerInterceptor {

@@ -7,6 +7,7 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
+	"github.com/rendau/kusec/internal/constant"
 	"github.com/rendau/kusec/internal/domain/apikey/model"
 	apikeyService "github.com/rendau/kusec/internal/domain/apikey/service"
 	sessionModel "github.com/rendau/kusec/internal/domain/session/model"
@@ -53,8 +54,8 @@ func (m *svcMock) Create(_ context.Context, obj *model.Edit) (string, error) {
 	if obj.Active != nil {
 		created.Active = *obj.Active
 	}
-	if obj.McpOnly != nil {
-		created.McpOnly = *obj.McpOnly
+	if obj.Scope != nil {
+		created.Scope = *obj.Scope
 	}
 	if obj.Name != nil {
 		created.Name = *obj.Name
@@ -127,7 +128,7 @@ func TestSessionFromKey(t *testing.T) {
 		activeHash:   {Id: "k1", UsrId: 10, Active: true},
 		inactiveHash: {Id: "k2", UsrId: 10, Active: false},
 		orphanHash:   {Id: "k3", UsrId: 66, Active: true},
-		mcpOnlyHash:  {Id: "k4", UsrId: 10, Active: true, McpOnly: true},
+		mcpOnlyHash:  {Id: "k4", UsrId: 10, Active: true, Scope: constant.ApiKeyScopeMcpOnly},
 	}}
 	usrSvc := &usrSvcMock{usrs: map[int64]*usrModel.Main{
 		10: {Id: 10, Active: true, IsAdmin: false, AppIds: []string{"app1"}},
@@ -191,38 +192,38 @@ func TestCreate_Permissions(t *testing.T) {
 	svc := &svcMock{}
 	u := New(svc, usrSvc, &sessionSvcMock{session: &sessionModel.Session{Id: 10}}, txmStub{}, auditRecStub{})
 
-	id, key, err := u.Create(context.Background(), "мой ключ", nil, true)
+	id, key, err := u.Create(context.Background(), "мой ключ", nil, constant.ApiKeyScopeMcpOnly)
 	require.NoError(t, err)
 	assert.Equal(t, "new-id", id)
 	assert.NotEmpty(t, key)
 	require.Len(t, svc.created, 1)
 	assert.Equal(t, int64(10), *svc.created[0].UsrId)
-	assert.True(t, *svc.created[0].McpOnly)
+	assert.Equal(t, constant.ApiKeyScopeMcpOnly, *svc.created[0].Scope)
 	// в БД уходит хэш, не сам ключ
 	assert.Equal(t, apikeyService.HashKey(key), *svc.created[0].KeyHash)
 
 	// не-админ не может выпустить ключ другому пользователю
-	_, _, err = u.Create(context.Background(), "чужой", new(int64(20)), true)
+	_, _, err = u.Create(context.Background(), "чужой", new(int64(20)), constant.ApiKeyScopeMcpOnly)
 	assert.ErrorIs(t, err, errs.NoPermission)
 
 	// не-админ не может выпустить ключ с полным доступом к API
-	_, _, err = u.Create(context.Background(), "полный", nil, false)
+	_, _, err = u.Create(context.Background(), "полный", nil, constant.ApiKeyScopeFull)
 	assert.ErrorIs(t, err, errs.NoPermission)
 
 	// админ — может
 	uAdmin := New(svc, usrSvc, &sessionSvcMock{session: &sessionModel.Session{Id: 1, Admin: true}}, txmStub{}, auditRecStub{})
-	_, _, err = uAdmin.Create(context.Background(), "для сервисного", new(int64(20)), false)
+	_, _, err = uAdmin.Create(context.Background(), "для сервисного", new(int64(20)), constant.ApiKeyScopeFull)
 	require.NoError(t, err)
 	assert.Equal(t, int64(20), *svc.created[len(svc.created)-1].UsrId)
-	assert.False(t, *svc.created[len(svc.created)-1].McpOnly)
+	assert.Equal(t, constant.ApiKeyScopeFull, *svc.created[len(svc.created)-1].Scope)
 
 	// неавторизованный
 	uAnon := New(svc, usrSvc, &sessionSvcMock{}, txmStub{}, auditRecStub{})
-	_, _, err = uAnon.Create(context.Background(), "x", nil, false)
+	_, _, err = uAnon.Create(context.Background(), "x", nil, constant.ApiKeyScopeFull)
 	assert.ErrorIs(t, err, errs.NotAuthorized)
 }
 
-func TestUpdate_McpOnlyPermissions(t *testing.T) {
+func TestUpdate_ScopePermissions(t *testing.T) {
 	t.Parallel()
 
 	usrSvc := &usrSvcMock{usrs: map[int64]*usrModel.Main{
@@ -231,31 +232,42 @@ func TestUpdate_McpOnlyPermissions(t *testing.T) {
 
 	newSvc := func() *svcMock {
 		return &svcMock{byId: map[string]*model.Main{
-			"k-mcp":  {Id: "k-mcp", UsrId: 10, Active: true, McpOnly: true},
-			"k-full": {Id: "k-full", UsrId: 10, Active: true, McpOnly: false},
+			"k-mcp":  {Id: "k-mcp", UsrId: 10, Active: true, Scope: constant.ApiKeyScopeMcpOnly},
+			"k-full": {Id: "k-full", UsrId: 10, Active: true, Scope: constant.ApiKeyScopeFull},
+			"k-ro":   {Id: "k-ro", UsrId: 10, Active: true, Scope: constant.ApiKeyScopeReadOnly},
 		}}
 	}
 
-	// не-админ не может снять mcp_only со своего ключа
+	// не-админ не может расширить свой mcp_only-ключ до full
 	svc := newSvc()
 	u := New(svc, usrSvc, &sessionSvcMock{session: &sessionModel.Session{Id: 10}}, txmStub{}, auditRecStub{})
-	err := u.Update(context.Background(), "k-mcp", nil, nil, new(false))
+	err := u.Update(context.Background(), "k-mcp", nil, nil, new(constant.ApiKeyScopeFull))
 	assert.ErrorIs(t, err, errs.NoPermission)
 	assert.Empty(t, svc.updated)
 
-	// но может переименовать свой full-ключ, даже присылая mcp_only=false как есть
-	err = u.Update(context.Background(), "k-full", nil, new("новое имя"), new(false))
+	// и не может «переключить» read_only на mcp_only (не сужение full)
+	err = u.Update(context.Background(), "k-ro", nil, nil, new(constant.ApiKeyScopeMcpOnly))
+	assert.ErrorIs(t, err, errs.NoPermission)
+
+	// но может переименовать свой full-ключ, даже присылая scope как есть
+	err = u.Update(context.Background(), "k-full", nil, new("новое имя"), new(constant.ApiKeyScopeFull))
 	require.NoError(t, err)
 	require.Len(t, svc.updated, 1)
 
-	// и может ужесточить свой ключ до mcp_only
-	err = u.Update(context.Background(), "k-full", nil, nil, new(true))
+	// и может сузить свой full-ключ до mcp_only или read_only
+	err = u.Update(context.Background(), "k-full", nil, nil, new(constant.ApiKeyScopeMcpOnly))
+	require.NoError(t, err)
+	err = u.Update(context.Background(), "k-full", nil, nil, new(constant.ApiKeyScopeReadOnly))
 	require.NoError(t, err)
 
-	// админ снимает mcp_only свободно
+	// неизвестный scope отвергается
+	err = u.Update(context.Background(), "k-full", nil, nil, new("root"))
+	assert.ErrorIs(t, err, errs.InvalidRequest)
+
+	// админ меняет scope свободно
 	svcAdmin := newSvc()
 	uAdmin := New(svcAdmin, usrSvc, &sessionSvcMock{session: &sessionModel.Session{Id: 1, Admin: true}}, txmStub{}, auditRecStub{})
-	err = uAdmin.Update(context.Background(), "k-mcp", nil, nil, new(false))
+	err = uAdmin.Update(context.Background(), "k-mcp", nil, nil, new(constant.ApiKeyScopeFull))
 	require.NoError(t, err)
 	require.Len(t, svcAdmin.updated, 1)
 }

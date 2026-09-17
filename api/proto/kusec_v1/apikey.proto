@@ -48,9 +48,15 @@ message ApiKeyMain {
   google.protobuf.Timestamp updated_at = 3;
   int64 usr_id = 4;
   bool active = 5;
-  // При true ключ принимается только MCP-эндпоинтом; основной API его
-  // отвергает. Рекомендуется для ключей AI-агентов.
-  bool mcp_only = 9;
+  // Deprecated: используйте scope. true = scope=="mcp_only".
+  bool mcp_only = 9 [deprecated = true];
+  // Область доступа ключа:
+  //   full      — полный доступ (наследует права владельца);
+  //   read_only — только методы чтения из белого списка, значения
+  //               item/config_item в ответах маскируются;
+  //   mcp_only  — ключ принимается только встроенным MCP-эндпоинтом
+  //               (рекомендуется для AI-агентов).
+  string scope = 10;
   string name = 6;
   // Первые символы ключа — для опознания; сам ключ не хранится.
   string key_prefix = 7;
@@ -83,8 +89,11 @@ message ApiKeyCreateReq {
   string name = 1;
   // Только для админов; не-админ создаёт ключи только себе.
   optional int64 usr_id = 2;
-  // Ключ только для MCP-эндпоинта (рекомендуется для AI-агентов).
-  bool mcp_only = 3;
+  // Deprecated: используйте scope. true трактуется как scope="mcp_only".
+  bool mcp_only = 3 [deprecated = true];
+  // full | read_only | mcp_only; пусто = full. full и read_only выпускают
+  // только админы; mcp_only может выпустить себе любой пользователь.
+  optional string scope = 4;
 }
 
 message ApiKeyCreateRep {
@@ -99,5 +108,9 @@ message ApiKeyUpdateReq {
   string id = 1;
   optional bool active = 2;
   optional string name = 3;
-  optional bool mcp_only = 4;
+  // Deprecated: используйте scope (true → "mcp_only", false → "full").
+  optional bool mcp_only = 4 [deprecated = true];
+  // full | read_only | mcp_only. Не-админ может только сузить свой
+  // full-ключ; остальные изменения — только админ.
+  optional string scope = 5;
 }

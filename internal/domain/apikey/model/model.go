@@ -9,12 +9,14 @@ import (
 // Main — доменная сущность (все поля value-типы).
 // KeyHash — sha256-хэш ключа; сам ключ не хранится и наружу не отдаётся.
 type Main struct {
-	Id         string
-	CreatedAt  time.Time
-	UpdatedAt  time.Time
-	UsrId      int64
-	Active     bool
-	McpOnly    bool
+	Id        string
+	CreatedAt time.Time
+	UpdatedAt time.Time
+	UsrId     int64
+	Active    bool
+	// Scope — область доступа ключа: constant.ApiKeyScope*
+	// (full | read_only | mcp_only).
+	Scope      string
 	Name       string
 	KeyHash    string
 	KeyPrefix  string
@@ -26,7 +28,7 @@ type Edit struct {
 	UpdatedAt  *time.Time
 	UsrId      *int64
 	Active     *bool
-	McpOnly    *bool
+	Scope      *string
 	Name       *string
 	KeyHash    *string
 	KeyPrefix  *string
