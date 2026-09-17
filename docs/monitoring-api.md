@@ -17,6 +17,10 @@ Read-only API kusec для мониторинга и расследования 
   В query grpc-gateway это `list_params.page=0&list_params.page_size=100`.
 - Времена — RFC3339 (`2026-09-17T10:00:00Z`), и в ответах, и в фильтрах.
 - Формат ошибок: `{"code": "...", "message": "..."}` (HTTP 400).
+- Нулевые поля присутствуют в JSON (`EmitUnpopulated`), **кроме optional-полей
+  с явным presence**: незаполненные `not_synced_since`, `finished_at`,
+  `batch_id`, `actor_api_key_id`, `old`/`new` и т.п. в JSON **отсутствуют**
+  (не `null`) — читайте их как необязательные ключи.
 
 Белый список read_only: `App/List|Get|Resolve|Keys|Drift`, `Secret/List|Get`,
 `ConfigMap/List|Get`, `Item/List|Get`, `ConfigItem/List|Get`, `Audit/List`,
