@@ -26,8 +26,10 @@ import { useAuthStore } from '@/stores/auth'
 
 import AppDeleteModal from '@/components/app/AppDeleteModal.vue'
 import AppFormModal from '@/components/app/AppFormModal.vue'
+import AuditSection from '@/components/audit/AuditSection.vue'
 import ConfigMapsSection from '@/components/configmap/ConfigMapsSection.vue'
 import SecretsSection from '@/components/secret/SecretsSection.vue'
+import SyncRunSection from '@/components/syncrun/SyncRunSection.vue'
 
 const route = useRoute()
 const router = useRouter()
@@ -52,8 +54,8 @@ const app = computed<AppMain | null>(
   () => (appId.value ? appsStore.getById(appId.value) : null) ?? fetchedApp.value,
 )
 
-// Active tab: switch between the app's secrets and config maps.
-const activeTab = ref<'secrets' | 'configmaps'>('configmaps')
+// Active tab: secrets / config maps plus the app-scoped audit & sync feeds.
+const activeTab = ref<'secrets' | 'configmaps' | 'audit' | 'sync'>('configmaps')
 
 // Live counts are read from each section so the tab labels and delete modal
 // stay in sync as secrets/config maps are created or removed.
@@ -245,6 +247,14 @@ watch(
             </NTag>
           </template>
           <SecretsSection v-if="appId" ref="secretsRef" :app-id="appId" />
+        </NTabPane>
+
+        <NTabPane name="audit" tab="Audit">
+          <AuditSection v-if="appId" :key="appId" :app-id="appId" />
+        </NTabPane>
+
+        <NTabPane name="sync" tab="Sync">
+          <SyncRunSection v-if="appId" :key="appId" :app-id="appId" />
         </NTabPane>
       </NTabs>
     </NCard>

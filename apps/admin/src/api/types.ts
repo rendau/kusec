@@ -461,6 +461,10 @@ export interface ItemMain {
   /** MIME type of the uploaded file. */
   content_type: string
   description: string
+  /** Value size in bytes (computed server-side; `int64` → JSON string). */
+  value_size: number | string
+  /** Truncated HMAC fingerprint of the value (16 hex). */
+  value_hash: string
 }
 
 /** `ItemListReq` — filters for the list endpoint. */
@@ -669,15 +673,20 @@ export interface ApiKeyMain {
   updated_at: string
   usr_id: number
   active: boolean
-  /**
-   * Accepted only by the embedded MCP endpoint; the main API rejects such
-   * keys, so an agent cannot bypass secret-value masking.
-   */
+  /** Deprecated alias: `scope === 'mcp_only'`. */
   mcp_only: boolean
+  /**
+   * Access scope: `full` (owner's rights), `read_only` (whitelisted read
+   * methods of the main API, values masked) or `mcp_only` (accepted only by
+   * the embedded MCP endpoint).
+   */
+  scope: ApiKeyScope
   name: string
   key_prefix: string
   last_used_at: string | null
 }
+
+export type ApiKeyScope = 'full' | 'read_only' | 'mcp_only'
 
 /** `ApiKeyListReq` — non-admins always get only their own keys. */
 export interface ApiKeyListReq {
@@ -697,7 +706,8 @@ export interface ApiKeyListRep {
 export interface ApiKeyCreateReq {
   name: string
   usr_id?: number | string
-  mcp_only?: boolean
+  /** `full` and `read_only` are admin-only; defaults to `full`. */
+  scope?: ApiKeyScope
 }
 
 /** `ApiKeyCreateRep` — `key` is revealed once and cannot be fetched again. */
@@ -710,5 +720,130 @@ export interface ApiKeyCreateRep {
 export interface ApiKeyUpdateReq {
   active?: boolean
   name?: string
-  mcp_only?: boolean
+  /** Non-admins may only narrow their own `full` key. */
+  scope?: ApiKeyScope
+}
+
+
+// ── Audit ──────────────────────────────────────────────────
+
+/**
+ * One changed field of an audit entry. Non-secret fields carry `old`/`new`
+ * verbatim (absent side = create/delete). Secret item values (and oversized
+ * config values) carry only an HMAC fingerprint and byte size.
+ */
+export interface AuditChange {
+  field: string
+  old?: string | null
+  new?: string | null
+  old_hash?: string
+  new_hash?: string
+  /** `int64` → JSON string. */
+  old_size?: number | string | null
+  new_size?: number | string | null
+  truncated?: boolean
+}
+
+export type AuditAction =
+  | 'create'
+  | 'update'
+  | 'delete'
+  | 'activate'
+  | 'deactivate'
+  | 'sync'
+  | 'import'
+
+/** `AuditMain` — one immutable audit entry (append-only feed). */
+export interface AuditMain {
+  id: number | string
+  created_at: string
+  actor_usr_id: number | string | null
+  actor_api_key_id: string | null
+  actor_name: string
+  /** ui | api | mcp | system */
+  source: string
+  request_id: string
+  /** app | secret | item | configmap | config_item | api_key | usr | sync_run */
+  entity_type: string
+  entity_id: string
+  app_id: string | null
+  namespace: string
+  app_slug: string
+  /** Secret | ConfigMap | "" */
+  kube_kind: string
+  kube_name: string
+  key: string
+  action: AuditAction
+  changes: AuditChange[]
+  batch_id: string | null
+}
+
+export interface AuditListReq {
+  list_params?: ListParams
+  app_id?: string
+  namespace?: string
+  app_slug?: string
+  kube_name?: string
+  entity_type?: string
+  entity_id?: string
+  action?: string
+  actor_usr_id?: number | string
+  key?: string
+  batch_id?: string
+  /** RFC3339 bounds: `created_at >= gte`, `< lt`. */
+  created_at_gte?: string
+  created_at_lt?: string
+}
+
+export interface AuditListRep {
+  pagination_info?: PaginationInfo
+  results: AuditMain[]
+}
+
+// ── Sync runs ──────────────────────────────────────────────
+
+/** One k8s object touched by a sync run (key names only, no values). */
+export interface SyncRunObject {
+  namespace: string
+  kube_kind: string
+  kube_name: string
+  /** created | updated | deleted | unchanged | error */
+  op: string
+  error: string
+  content_hash: string
+  changed_keys: string[]
+}
+
+/** `SyncRunMain` — one sync run; `objects` is filled only by Get. */
+export interface SyncRunMain {
+  id: string
+  started_at: string
+  finished_at: string | null
+  /** running | ok | partial | error */
+  status: string
+  error: string
+  actor_usr_id: number | string | null
+  actor_api_key_id: string | null
+  actor_name: string
+  source: string
+  request_id: string
+  /** `null` — sync of all accessible apps. */
+  app_id: string | null
+  duration_ms: number | string
+  objects: SyncRunObject[]
+}
+
+export interface SyncRunListReq {
+  list_params?: ListParams
+  app_id?: string
+  /** Runs that touched objects in this namespace. */
+  namespace?: string
+  status?: string
+  started_at_gte?: string
+  started_at_lt?: string
+}
+
+export interface SyncRunListRep {
+  pagination_info?: PaginationInfo
+  results: SyncRunMain[]
 }

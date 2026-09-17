@@ -17,7 +17,12 @@ import type { FormRules, SelectOption } from 'naive-ui'
 
 import { createApiKey, updateApiKey } from '@/api/apikey'
 import { listUsers } from '@/api/usr'
-import type { ApiKeyCreateRep, ApiKeyMain, ApiKeyUpdateReq } from '@/api/types'
+import type {
+  ApiKeyCreateRep,
+  ApiKeyMain,
+  ApiKeyScope,
+  ApiKeyUpdateReq,
+} from '@/api/types'
 import { useClipboard } from '@/composables/useClipboard'
 import { useEntityForm } from '@/composables/useEntityForm'
 import { useAuthStore } from '@/stores/auth'
@@ -38,7 +43,7 @@ const { copy } = useClipboard()
 
 interface FormModel {
   name: string
-  mcp_only: boolean
+  scope: ApiKeyScope
   active: boolean
   /** Owner user id as a string (admin-only); `null` = the current user. */
   usr_id: string | null
@@ -46,9 +51,39 @@ interface FormModel {
 
 const model = reactive<FormModel>({
   name: '',
-  mcp_only: true,
+  scope: 'mcp_only',
   active: true,
   usr_id: null,
+})
+
+// full and read_only keys are issued by admins only; non-admins can create
+// (and keep) mcp_only keys for themselves.
+const scopeOptions = computed<SelectOption[]>(() => [
+  {
+    label: 'MCP only — embedded MCP endpoint, secret values masked',
+    value: 'mcp_only',
+  },
+  {
+    label: 'Read only — main API reads, values masked (monitoring)',
+    value: 'read_only',
+    disabled: !authStore.isAdmin,
+  },
+  {
+    label: 'Full — main API with the owner’s rights',
+    value: 'full',
+    disabled: !authStore.isAdmin,
+  },
+])
+
+const scopeHint = computed(() => {
+  switch (model.scope) {
+    case 'mcp_only':
+      return 'Accepted only by the MCP endpoint; the main API rejects it. Recommended for AI agents — secret values stay unreadable even with the key.'
+    case 'read_only':
+      return 'Whitelisted read methods of the main API; item values are replaced with size + fingerprint. Meant for monitoring clients (e.g. pulse).'
+    default:
+      return 'Full access to the main API with the owner’s rights.'
+  }
 })
 
 /**
@@ -65,7 +100,7 @@ const { formRef, submitting, isEdit, submit } = useEntityForm<
   entity: () => props.apiKey,
   seed: (apiKey) => {
     model.name = apiKey?.name ?? ''
-    model.mcp_only = apiKey?.mcp_only ?? true
+    model.scope = apiKey?.scope ?? 'mcp_only'
     model.active = apiKey?.active ?? true
     model.usr_id = null
     createdKey.value = ''
@@ -74,13 +109,13 @@ const { formRef, submitting, isEdit, submit } = useEntityForm<
   create: () =>
     createApiKey({
       name: model.name,
-      mcp_only: model.mcp_only,
+      scope: model.scope,
       ...(model.usr_id ? { usr_id: model.usr_id } : {}),
     }),
   update: (apiKey) => {
     const update: ApiKeyUpdateReq = {
       name: model.name,
-      mcp_only: model.mcp_only,
+      scope: model.scope,
       active: model.active,
     }
     return updateApiKey(apiKey.id, update)
@@ -197,16 +232,12 @@ function close(): void {
           @search="searchUsers"
         />
       </NFormItem>
-      <NFormItem label="MCP only" path="mcp_only">
-        <NSpace vertical :size="4">
-          <NSwitch v-model:value="model.mcp_only" :disabled="!authStore.isAdmin" />
-          <NText depth="3" style="font-size: 12px">
-            The key is accepted only by the MCP endpoint; the main API rejects
-            it. Recommended for AI agents — keeps secret values unreadable even
-            with the key.
-          </NText>
+      <NFormItem label="Scope" path="scope">
+        <NSpace vertical :size="4" style="width: 100%">
+          <NSelect v-model:value="model.scope" :options="scopeOptions" />
+          <NText depth="3" style="font-size: 12px">{{ scopeHint }}</NText>
           <NText v-if="!authStore.isAdmin" depth="3" style="font-size: 12px">
-            Only administrators can issue keys with full API access.
+            Only administrators can issue full or read-only API keys.
           </NText>
         </NSpace>
       </NFormItem>

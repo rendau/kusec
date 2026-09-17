@@ -224,9 +224,14 @@ function iconButton(icon: typeof Pencil, tooltip: string, onClick: () => void) {
 }
 
 function typeTag(row: ApiKeyMain) {
-  return row.mcp_only
-    ? h(NTag, { type: 'info', size: 'small' }, { default: () => 'MCP only' })
-    : h(NTag, { type: 'warning', size: 'small' }, { default: () => 'Full API' })
+  switch (row.scope) {
+    case 'mcp_only':
+      return h(NTag, { type: 'info', size: 'small' }, { default: () => 'MCP only' })
+    case 'read_only':
+      return h(NTag, { type: 'success', size: 'small' }, { default: () => 'Read only' })
+    default:
+      return h(NTag, { type: 'warning', size: 'small' }, { default: () => 'Full API' })
+  }
 }
 
 const columns = computed<DataTableColumns<ApiKeyMain>>(() => [
@@ -265,8 +270,8 @@ const columns = computed<DataTableColumns<ApiKeyMain>>(() => [
       ]
     : []),
   {
-    title: 'Type',
-    key: 'mcp_only',
+    title: 'Scope',
+    key: 'scope',
     width: 110,
     render: typeTag,
   },
@@ -395,9 +400,7 @@ onMounted(() => {
             </div>
             <NText code style="font-size: 12px">{{ row.key_prefix }}…</NText>
             <NSpace :size="6" style="margin-top: 8px">
-              <NTag :type="row.mcp_only ? 'info' : 'warning'" size="small">
-                {{ row.mcp_only ? 'MCP only' : 'Full API' }}
-              </NTag>
+              <component :is="() => typeTag(row)" />
               <NTag v-if="authStore.isAdmin" size="small">{{ ownerLabel(row) }}</NTag>
             </NSpace>
             <NText depth="3" style="display: block; margin-top: 8px; font-size: 12px">
