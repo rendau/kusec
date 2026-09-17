@@ -136,11 +136,14 @@ func (x *ConfigMapMain) GetExactSlug() bool {
 }
 
 type ConfigMapListReq struct {
-	state         protoimpl.MessageState `protogen:"open.v1"`
-	ListParams    *ListParamsSt          `protobuf:"bytes,1,opt,name=list_params,json=listParams,proto3" json:"list_params,omitempty"`
-	AppId         *string                `protobuf:"bytes,2,opt,name=app_id,json=appId,proto3,oneof" json:"app_id,omitempty"`
-	Active        *bool                  `protobuf:"varint,3,opt,name=active,proto3,oneof" json:"active,omitempty"`
-	Search        *string                `protobuf:"bytes,4,opt,name=search,proto3,oneof" json:"search,omitempty"`
+	state      protoimpl.MessageState `protogen:"open.v1"`
+	ListParams *ListParamsSt          `protobuf:"bytes,1,opt,name=list_params,json=listParams,proto3" json:"list_params,omitempty"`
+	AppId      *string                `protobuf:"bytes,2,opt,name=app_id,json=appId,proto3,oneof" json:"app_id,omitempty"`
+	Active     *bool                  `protobuf:"varint,3,opt,name=active,proto3,oneof" json:"active,omitempty"`
+	Search     *string                `protobuf:"bytes,4,opt,name=search,proto3,oneof" json:"search,omitempty"`
+	// Границы по времени изменения (RFC3339): updated_at >= gte, < lt.
+	UpdatedAtGte  *timestamppb.Timestamp `protobuf:"bytes,5,opt,name=updated_at_gte,json=updatedAtGte,proto3,oneof" json:"updated_at_gte,omitempty"`
+	UpdatedAtLt   *timestamppb.Timestamp `protobuf:"bytes,6,opt,name=updated_at_lt,json=updatedAtLt,proto3,oneof" json:"updated_at_lt,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -201,6 +204,20 @@ func (x *ConfigMapListReq) GetSearch() string {
 		return *x.Search
 	}
 	return ""
+}
+
+func (x *ConfigMapListReq) GetUpdatedAtGte() *timestamppb.Timestamp {
+	if x != nil {
+		return x.UpdatedAtGte
+	}
+	return nil
+}
+
+func (x *ConfigMapListReq) GetUpdatedAtLt() *timestamppb.Timestamp {
+	if x != nil {
+		return x.UpdatedAtLt
+	}
+	return nil
 }
 
 type ConfigMapListRep struct {
@@ -522,16 +539,20 @@ const file_kusec_v1_configmap_proto_rawDesc = "" +
 	"\vdescription\x18\a \x01(\tR\vdescription\x12.\n" +
 	"\x13kube_configmap_name\x18\b \x01(\tR\x11kubeConfigmapName\x12\x1d\n" +
 	"\n" +
-	"exact_slug\x18\t \x01(\bR\texactSlug\"\xc2\x01\n" +
+	"exact_slug\x18\t \x01(\bR\texactSlug\"\xf3\x02\n" +
 	"\x10ConfigMapListReq\x127\n" +
 	"\vlist_params\x18\x01 \x01(\v2\x16.kusec_v1.ListParamsStR\n" +
 	"listParams\x12\x1a\n" +
 	"\x06app_id\x18\x02 \x01(\tH\x00R\x05appId\x88\x01\x01\x12\x1b\n" +
 	"\x06active\x18\x03 \x01(\bH\x01R\x06active\x88\x01\x01\x12\x1b\n" +
-	"\x06search\x18\x04 \x01(\tH\x02R\x06search\x88\x01\x01B\t\n" +
+	"\x06search\x18\x04 \x01(\tH\x02R\x06search\x88\x01\x01\x12E\n" +
+	"\x0eupdated_at_gte\x18\x05 \x01(\v2\x1a.google.protobuf.TimestampH\x03R\fupdatedAtGte\x88\x01\x01\x12C\n" +
+	"\rupdated_at_lt\x18\x06 \x01(\v2\x1a.google.protobuf.TimestampH\x04R\vupdatedAtLt\x88\x01\x01B\t\n" +
 	"\a_app_idB\t\n" +
 	"\a_activeB\t\n" +
-	"\a_search\"\x8a\x01\n" +
+	"\a_searchB\x11\n" +
+	"\x0f_updated_at_gteB\x10\n" +
+	"\x0e_updated_at_lt\"\x8a\x01\n" +
 	"\x10ConfigMapListRep\x12C\n" +
 	"\x0fpagination_info\x18\x01 \x01(\v2\x1a.kusec_v1.PaginationInfoStR\x0epaginationInfo\x121\n" +
 	"\aresults\x18\x02 \x03(\v2\x17.kusec_v1.ConfigMapMainR\aresults\"!\n" +
@@ -600,23 +621,25 @@ var file_kusec_v1_configmap_proto_depIdxs = []int32{
 	7,  // 0: kusec_v1.ConfigMapMain.created_at:type_name -> google.protobuf.Timestamp
 	7,  // 1: kusec_v1.ConfigMapMain.updated_at:type_name -> google.protobuf.Timestamp
 	8,  // 2: kusec_v1.ConfigMapListReq.list_params:type_name -> kusec_v1.ListParamsSt
-	9,  // 3: kusec_v1.ConfigMapListRep.pagination_info:type_name -> kusec_v1.PaginationInfoSt
-	0,  // 4: kusec_v1.ConfigMapListRep.results:type_name -> kusec_v1.ConfigMapMain
-	1,  // 5: kusec_v1.ConfigMap.List:input_type -> kusec_v1.ConfigMapListReq
-	3,  // 6: kusec_v1.ConfigMap.Get:input_type -> kusec_v1.ConfigMapGetReq
-	4,  // 7: kusec_v1.ConfigMap.Create:input_type -> kusec_v1.ConfigMapCreateReq
-	6,  // 8: kusec_v1.ConfigMap.Update:input_type -> kusec_v1.ConfigMapUpdateReq
-	3,  // 9: kusec_v1.ConfigMap.Delete:input_type -> kusec_v1.ConfigMapGetReq
-	2,  // 10: kusec_v1.ConfigMap.List:output_type -> kusec_v1.ConfigMapListRep
-	0,  // 11: kusec_v1.ConfigMap.Get:output_type -> kusec_v1.ConfigMapMain
-	5,  // 12: kusec_v1.ConfigMap.Create:output_type -> kusec_v1.ConfigMapCreateRep
-	10, // 13: kusec_v1.ConfigMap.Update:output_type -> google.protobuf.Empty
-	10, // 14: kusec_v1.ConfigMap.Delete:output_type -> google.protobuf.Empty
-	10, // [10:15] is the sub-list for method output_type
-	5,  // [5:10] is the sub-list for method input_type
-	5,  // [5:5] is the sub-list for extension type_name
-	5,  // [5:5] is the sub-list for extension extendee
-	0,  // [0:5] is the sub-list for field type_name
+	7,  // 3: kusec_v1.ConfigMapListReq.updated_at_gte:type_name -> google.protobuf.Timestamp
+	7,  // 4: kusec_v1.ConfigMapListReq.updated_at_lt:type_name -> google.protobuf.Timestamp
+	9,  // 5: kusec_v1.ConfigMapListRep.pagination_info:type_name -> kusec_v1.PaginationInfoSt
+	0,  // 6: kusec_v1.ConfigMapListRep.results:type_name -> kusec_v1.ConfigMapMain
+	1,  // 7: kusec_v1.ConfigMap.List:input_type -> kusec_v1.ConfigMapListReq
+	3,  // 8: kusec_v1.ConfigMap.Get:input_type -> kusec_v1.ConfigMapGetReq
+	4,  // 9: kusec_v1.ConfigMap.Create:input_type -> kusec_v1.ConfigMapCreateReq
+	6,  // 10: kusec_v1.ConfigMap.Update:input_type -> kusec_v1.ConfigMapUpdateReq
+	3,  // 11: kusec_v1.ConfigMap.Delete:input_type -> kusec_v1.ConfigMapGetReq
+	2,  // 12: kusec_v1.ConfigMap.List:output_type -> kusec_v1.ConfigMapListRep
+	0,  // 13: kusec_v1.ConfigMap.Get:output_type -> kusec_v1.ConfigMapMain
+	5,  // 14: kusec_v1.ConfigMap.Create:output_type -> kusec_v1.ConfigMapCreateRep
+	10, // 15: kusec_v1.ConfigMap.Update:output_type -> google.protobuf.Empty
+	10, // 16: kusec_v1.ConfigMap.Delete:output_type -> google.protobuf.Empty
+	12, // [12:17] is the sub-list for method output_type
+	7,  // [7:12] is the sub-list for method input_type
+	7,  // [7:7] is the sub-list for extension type_name
+	7,  // [7:7] is the sub-list for extension extendee
+	0,  // [0:7] is the sub-list for field type_name
 }
 
 func init() { file_kusec_v1_configmap_proto_init() }

@@ -44,6 +44,8 @@ func DecodeConfigItemListReq(v *proto.ConfigItemListReq) *domainModel.ListReq {
 		AppId:        v.AppId,
 		Active:       v.Active,
 		Search:       v.Search,
+		UpdatedAtGte: DecodeTimestamp(v.UpdatedAtGte),
+		UpdatedAtLt:  DecodeTimestamp(v.UpdatedAtLt),
 	}
 }
 

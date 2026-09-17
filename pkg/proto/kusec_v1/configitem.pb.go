@@ -183,7 +183,10 @@ type ConfigItemListReq struct {
 	// Выборка по нескольким configmap-ам за один запрос (без пагинации).
 	ConfigmapIds []string `protobuf:"bytes,5,rep,name=configmap_ids,json=configmapIds,proto3" json:"configmap_ids,omitempty"`
 	// Выборка item-ов всех configmap-ов приложения за один запрос (без пагинации).
-	AppId         *string `protobuf:"bytes,6,opt,name=app_id,json=appId,proto3,oneof" json:"app_id,omitempty"`
+	AppId *string `protobuf:"bytes,6,opt,name=app_id,json=appId,proto3,oneof" json:"app_id,omitempty"`
+	// Границы по времени изменения (RFC3339): updated_at >= gte, < lt.
+	UpdatedAtGte  *timestamppb.Timestamp `protobuf:"bytes,7,opt,name=updated_at_gte,json=updatedAtGte,proto3,oneof" json:"updated_at_gte,omitempty"`
+	UpdatedAtLt   *timestamppb.Timestamp `protobuf:"bytes,8,opt,name=updated_at_lt,json=updatedAtLt,proto3,oneof" json:"updated_at_lt,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -258,6 +261,20 @@ func (x *ConfigItemListReq) GetAppId() string {
 		return *x.AppId
 	}
 	return ""
+}
+
+func (x *ConfigItemListReq) GetUpdatedAtGte() *timestamppb.Timestamp {
+	if x != nil {
+		return x.UpdatedAtGte
+	}
+	return nil
+}
+
+func (x *ConfigItemListReq) GetUpdatedAtLt() *timestamppb.Timestamp {
+	if x != nil {
+		return x.UpdatedAtLt
+	}
+	return nil
 }
 
 type ConfigItemListRep struct {
@@ -648,7 +665,7 @@ const file_kusec_v1_configitem_proto_rawDesc = "" +
 	"\n" +
 	"value_size\x18\r \x01(\x03R\tvalueSize\x12\x1d\n" +
 	"\n" +
-	"value_hash\x18\x0e \x01(\tR\tvalueHash\"\xa1\x02\n" +
+	"value_hash\x18\x0e \x01(\tR\tvalueHash\"\xd2\x03\n" +
 	"\x11ConfigItemListReq\x127\n" +
 	"\vlist_params\x18\x01 \x01(\v2\x16.kusec_v1.ListParamsStR\n" +
 	"listParams\x12&\n" +
@@ -656,11 +673,15 @@ const file_kusec_v1_configitem_proto_rawDesc = "" +
 	"\x06active\x18\x03 \x01(\bH\x01R\x06active\x88\x01\x01\x12\x1b\n" +
 	"\x06search\x18\x04 \x01(\tH\x02R\x06search\x88\x01\x01\x12#\n" +
 	"\rconfigmap_ids\x18\x05 \x03(\tR\fconfigmapIds\x12\x1a\n" +
-	"\x06app_id\x18\x06 \x01(\tH\x03R\x05appId\x88\x01\x01B\x0f\n" +
+	"\x06app_id\x18\x06 \x01(\tH\x03R\x05appId\x88\x01\x01\x12E\n" +
+	"\x0eupdated_at_gte\x18\a \x01(\v2\x1a.google.protobuf.TimestampH\x04R\fupdatedAtGte\x88\x01\x01\x12C\n" +
+	"\rupdated_at_lt\x18\b \x01(\v2\x1a.google.protobuf.TimestampH\x05R\vupdatedAtLt\x88\x01\x01B\x0f\n" +
 	"\r_configmap_idB\t\n" +
 	"\a_activeB\t\n" +
 	"\a_searchB\t\n" +
-	"\a_app_id\"\x8c\x01\n" +
+	"\a_app_idB\x11\n" +
+	"\x0f_updated_at_gteB\x10\n" +
+	"\x0e_updated_at_lt\"\x8c\x01\n" +
 	"\x11ConfigItemListRep\x12C\n" +
 	"\x0fpagination_info\x18\x01 \x01(\v2\x1a.kusec_v1.PaginationInfoStR\x0epaginationInfo\x122\n" +
 	"\aresults\x18\x02 \x03(\v2\x18.kusec_v1.ConfigItemMainR\aresults\"\"\n" +
@@ -744,23 +765,25 @@ var file_kusec_v1_configitem_proto_depIdxs = []int32{
 	7,  // 0: kusec_v1.ConfigItemMain.created_at:type_name -> google.protobuf.Timestamp
 	7,  // 1: kusec_v1.ConfigItemMain.updated_at:type_name -> google.protobuf.Timestamp
 	8,  // 2: kusec_v1.ConfigItemListReq.list_params:type_name -> kusec_v1.ListParamsSt
-	9,  // 3: kusec_v1.ConfigItemListRep.pagination_info:type_name -> kusec_v1.PaginationInfoSt
-	0,  // 4: kusec_v1.ConfigItemListRep.results:type_name -> kusec_v1.ConfigItemMain
-	1,  // 5: kusec_v1.ConfigItem.List:input_type -> kusec_v1.ConfigItemListReq
-	3,  // 6: kusec_v1.ConfigItem.Get:input_type -> kusec_v1.ConfigItemGetReq
-	4,  // 7: kusec_v1.ConfigItem.Create:input_type -> kusec_v1.ConfigItemCreateReq
-	6,  // 8: kusec_v1.ConfigItem.Update:input_type -> kusec_v1.ConfigItemUpdateReq
-	3,  // 9: kusec_v1.ConfigItem.Delete:input_type -> kusec_v1.ConfigItemGetReq
-	2,  // 10: kusec_v1.ConfigItem.List:output_type -> kusec_v1.ConfigItemListRep
-	0,  // 11: kusec_v1.ConfigItem.Get:output_type -> kusec_v1.ConfigItemMain
-	5,  // 12: kusec_v1.ConfigItem.Create:output_type -> kusec_v1.ConfigItemCreateRep
-	10, // 13: kusec_v1.ConfigItem.Update:output_type -> google.protobuf.Empty
-	10, // 14: kusec_v1.ConfigItem.Delete:output_type -> google.protobuf.Empty
-	10, // [10:15] is the sub-list for method output_type
-	5,  // [5:10] is the sub-list for method input_type
-	5,  // [5:5] is the sub-list for extension type_name
-	5,  // [5:5] is the sub-list for extension extendee
-	0,  // [0:5] is the sub-list for field type_name
+	7,  // 3: kusec_v1.ConfigItemListReq.updated_at_gte:type_name -> google.protobuf.Timestamp
+	7,  // 4: kusec_v1.ConfigItemListReq.updated_at_lt:type_name -> google.protobuf.Timestamp
+	9,  // 5: kusec_v1.ConfigItemListRep.pagination_info:type_name -> kusec_v1.PaginationInfoSt
+	0,  // 6: kusec_v1.ConfigItemListRep.results:type_name -> kusec_v1.ConfigItemMain
+	1,  // 7: kusec_v1.ConfigItem.List:input_type -> kusec_v1.ConfigItemListReq
+	3,  // 8: kusec_v1.ConfigItem.Get:input_type -> kusec_v1.ConfigItemGetReq
+	4,  // 9: kusec_v1.ConfigItem.Create:input_type -> kusec_v1.ConfigItemCreateReq
+	6,  // 10: kusec_v1.ConfigItem.Update:input_type -> kusec_v1.ConfigItemUpdateReq
+	3,  // 11: kusec_v1.ConfigItem.Delete:input_type -> kusec_v1.ConfigItemGetReq
+	2,  // 12: kusec_v1.ConfigItem.List:output_type -> kusec_v1.ConfigItemListRep
+	0,  // 13: kusec_v1.ConfigItem.Get:output_type -> kusec_v1.ConfigItemMain
+	5,  // 14: kusec_v1.ConfigItem.Create:output_type -> kusec_v1.ConfigItemCreateRep
+	10, // 15: kusec_v1.ConfigItem.Update:output_type -> google.protobuf.Empty
+	10, // 16: kusec_v1.ConfigItem.Delete:output_type -> google.protobuf.Empty
+	12, // [12:17] is the sub-list for method output_type
+	7,  // [7:12] is the sub-list for method input_type
+	7,  // [7:7] is the sub-list for extension type_name
+	7,  // [7:7] is the sub-list for extension extendee
+	0,  // [0:7] is the sub-list for field type_name
 }
 
 func init() { file_kusec_v1_configitem_proto_init() }

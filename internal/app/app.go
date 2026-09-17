@@ -50,12 +50,15 @@ import (
 
 	apikeyUsc "github.com/rendau/kusec/internal/usecase/apikey"
 	appUsc "github.com/rendau/kusec/internal/usecase/app"
+	auditUsc "github.com/rendau/kusec/internal/usecase/audit"
 	configitemUsc "github.com/rendau/kusec/internal/usecase/configitem"
 	configmapUsc "github.com/rendau/kusec/internal/usecase/configmap"
 	dashboardUsc "github.com/rendau/kusec/internal/usecase/dashboard"
 	itemUsc "github.com/rendau/kusec/internal/usecase/item"
 	kubeUsc "github.com/rendau/kusec/internal/usecase/kube"
+	monitoringUsc "github.com/rendau/kusec/internal/usecase/monitoring"
 	secretUsc "github.com/rendau/kusec/internal/usecase/secret"
+	syncrunUsc "github.com/rendau/kusec/internal/usecase/syncrun"
 	transferUsc "github.com/rendau/kusec/internal/usecase/transfer"
 	usrUsc "github.com/rendau/kusec/internal/usecase/usr"
 
@@ -138,9 +141,17 @@ func (a *App) Init() {
 	// api-key usecase используется и хендлером, и session-интерсептором
 	apikeyUsecase := apikeyUsc.New(apikeySvc, usrSvc, sessionSvc, txm, auditRec)
 
+	kubeSvc := kubeService.New(appSvc, secretSvc, itemSvc, configMapSvc, configItemSvc, txm, auditRec, syncRunSvc)
+
+	// read-only ручки мониторинга (resolve/keys/drift) — для pulse и админки
+	monitoringUsecase := monitoringUsc.New(
+		appSvc, secretSvc, itemSvc, configMapSvc, configItemSvc, auditSvc, kubeSvc, sessionSvc,
+	)
+
 	usrHandler := grpcHandler.NewUsr(usrUsc.New(usrSvc, sessionSvc, txm, auditRec))
 	appHandler := grpcHandler.NewApp(
 		appUsc.New(appSvc, secretSvc, itemSvc, configMapSvc, configItemSvc, sessionSvc, txm, auditRec),
+		monitoringUsecase,
 	)
 	secretHandler := grpcHandler.NewSecret(secretUsc.New(secretSvc, appSvc, itemSvc, sessionSvc, txm, auditRec))
 	itemHandler := grpcHandler.NewItem(itemUsc.New(itemSvc, secretSvc, sessionSvc, txm, auditRec))
@@ -154,7 +165,7 @@ func (a *App) Init() {
 	// kube usecase общий для gRPC и MCP: лок «один sync одновременно» живёт
 	// в kube-сервисе и должен быть один на процесс
 	kubeUsecase := kubeUsc.New(
-		kubeService.New(appSvc, secretSvc, itemSvc, configMapSvc, configItemSvc, txm, auditRec, syncRunSvc),
+		kubeSvc,
 		appSvc,
 		secretSvc,
 		configMapSvc,
@@ -165,6 +176,8 @@ func (a *App) Init() {
 		transferUsc.New(appSvc, secretSvc, itemSvc, configMapSvc, configItemSvc, sessionSvc),
 	)
 	apikeyHandler := grpcHandler.NewApiKey(apikeyUsecase)
+	auditHandler := grpcHandler.NewAudit(auditUsc.New(auditSvc, sessionSvc))
+	syncRunHandler := grpcHandler.NewSyncRun(syncrunUsc.New(syncRunSvc, appSvc, sessionSvc))
 
 	// grpc server
 	{
@@ -179,6 +192,8 @@ func (a *App) Init() {
 			proto.RegisterKubeServer(server, kubeHandler)
 			proto.RegisterTransferServer(server, transferHandler)
 			proto.RegisterApiKeyServer(server, apikeyHandler)
+			proto.RegisterAuditServer(server, auditHandler)
+			proto.RegisterSyncRunServer(server, syncRunHandler)
 		})
 	}
 
@@ -205,6 +220,8 @@ func (a *App) Init() {
 				proto.RegisterKubeHandler,
 				proto.RegisterTransferHandler,
 				proto.RegisterApiKeyHandler,
+				proto.RegisterAuditHandler,
+				proto.RegisterSyncRunHandler,
 			}
 			for _, h := range handlers {
 				err = h(context.Background(), mux, conn)

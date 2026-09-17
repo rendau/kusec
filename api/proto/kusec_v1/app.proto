@@ -16,9 +16,33 @@ service App {
     };
   }
 
+  // Поиск app и его secret/configmap по имени k8s-объекта (например из
+  // envFrom пода или аннотации reloader). Объявлен раньше Get, чтобы путь
+  // /app/resolve не перехватывался шаблоном /app/{id}.
+  rpc Resolve(AppResolveReq) returns (AppResolveRep) {
+    option (google.api.http) = {
+      get: "/app/resolve"
+    };
+  }
+
   rpc Get(AppGetReq) returns (AppMain) {
     option (google.api.http) = {
       get: "/app/{id}"
+    };
+  }
+
+  // Все ключи app (secret + configmap) без значений: размер, HMAC-отпечаток,
+  // кто и когда менял, применён ли ключ в кластер последним sync-ом.
+  rpc Keys(AppGetReq) returns (AppKeysRep) {
+    option (google.api.http) = {
+      get: "/app/{id}/keys"
+    };
+  }
+
+  // Сравнение kusec ↔ кластер по ключам (имена ключей, без значений).
+  rpc Drift(AppGetReq) returns (AppDriftRep) {
+    option (google.api.http) = {
+      get: "/app/{id}/drift"
     };
   }
 
@@ -63,6 +87,9 @@ message AppListReq {
   optional bool active = 2;
   optional string namespace = 3;
   optional string search = 4;
+  // Границы по времени изменения (RFC3339): updated_at >= gte, < lt.
+  optional google.protobuf.Timestamp updated_at_gte = 5;
+  optional google.protobuf.Timestamp updated_at_lt = 6;
 }
 
 message AppListRep {
@@ -88,6 +115,79 @@ message AppCreateReq {
 
 message AppCreateRep {
   string id = 1;
+}
+
+// Resolve
+
+message AppResolveReq {
+  string namespace = 1;
+  // имя k8s-объекта (Secret или ConfigMap), например kusec-caravan-main
+  string kube_name = 2;
+}
+
+message AppResolveRep {
+  // false — объект с таким именем в namespace не описан в kusec
+  bool found = 1;
+  AppMain app = 2;
+  // Secret | ConfigMap
+  string kube_kind = 3;
+  // id записи kusec (secret или configmap)
+  string object_id = 4;
+  string object_slug = 5;
+}
+
+// Keys
+
+message AppKeySt {
+  string key = 1;
+  // Secret | ConfigMap
+  string kube_kind = 2;
+  string kube_name = 3;
+  bool is_secret = 4;
+  bool active = 5;
+  // размер значения в байтах и HMAC-отпечаток; само значение не отдаётся
+  int64 value_size = 6;
+  string value_hash = 7;
+  google.protobuf.Timestamp updated_at = 8;
+  // последний актор из аудита (пусто — изменений после включения аудита
+  // не было)
+  string updated_by = 9;
+  // ключ применён в кластер: updated_at не позже последнего sync объекта
+  bool synced = 10;
+  // id item/config_item и родительского secret/configmap
+  string item_id = 11;
+  string parent_id = 12;
+}
+
+message AppKeysRep {
+  repeated AppKeySt keys = 1;
+}
+
+// Drift
+
+message AppDriftObjectSt {
+  // Secret | ConfigMap
+  string kube_kind = 1;
+  string kube_name = 2;
+  string namespace = 3;
+  // id записи kusec (secret или configmap)
+  string object_id = 4;
+  bool exists_in_cluster = 5;
+  // объект кластера под управлением kusec (лейбл managed-by)
+  bool managed = 6;
+  // имена ключей (значения не отдаются)
+  repeated string missing_in_cluster = 7;
+  repeated string extra_in_cluster = 8;
+  repeated string value_differs = 9;
+  // время последнего изменения в kusec, ещё не применённого в кластер
+  // (null — изменений после последнего sync нет)
+  optional google.protobuf.Timestamp not_synced_since = 10;
+}
+
+message AppDriftRep {
+  // false — kusec запущен вне кластера, сравнение недоступно
+  bool in_cluster = 1;
+  repeated AppDriftObjectSt objects = 2;
 }
 
 // Update

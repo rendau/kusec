@@ -32,10 +32,12 @@ func DecodeAppListReq(v *proto.AppListReq) *domainModel.ListReq {
 		return nil
 	}
 	return &domainModel.ListReq{
-		ListParams: DecodeListParams(v.ListParams),
-		Active:     v.Active,
-		Namespace:  v.Namespace,
-		Search:     v.Search,
+		ListParams:   DecodeListParams(v.ListParams),
+		Active:       v.Active,
+		Namespace:    v.Namespace,
+		Search:       v.Search,
+		UpdatedAtGte: DecodeTimestamp(v.UpdatedAtGte),
+		UpdatedAtLt:  DecodeTimestamp(v.UpdatedAtLt),
 	}
 }
 

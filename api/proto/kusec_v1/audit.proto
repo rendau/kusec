@@ -1,0 +1,95 @@
+syntax = "proto3";
+
+package kusec_v1;
+
+import "google/api/annotations.proto";
+import "google/protobuf/timestamp.proto";
+import "kusec_v1/common.proto";
+
+option go_package = "/kusec_v1";
+
+// Аудит изменений: журнал всех мутаций (app/secret/item/configmap/
+// config_item/api_key/usr, импорт, sync). Только чтение: записи создаются
+// сервисом в транзакции с изменением и не редактируются; чистка — фоновым
+// ретеншном (AUDIT_RETENTION_DAYS). Значения секретов в записях отсутствуют —
+// только HMAC-отпечатки и размеры.
+service Audit {
+  rpc List(AuditListReq) returns (AuditListRep) {
+    option (google.api.http) = {
+      get: "/audit"
+    };
+  }
+}
+
+// ── Messages ────────────────────────────────────────────
+
+// Одно изменённое поле. Для несекретных полей — old/new как есть (null —
+// стороны нет: create/delete). Для значений item (secret) и усечённых больших
+// значений config_item — только отпечаток (old_hash/new_hash, HMAC-SHA256,
+// 16 hex) и размер в байтах.
+message AuditChangeSt {
+  string field = 1;
+  optional string old = 2;
+  optional string new = 3;
+  string old_hash = 4;
+  string new_hash = 5;
+  optional int64 old_size = 6;
+  optional int64 new_size = 7;
+  // Несекретное значение длиннее лимита — сохранён только отпечаток.
+  bool truncated = 8;
+}
+
+message AuditMain {
+  int64 id = 1;
+  google.protobuf.Timestamp created_at = 2;
+  // actor: имя денормализовано (пользователь или ключ могут быть удалены)
+  optional int64 actor_usr_id = 3;
+  optional string actor_api_key_id = 4;
+  string actor_name = 5;
+  // ui | api | mcp | system
+  string source = 6;
+  string request_id = 7;
+  // app | secret | item | configmap | config_item | api_key | usr | sync_run
+  string entity_type = 8;
+  string entity_id = 9;
+  optional string app_id = 10;
+  string namespace = 11;
+  string app_slug = 12;
+  // Secret | ConfigMap | ""
+  string kube_kind = 13;
+  // итоговое имя k8s-объекта
+  string kube_name = 14;
+  // ключ item/config_item
+  string key = 15;
+  // create | update | delete | activate | deactivate | sync | import
+  string action = 16;
+  repeated AuditChangeSt changes = 17;
+  // группировка массовых операций (каскадное удаление, импорт, sync)
+  optional string batch_id = 18;
+}
+
+// List
+
+message AuditListReq {
+  // page с 0, page_size обязателен (≤ 100); сортировка по умолчанию
+  // -created_at (новые первыми).
+  ListParamsSt list_params = 1;
+  optional string app_id = 2;
+  optional string namespace = 3;
+  optional string app_slug = 4;
+  optional string kube_name = 5;
+  optional string entity_type = 6;
+  optional string entity_id = 7;
+  optional string action = 8;
+  optional int64 actor_usr_id = 9;
+  optional string key = 10;
+  optional string batch_id = 11;
+  // Границы по времени изменения (RFC3339): created_at >= gte, < lt.
+  optional google.protobuf.Timestamp created_at_gte = 12;
+  optional google.protobuf.Timestamp created_at_lt = 13;
+}
+
+message AuditListRep {
+  PaginationInfoSt pagination_info = 1;
+  repeated AuditMain results = 2;
+}

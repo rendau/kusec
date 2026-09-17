@@ -38,12 +38,14 @@ func DecodeItemListReq(v *proto.ItemListReq) *domainModel.ListReq {
 		return nil
 	}
 	return &domainModel.ListReq{
-		ListParams: DecodeListParams(v.ListParams),
-		SecretId:   v.SecretId,
-		SecretIds:  v.SecretIds,
-		AppId:      v.AppId,
-		Active:     v.Active,
-		Search:     v.Search,
+		ListParams:   DecodeListParams(v.ListParams),
+		SecretId:     v.SecretId,
+		SecretIds:    v.SecretIds,
+		AppId:        v.AppId,
+		Active:       v.Active,
+		Search:       v.Search,
+		UpdatedAtGte: DecodeTimestamp(v.UpdatedAtGte),
+		UpdatedAtLt:  DecodeTimestamp(v.UpdatedAtLt),
 	}
 }
 

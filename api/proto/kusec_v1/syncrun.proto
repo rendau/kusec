@@ -1,0 +1,91 @@
+syntax = "proto3";
+
+package kusec_v1;
+
+import "google/api/annotations.proto";
+import "google/protobuf/timestamp.proto";
+import "kusec_v1/common.proto";
+
+option go_package = "/kusec_v1";
+
+// Журнал запусков синхронизации kusec → Kubernetes. Только чтение: запись
+// создаётся при старте sync и финализируется в конце; чистка — фоновым
+// ретеншном. Значения ключей в журнале отсутствуют — только имена
+// изменившихся ключей и HMAC-отпечатки содержимого.
+service SyncRun {
+  rpc List(SyncRunListReq) returns (SyncRunListRep) {
+    option (google.api.http) = {
+      get: "/sync-run"
+    };
+  }
+
+  // Запуск вместе с затронутыми k8s-объектами.
+  rpc Get(SyncRunGetReq) returns (SyncRunMain) {
+    option (google.api.http) = {
+      get: "/sync-run/{id}"
+    };
+  }
+}
+
+// ── Messages ────────────────────────────────────────────
+
+// Затронутый k8s-объект запуска.
+message SyncRunObjectSt {
+  string namespace = 1;
+  // Secret | ConfigMap
+  string kube_kind = 2;
+  string kube_name = 3;
+  // created | updated | deleted | unchanged | error
+  string op = 4;
+  string error = 5;
+  // HMAC-отпечаток содержимого объекта (сопоставим с аннотацией
+  // kusec.io/content-hash на объекте кластера)
+  string content_hash = 6;
+  // имена ключей с изменившимся значением (для created/deleted — все ключи)
+  repeated string changed_keys = 7;
+}
+
+message SyncRunMain {
+  string id = 1;
+  google.protobuf.Timestamp started_at = 2;
+  optional google.protobuf.Timestamp finished_at = 3;
+  // running | ok | partial | error
+  string status = 4;
+  string error = 5;
+  optional int64 actor_usr_id = 6;
+  optional string actor_api_key_id = 7;
+  string actor_name = 8;
+  // ui | api | mcp | system
+  string source = 9;
+  string request_id = 10;
+  // null — sync всех доступных app
+  optional string app_id = 11;
+  int64 duration_ms = 12;
+  // затронутые объекты; заполняется только в Get
+  repeated SyncRunObjectSt objects = 13;
+}
+
+// List
+
+message SyncRunListReq {
+  // page с 0, page_size обязателен (≤ 100); сортировка по умолчанию
+  // -started_at (новые первыми).
+  ListParamsSt list_params = 1;
+  optional string app_id = 2;
+  // запуски, затронувшие объекты этого namespace
+  optional string namespace = 3;
+  optional string status = 4;
+  optional google.protobuf.Timestamp started_at_gte = 5;
+  optional google.protobuf.Timestamp started_at_lt = 6;
+}
+
+message SyncRunListRep {
+  PaginationInfoSt pagination_info = 1;
+  repeated SyncRunMain results = 2;
+}
+
+// Get
+
+message SyncRunGetReq {
+  string id = 1;
+}

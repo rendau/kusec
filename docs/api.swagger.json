@@ -12,6 +12,9 @@
       "name": "App"
     },
     {
+      "name": "Audit"
+    },
+    {
       "name": "ConfigItem"
     },
     {
@@ -28,6 +31,9 @@
     },
     {
       "name": "Secret"
+    },
+    {
+      "name": "SyncRun"
     },
     {
       "name": "Transfer"
@@ -298,6 +304,21 @@
             "in": "query",
             "required": false,
             "type": "string"
+          },
+          {
+            "name": "updated_at_gte",
+            "description": "Границы по времени изменения (RFC3339): updated_at \u003e= gte, \u003c lt.",
+            "in": "query",
+            "required": false,
+            "type": "string",
+            "format": "date-time"
+          },
+          {
+            "name": "updated_at_lt",
+            "in": "query",
+            "required": false,
+            "type": "string",
+            "format": "date-time"
           }
         ],
         "tags": [
@@ -328,6 +349,44 @@
             "schema": {
               "$ref": "#/definitions/kusec_v1AppCreateReq"
             }
+          }
+        ],
+        "tags": [
+          "App"
+        ]
+      }
+    },
+    "/app/resolve": {
+      "get": {
+        "summary": "Поиск app и его secret/configmap по имени k8s-объекта (например из\nenvFrom пода или аннотации reloader). Объявлен раньше Get, чтобы путь\n/app/resolve не перехватывался шаблоном /app/{id}.",
+        "operationId": "App_Resolve",
+        "responses": {
+          "200": {
+            "description": "A successful response.",
+            "schema": {
+              "$ref": "#/definitions/kusec_v1AppResolveRep"
+            }
+          },
+          "default": {
+            "description": "An unexpected error response.",
+            "schema": {
+              "$ref": "#/definitions/rpcStatus"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "namespace",
+            "in": "query",
+            "required": false,
+            "type": "string"
+          },
+          {
+            "name": "kube_name",
+            "description": "имя k8s-объекта (Secret или ConfigMap), например kusec-caravan-main",
+            "in": "query",
+            "required": false,
+            "type": "string"
           }
         ],
         "tags": [
@@ -431,6 +490,210 @@
         ]
       }
     },
+    "/app/{id}/drift": {
+      "get": {
+        "summary": "Сравнение kusec ↔ кластер по ключам (имена ключей, без значений).",
+        "operationId": "App_Drift",
+        "responses": {
+          "200": {
+            "description": "A successful response.",
+            "schema": {
+              "$ref": "#/definitions/kusec_v1AppDriftRep"
+            }
+          },
+          "default": {
+            "description": "An unexpected error response.",
+            "schema": {
+              "$ref": "#/definitions/rpcStatus"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "type": "string"
+          }
+        ],
+        "tags": [
+          "App"
+        ]
+      }
+    },
+    "/app/{id}/keys": {
+      "get": {
+        "summary": "Все ключи app (secret + configmap) без значений: размер, HMAC-отпечаток,\nкто и когда менял, применён ли ключ в кластер последним sync-ом.",
+        "operationId": "App_Keys",
+        "responses": {
+          "200": {
+            "description": "A successful response.",
+            "schema": {
+              "$ref": "#/definitions/kusec_v1AppKeysRep"
+            }
+          },
+          "default": {
+            "description": "An unexpected error response.",
+            "schema": {
+              "$ref": "#/definitions/rpcStatus"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "type": "string"
+          }
+        ],
+        "tags": [
+          "App"
+        ]
+      }
+    },
+    "/audit": {
+      "get": {
+        "operationId": "Audit_List",
+        "responses": {
+          "200": {
+            "description": "A successful response.",
+            "schema": {
+              "$ref": "#/definitions/kusec_v1AuditListRep"
+            }
+          },
+          "default": {
+            "description": "An unexpected error response.",
+            "schema": {
+              "$ref": "#/definitions/rpcStatus"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "list_params.page",
+            "in": "query",
+            "required": false,
+            "type": "string",
+            "format": "int64"
+          },
+          {
+            "name": "list_params.page_size",
+            "in": "query",
+            "required": false,
+            "type": "string",
+            "format": "int64"
+          },
+          {
+            "name": "list_params.with_total_count",
+            "in": "query",
+            "required": false,
+            "type": "boolean"
+          },
+          {
+            "name": "list_params.only_count",
+            "in": "query",
+            "required": false,
+            "type": "boolean"
+          },
+          {
+            "name": "list_params.sort_name",
+            "in": "query",
+            "required": false,
+            "type": "string"
+          },
+          {
+            "name": "list_params.sort",
+            "in": "query",
+            "required": false,
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "collectionFormat": "multi"
+          },
+          {
+            "name": "app_id",
+            "in": "query",
+            "required": false,
+            "type": "string"
+          },
+          {
+            "name": "namespace",
+            "in": "query",
+            "required": false,
+            "type": "string"
+          },
+          {
+            "name": "app_slug",
+            "in": "query",
+            "required": false,
+            "type": "string"
+          },
+          {
+            "name": "kube_name",
+            "in": "query",
+            "required": false,
+            "type": "string"
+          },
+          {
+            "name": "entity_type",
+            "in": "query",
+            "required": false,
+            "type": "string"
+          },
+          {
+            "name": "entity_id",
+            "in": "query",
+            "required": false,
+            "type": "string"
+          },
+          {
+            "name": "action",
+            "in": "query",
+            "required": false,
+            "type": "string"
+          },
+          {
+            "name": "actor_usr_id",
+            "in": "query",
+            "required": false,
+            "type": "string",
+            "format": "int64"
+          },
+          {
+            "name": "key",
+            "in": "query",
+            "required": false,
+            "type": "string"
+          },
+          {
+            "name": "batch_id",
+            "in": "query",
+            "required": false,
+            "type": "string"
+          },
+          {
+            "name": "created_at_gte",
+            "description": "Границы по времени изменения (RFC3339): created_at \u003e= gte, \u003c lt.",
+            "in": "query",
+            "required": false,
+            "type": "string",
+            "format": "date-time"
+          },
+          {
+            "name": "created_at_lt",
+            "in": "query",
+            "required": false,
+            "type": "string",
+            "format": "date-time"
+          }
+        ],
+        "tags": [
+          "Audit"
+        ]
+      }
+    },
     "/config-item": {
       "get": {
         "operationId": "ConfigItem_List",
@@ -526,6 +789,21 @@
             "in": "query",
             "required": false,
             "type": "string"
+          },
+          {
+            "name": "updated_at_gte",
+            "description": "Границы по времени изменения (RFC3339): updated_at \u003e= gte, \u003c lt.",
+            "in": "query",
+            "required": false,
+            "type": "string",
+            "format": "date-time"
+          },
+          {
+            "name": "updated_at_lt",
+            "in": "query",
+            "required": false,
+            "type": "string",
+            "format": "date-time"
           }
         ],
         "tags": [
@@ -736,6 +1014,21 @@
             "in": "query",
             "required": false,
             "type": "string"
+          },
+          {
+            "name": "updated_at_gte",
+            "description": "Границы по времени изменения (RFC3339): updated_at \u003e= gte, \u003c lt.",
+            "in": "query",
+            "required": false,
+            "type": "string",
+            "format": "date-time"
+          },
+          {
+            "name": "updated_at_lt",
+            "in": "query",
+            "required": false,
+            "type": "string",
+            "format": "date-time"
           }
         ],
         "tags": [
@@ -986,6 +1279,21 @@
             "in": "query",
             "required": false,
             "type": "string"
+          },
+          {
+            "name": "updated_at_gte",
+            "description": "Границы по времени изменения (RFC3339): updated_at \u003e= gte, \u003c lt.",
+            "in": "query",
+            "required": false,
+            "type": "string",
+            "format": "date-time"
+          },
+          {
+            "name": "updated_at_lt",
+            "in": "query",
+            "required": false,
+            "type": "string",
+            "format": "date-time"
           }
         ],
         "tags": [
@@ -1443,6 +1751,21 @@
             "in": "query",
             "required": false,
             "type": "string"
+          },
+          {
+            "name": "updated_at_gte",
+            "description": "Границы по времени изменения (RFC3339): updated_at \u003e= gte, \u003c lt.",
+            "in": "query",
+            "required": false,
+            "type": "string",
+            "format": "date-time"
+          },
+          {
+            "name": "updated_at_lt",
+            "in": "query",
+            "required": false,
+            "type": "string",
+            "format": "date-time"
           }
         ],
         "tags": [
@@ -1573,6 +1896,136 @@
         ],
         "tags": [
           "Secret"
+        ]
+      }
+    },
+    "/sync-run": {
+      "get": {
+        "operationId": "SyncRun_List",
+        "responses": {
+          "200": {
+            "description": "A successful response.",
+            "schema": {
+              "$ref": "#/definitions/kusec_v1SyncRunListRep"
+            }
+          },
+          "default": {
+            "description": "An unexpected error response.",
+            "schema": {
+              "$ref": "#/definitions/rpcStatus"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "list_params.page",
+            "in": "query",
+            "required": false,
+            "type": "string",
+            "format": "int64"
+          },
+          {
+            "name": "list_params.page_size",
+            "in": "query",
+            "required": false,
+            "type": "string",
+            "format": "int64"
+          },
+          {
+            "name": "list_params.with_total_count",
+            "in": "query",
+            "required": false,
+            "type": "boolean"
+          },
+          {
+            "name": "list_params.only_count",
+            "in": "query",
+            "required": false,
+            "type": "boolean"
+          },
+          {
+            "name": "list_params.sort_name",
+            "in": "query",
+            "required": false,
+            "type": "string"
+          },
+          {
+            "name": "list_params.sort",
+            "in": "query",
+            "required": false,
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "collectionFormat": "multi"
+          },
+          {
+            "name": "app_id",
+            "in": "query",
+            "required": false,
+            "type": "string"
+          },
+          {
+            "name": "namespace",
+            "description": "запуски, затронувшие объекты этого namespace",
+            "in": "query",
+            "required": false,
+            "type": "string"
+          },
+          {
+            "name": "status",
+            "in": "query",
+            "required": false,
+            "type": "string"
+          },
+          {
+            "name": "started_at_gte",
+            "in": "query",
+            "required": false,
+            "type": "string",
+            "format": "date-time"
+          },
+          {
+            "name": "started_at_lt",
+            "in": "query",
+            "required": false,
+            "type": "string",
+            "format": "date-time"
+          }
+        ],
+        "tags": [
+          "SyncRun"
+        ]
+      }
+    },
+    "/sync-run/{id}": {
+      "get": {
+        "summary": "Запуск вместе с затронутыми k8s-объектами.",
+        "operationId": "SyncRun_Get",
+        "responses": {
+          "200": {
+            "description": "A successful response.",
+            "schema": {
+              "$ref": "#/definitions/kusec_v1SyncRunMain"
+            }
+          },
+          "default": {
+            "description": "An unexpected error response.",
+            "schema": {
+              "$ref": "#/definitions/rpcStatus"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "type": "string"
+          }
+        ],
+        "tags": [
+          "SyncRun"
         ]
       }
     },
@@ -2218,6 +2671,132 @@
         }
       }
     },
+    "kusec_v1AppDriftObjectSt": {
+      "type": "object",
+      "properties": {
+        "kube_kind": {
+          "type": "string",
+          "title": "Secret | ConfigMap"
+        },
+        "kube_name": {
+          "type": "string"
+        },
+        "namespace": {
+          "type": "string"
+        },
+        "object_id": {
+          "type": "string",
+          "title": "id записи kusec (secret или configmap)"
+        },
+        "exists_in_cluster": {
+          "type": "boolean"
+        },
+        "managed": {
+          "type": "boolean",
+          "title": "объект кластера под управлением kusec (лейбл managed-by)"
+        },
+        "missing_in_cluster": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "title": "имена ключей (значения не отдаются)"
+        },
+        "extra_in_cluster": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "value_differs": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "not_synced_since": {
+          "type": "string",
+          "format": "date-time",
+          "title": "время последнего изменения в kusec, ещё не применённого в кластер\n(null — изменений после последнего sync нет)"
+        }
+      }
+    },
+    "kusec_v1AppDriftRep": {
+      "type": "object",
+      "properties": {
+        "in_cluster": {
+          "type": "boolean",
+          "title": "false — kusec запущен вне кластера, сравнение недоступно"
+        },
+        "objects": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "$ref": "#/definitions/kusec_v1AppDriftObjectSt"
+          }
+        }
+      }
+    },
+    "kusec_v1AppKeySt": {
+      "type": "object",
+      "properties": {
+        "key": {
+          "type": "string"
+        },
+        "kube_kind": {
+          "type": "string",
+          "title": "Secret | ConfigMap"
+        },
+        "kube_name": {
+          "type": "string"
+        },
+        "is_secret": {
+          "type": "boolean"
+        },
+        "active": {
+          "type": "boolean"
+        },
+        "value_size": {
+          "type": "string",
+          "format": "int64",
+          "title": "размер значения в байтах и HMAC-отпечаток; само значение не отдаётся"
+        },
+        "value_hash": {
+          "type": "string"
+        },
+        "updated_at": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "updated_by": {
+          "type": "string",
+          "title": "последний актор из аудита (пусто — изменений после включения аудита\nне было)"
+        },
+        "synced": {
+          "type": "boolean",
+          "title": "ключ применён в кластер: updated_at не позже последнего sync объекта"
+        },
+        "item_id": {
+          "type": "string",
+          "title": "id item/config_item и родительского secret/configmap"
+        },
+        "parent_id": {
+          "type": "string"
+        }
+      }
+    },
+    "kusec_v1AppKeysRep": {
+      "type": "object",
+      "properties": {
+        "keys": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "$ref": "#/definitions/kusec_v1AppKeySt"
+          }
+        }
+      }
+    },
     "kusec_v1AppListRep": {
       "type": "object",
       "properties": {
@@ -2264,6 +2843,29 @@
         }
       }
     },
+    "kusec_v1AppResolveRep": {
+      "type": "object",
+      "properties": {
+        "found": {
+          "type": "boolean",
+          "title": "false — объект с таким именем в namespace не описан в kusec"
+        },
+        "app": {
+          "$ref": "#/definitions/kusec_v1AppMain"
+        },
+        "kube_kind": {
+          "type": "string",
+          "title": "Secret | ConfigMap"
+        },
+        "object_id": {
+          "type": "string",
+          "title": "id записи kusec (secret или configmap)"
+        },
+        "object_slug": {
+          "type": "string"
+        }
+      }
+    },
     "kusec_v1AppUpdateBody": {
       "type": "object",
       "properties": {
@@ -2281,6 +2883,128 @@
         },
         "description": {
           "type": "string"
+        }
+      }
+    },
+    "kusec_v1AuditChangeSt": {
+      "type": "object",
+      "properties": {
+        "field": {
+          "type": "string"
+        },
+        "old": {
+          "type": "string"
+        },
+        "new": {
+          "type": "string"
+        },
+        "old_hash": {
+          "type": "string"
+        },
+        "new_hash": {
+          "type": "string"
+        },
+        "old_size": {
+          "type": "string",
+          "format": "int64"
+        },
+        "new_size": {
+          "type": "string",
+          "format": "int64"
+        },
+        "truncated": {
+          "type": "boolean",
+          "description": "Несекретное значение длиннее лимита — сохранён только отпечаток."
+        }
+      },
+      "description": "Одно изменённое поле. Для несекретных полей — old/new как есть (null —\nстороны нет: create/delete). Для значений item (secret) и усечённых больших\nзначений config_item — только отпечаток (old_hash/new_hash, HMAC-SHA256,\n16 hex) и размер в байтах."
+    },
+    "kusec_v1AuditListRep": {
+      "type": "object",
+      "properties": {
+        "pagination_info": {
+          "$ref": "#/definitions/kusec_v1PaginationInfoSt"
+        },
+        "results": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "$ref": "#/definitions/kusec_v1AuditMain"
+          }
+        }
+      }
+    },
+    "kusec_v1AuditMain": {
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string",
+          "format": "int64"
+        },
+        "created_at": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "actor_usr_id": {
+          "type": "string",
+          "format": "int64",
+          "title": "actor: имя денормализовано (пользователь или ключ могут быть удалены)"
+        },
+        "actor_api_key_id": {
+          "type": "string"
+        },
+        "actor_name": {
+          "type": "string"
+        },
+        "source": {
+          "type": "string",
+          "title": "ui | api | mcp | system"
+        },
+        "request_id": {
+          "type": "string"
+        },
+        "entity_type": {
+          "type": "string",
+          "title": "app | secret | item | configmap | config_item | api_key | usr | sync_run"
+        },
+        "entity_id": {
+          "type": "string"
+        },
+        "app_id": {
+          "type": "string"
+        },
+        "namespace": {
+          "type": "string"
+        },
+        "app_slug": {
+          "type": "string"
+        },
+        "kube_kind": {
+          "type": "string",
+          "title": "Secret | ConfigMap | \"\""
+        },
+        "kube_name": {
+          "type": "string",
+          "title": "итоговое имя k8s-объекта"
+        },
+        "key": {
+          "type": "string",
+          "title": "ключ item/config_item"
+        },
+        "action": {
+          "type": "string",
+          "title": "create | update | delete | activate | deactivate | sync | import"
+        },
+        "changes": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "$ref": "#/definitions/kusec_v1AuditChangeSt"
+          }
+        },
+        "batch_id": {
+          "type": "string",
+          "title": "группировка массовых операций (каскадное удаление, импорт, sync)"
         }
       }
     },
@@ -3156,6 +3880,111 @@
           "description": "Изменение флага доступно только админам."
         }
       }
+    },
+    "kusec_v1SyncRunListRep": {
+      "type": "object",
+      "properties": {
+        "pagination_info": {
+          "$ref": "#/definitions/kusec_v1PaginationInfoSt"
+        },
+        "results": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "$ref": "#/definitions/kusec_v1SyncRunMain"
+          }
+        }
+      }
+    },
+    "kusec_v1SyncRunMain": {
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string"
+        },
+        "started_at": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "finished_at": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "status": {
+          "type": "string",
+          "title": "running | ok | partial | error"
+        },
+        "error": {
+          "type": "string"
+        },
+        "actor_usr_id": {
+          "type": "string",
+          "format": "int64"
+        },
+        "actor_api_key_id": {
+          "type": "string"
+        },
+        "actor_name": {
+          "type": "string"
+        },
+        "source": {
+          "type": "string",
+          "title": "ui | api | mcp | system"
+        },
+        "request_id": {
+          "type": "string"
+        },
+        "app_id": {
+          "type": "string",
+          "title": "null — sync всех доступных app"
+        },
+        "duration_ms": {
+          "type": "string",
+          "format": "int64"
+        },
+        "objects": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "$ref": "#/definitions/kusec_v1SyncRunObjectSt"
+          },
+          "title": "затронутые объекты; заполняется только в Get"
+        }
+      }
+    },
+    "kusec_v1SyncRunObjectSt": {
+      "type": "object",
+      "properties": {
+        "namespace": {
+          "type": "string"
+        },
+        "kube_kind": {
+          "type": "string",
+          "title": "Secret | ConfigMap"
+        },
+        "kube_name": {
+          "type": "string"
+        },
+        "op": {
+          "type": "string",
+          "title": "created | updated | deleted | unchanged | error"
+        },
+        "error": {
+          "type": "string"
+        },
+        "content_hash": {
+          "type": "string",
+          "title": "HMAC-отпечаток содержимого объекта (сопоставим с аннотацией\nkusec.io/content-hash на объекте кластера)"
+        },
+        "changed_keys": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "title": "имена ключей с изменившимся значением (для created/deleted — все ключи)"
+        }
+      },
+      "description": "Затронутый k8s-объект запуска."
     },
     "kusec_v1TransferTreeAppSt": {
       "type": "object",

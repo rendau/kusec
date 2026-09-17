@@ -46,9 +46,11 @@ type Edit struct {
 type ListReq struct {
 	commonModel.ListParams
 
-	SecretId  *string
-	SecretIds []string
-	AppId     *string
-	Active    *bool
-	Search    *string
+	SecretId     *string
+	SecretIds    []string
+	AppId        *string
+	Active       *bool
+	Search       *string
+	UpdatedAtGte *time.Time
+	UpdatedAtLt  *time.Time
 }

@@ -32,5 +32,12 @@ func (r *Repo) getConditions(pars *model.ListReq) (map[string]any, map[string][]
 		conditionExps["(name ILIKE ? OR slug_name ILIKE ? OR description ILIKE ?)"] = []any{"%" + *pars.Search + "%", "%" + *pars.Search + "%", "%" + *pars.Search + "%"}
 	}
 
+	if pars.UpdatedAtGte != nil {
+		conditionExps["updated_at >= ?"] = []any{*pars.UpdatedAtGte}
+	}
+	if pars.UpdatedAtLt != nil {
+		conditionExps["updated_at < ?"] = []any{*pars.UpdatedAtLt}
+	}
+
 	return conditions, conditionExps
 }

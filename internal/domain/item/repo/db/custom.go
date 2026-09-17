@@ -39,5 +39,12 @@ func (r *Repo) getConditions(pars *model.ListReq) (map[string]any, map[string][]
 		}
 	}
 
+	if pars.UpdatedAtGte != nil {
+		conditionExps["updated_at >= ?"] = []any{*pars.UpdatedAtGte}
+	}
+	if pars.UpdatedAtLt != nil {
+		conditionExps["updated_at < ?"] = []any{*pars.UpdatedAtLt}
+	}
+
 	return conditions, conditionExps
 }

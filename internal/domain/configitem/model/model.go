@@ -51,4 +51,6 @@ type ListReq struct {
 	AppId        *string
 	Active       *bool
 	Search       *string
+	UpdatedAtGte *time.Time
+	UpdatedAtLt  *time.Time
 }

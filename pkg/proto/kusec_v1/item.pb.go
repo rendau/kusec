@@ -183,7 +183,10 @@ type ItemListReq struct {
 	// Выборка по нескольким секретам за один запрос (без пагинации).
 	SecretIds []string `protobuf:"bytes,5,rep,name=secret_ids,json=secretIds,proto3" json:"secret_ids,omitempty"`
 	// Выборка item-ов всех секретов приложения за один запрос (без пагинации).
-	AppId         *string `protobuf:"bytes,6,opt,name=app_id,json=appId,proto3,oneof" json:"app_id,omitempty"`
+	AppId *string `protobuf:"bytes,6,opt,name=app_id,json=appId,proto3,oneof" json:"app_id,omitempty"`
+	// Границы по времени изменения (RFC3339): updated_at >= gte, < lt.
+	UpdatedAtGte  *timestamppb.Timestamp `protobuf:"bytes,7,opt,name=updated_at_gte,json=updatedAtGte,proto3,oneof" json:"updated_at_gte,omitempty"`
+	UpdatedAtLt   *timestamppb.Timestamp `protobuf:"bytes,8,opt,name=updated_at_lt,json=updatedAtLt,proto3,oneof" json:"updated_at_lt,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -258,6 +261,20 @@ func (x *ItemListReq) GetAppId() string {
 		return *x.AppId
 	}
 	return ""
+}
+
+func (x *ItemListReq) GetUpdatedAtGte() *timestamppb.Timestamp {
+	if x != nil {
+		return x.UpdatedAtGte
+	}
+	return nil
+}
+
+func (x *ItemListReq) GetUpdatedAtLt() *timestamppb.Timestamp {
+	if x != nil {
+		return x.UpdatedAtLt
+	}
+	return nil
 }
 
 type ItemListRep struct {
@@ -648,7 +665,7 @@ const file_kusec_v1_item_proto_rawDesc = "" +
 	"\n" +
 	"value_size\x18\r \x01(\x03R\tvalueSize\x12\x1d\n" +
 	"\n" +
-	"value_hash\x18\x0e \x01(\tR\tvalueHash\"\x8c\x02\n" +
+	"value_hash\x18\x0e \x01(\tR\tvalueHash\"\xbd\x03\n" +
 	"\vItemListReq\x127\n" +
 	"\vlist_params\x18\x01 \x01(\v2\x16.kusec_v1.ListParamsStR\n" +
 	"listParams\x12 \n" +
@@ -657,12 +674,16 @@ const file_kusec_v1_item_proto_rawDesc = "" +
 	"\x06search\x18\x04 \x01(\tH\x02R\x06search\x88\x01\x01\x12\x1d\n" +
 	"\n" +
 	"secret_ids\x18\x05 \x03(\tR\tsecretIds\x12\x1a\n" +
-	"\x06app_id\x18\x06 \x01(\tH\x03R\x05appId\x88\x01\x01B\f\n" +
+	"\x06app_id\x18\x06 \x01(\tH\x03R\x05appId\x88\x01\x01\x12E\n" +
+	"\x0eupdated_at_gte\x18\a \x01(\v2\x1a.google.protobuf.TimestampH\x04R\fupdatedAtGte\x88\x01\x01\x12C\n" +
+	"\rupdated_at_lt\x18\b \x01(\v2\x1a.google.protobuf.TimestampH\x05R\vupdatedAtLt\x88\x01\x01B\f\n" +
 	"\n" +
 	"_secret_idB\t\n" +
 	"\a_activeB\t\n" +
 	"\a_searchB\t\n" +
-	"\a_app_id\"\x80\x01\n" +
+	"\a_app_idB\x11\n" +
+	"\x0f_updated_at_gteB\x10\n" +
+	"\x0e_updated_at_lt\"\x80\x01\n" +
 	"\vItemListRep\x12C\n" +
 	"\x0fpagination_info\x18\x01 \x01(\v2\x1a.kusec_v1.PaginationInfoStR\x0epaginationInfo\x12,\n" +
 	"\aresults\x18\x02 \x03(\v2\x12.kusec_v1.ItemMainR\aresults\"\x1c\n" +
@@ -751,23 +772,25 @@ var file_kusec_v1_item_proto_depIdxs = []int32{
 	7,  // 0: kusec_v1.ItemMain.created_at:type_name -> google.protobuf.Timestamp
 	7,  // 1: kusec_v1.ItemMain.updated_at:type_name -> google.protobuf.Timestamp
 	8,  // 2: kusec_v1.ItemListReq.list_params:type_name -> kusec_v1.ListParamsSt
-	9,  // 3: kusec_v1.ItemListRep.pagination_info:type_name -> kusec_v1.PaginationInfoSt
-	0,  // 4: kusec_v1.ItemListRep.results:type_name -> kusec_v1.ItemMain
-	1,  // 5: kusec_v1.Item.List:input_type -> kusec_v1.ItemListReq
-	3,  // 6: kusec_v1.Item.Get:input_type -> kusec_v1.ItemGetReq
-	4,  // 7: kusec_v1.Item.Create:input_type -> kusec_v1.ItemCreateReq
-	6,  // 8: kusec_v1.Item.Update:input_type -> kusec_v1.ItemUpdateReq
-	3,  // 9: kusec_v1.Item.Delete:input_type -> kusec_v1.ItemGetReq
-	2,  // 10: kusec_v1.Item.List:output_type -> kusec_v1.ItemListRep
-	0,  // 11: kusec_v1.Item.Get:output_type -> kusec_v1.ItemMain
-	5,  // 12: kusec_v1.Item.Create:output_type -> kusec_v1.ItemCreateRep
-	10, // 13: kusec_v1.Item.Update:output_type -> google.protobuf.Empty
-	10, // 14: kusec_v1.Item.Delete:output_type -> google.protobuf.Empty
-	10, // [10:15] is the sub-list for method output_type
-	5,  // [5:10] is the sub-list for method input_type
-	5,  // [5:5] is the sub-list for extension type_name
-	5,  // [5:5] is the sub-list for extension extendee
-	0,  // [0:5] is the sub-list for field type_name
+	7,  // 3: kusec_v1.ItemListReq.updated_at_gte:type_name -> google.protobuf.Timestamp
+	7,  // 4: kusec_v1.ItemListReq.updated_at_lt:type_name -> google.protobuf.Timestamp
+	9,  // 5: kusec_v1.ItemListRep.pagination_info:type_name -> kusec_v1.PaginationInfoSt
+	0,  // 6: kusec_v1.ItemListRep.results:type_name -> kusec_v1.ItemMain
+	1,  // 7: kusec_v1.Item.List:input_type -> kusec_v1.ItemListReq
+	3,  // 8: kusec_v1.Item.Get:input_type -> kusec_v1.ItemGetReq
+	4,  // 9: kusec_v1.Item.Create:input_type -> kusec_v1.ItemCreateReq
+	6,  // 10: kusec_v1.Item.Update:input_type -> kusec_v1.ItemUpdateReq
+	3,  // 11: kusec_v1.Item.Delete:input_type -> kusec_v1.ItemGetReq
+	2,  // 12: kusec_v1.Item.List:output_type -> kusec_v1.ItemListRep
+	0,  // 13: kusec_v1.Item.Get:output_type -> kusec_v1.ItemMain
+	5,  // 14: kusec_v1.Item.Create:output_type -> kusec_v1.ItemCreateRep
+	10, // 15: kusec_v1.Item.Update:output_type -> google.protobuf.Empty
+	10, // 16: kusec_v1.Item.Delete:output_type -> google.protobuf.Empty
+	12, // [12:17] is the sub-list for method output_type
+	7,  // [7:12] is the sub-list for method input_type
+	7,  // [7:7] is the sub-list for extension type_name
+	7,  // [7:7] is the sub-list for extension extendee
+	0,  // [0:7] is the sub-list for field type_name
 }
 
 func init() { file_kusec_v1_item_proto_init() }

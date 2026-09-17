@@ -32,8 +32,10 @@ type Edit struct {
 type ListReq struct {
 	commonModel.ListParams
 
-	Ids       []string
-	Active    *bool
-	Namespace *string
-	Search    *string
+	Ids          []string
+	Active       *bool
+	Namespace    *string
+	Search       *string
+	UpdatedAtGte *time.Time
+	UpdatedAtLt  *time.Time
 }

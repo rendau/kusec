@@ -8,16 +8,18 @@ import (
 
 	"github.com/rendau/kusec/internal/handler/grpc/dto"
 	usecase "github.com/rendau/kusec/internal/usecase/app"
+	monitoringUsc "github.com/rendau/kusec/internal/usecase/monitoring"
 	proto "github.com/rendau/kusec/pkg/proto/kusec_v1"
 )
 
 type App struct {
 	proto.UnsafeAppServer
-	usecase *usecase.Usecase
+	usecase           *usecase.Usecase
+	monitoringUsecase *monitoringUsc.Usecase
 }
 
-func NewApp(uc *usecase.Usecase) *App {
-	return &App{usecase: uc}
+func NewApp(uc *usecase.Usecase, monitoringUc *monitoringUsc.Usecase) *App {
+	return &App{usecase: uc, monitoringUsecase: monitoringUc}
 }
 
 func (h *App) List(ctx context.Context, req *proto.AppListReq) (*proto.AppListRep, error) {
@@ -68,4 +70,33 @@ func (h *App) Delete(ctx context.Context, req *proto.AppGetReq) (*emptypb.Empty,
 		return nil, err
 	}
 	return &emptypb.Empty{}, nil
+}
+
+// ── Мониторинг ──────────────────────────────────────────
+
+func (h *App) Resolve(ctx context.Context, req *proto.AppResolveReq) (*proto.AppResolveRep, error) {
+	result, err := h.monitoringUsecase.Resolve(ctx, req.Namespace, req.KubeName)
+	if err != nil {
+		return nil, err
+	}
+	return dto.EncodeAppResolveRep(result), nil
+}
+
+func (h *App) Keys(ctx context.Context, req *proto.AppGetReq) (*proto.AppKeysRep, error) {
+	keys, err := h.monitoringUsecase.Keys(ctx, req.Id)
+	if err != nil {
+		return nil, err
+	}
+	return &proto.AppKeysRep{Keys: lo.Map(keys, dto.EncodeAppKey)}, nil
+}
+
+func (h *App) Drift(ctx context.Context, req *proto.AppGetReq) (*proto.AppDriftRep, error) {
+	objects, inCluster, err := h.monitoringUsecase.Drift(ctx, req.Id)
+	if err != nil {
+		return nil, err
+	}
+	return &proto.AppDriftRep{
+		InCluster: inCluster,
+		Objects:   lo.Map(objects, dto.EncodeAppDriftObject),
+	}, nil
 }

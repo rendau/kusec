@@ -75,6 +75,9 @@ message ConfigItemListReq {
   repeated string configmap_ids = 5;
   // Выборка item-ов всех configmap-ов приложения за один запрос (без пагинации).
   optional string app_id = 6;
+  // Границы по времени изменения (RFC3339): updated_at >= gte, < lt.
+  optional google.protobuf.Timestamp updated_at_gte = 7;
+  optional google.protobuf.Timestamp updated_at_lt = 8;
 }
 
 message ConfigItemListRep {

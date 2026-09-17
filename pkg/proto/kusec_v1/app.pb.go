@@ -125,11 +125,14 @@ func (x *AppMain) GetDescription() string {
 }
 
 type AppListReq struct {
-	state         protoimpl.MessageState `protogen:"open.v1"`
-	ListParams    *ListParamsSt          `protobuf:"bytes,1,opt,name=list_params,json=listParams,proto3" json:"list_params,omitempty"`
-	Active        *bool                  `protobuf:"varint,2,opt,name=active,proto3,oneof" json:"active,omitempty"`
-	Namespace     *string                `protobuf:"bytes,3,opt,name=namespace,proto3,oneof" json:"namespace,omitempty"`
-	Search        *string                `protobuf:"bytes,4,opt,name=search,proto3,oneof" json:"search,omitempty"`
+	state      protoimpl.MessageState `protogen:"open.v1"`
+	ListParams *ListParamsSt          `protobuf:"bytes,1,opt,name=list_params,json=listParams,proto3" json:"list_params,omitempty"`
+	Active     *bool                  `protobuf:"varint,2,opt,name=active,proto3,oneof" json:"active,omitempty"`
+	Namespace  *string                `protobuf:"bytes,3,opt,name=namespace,proto3,oneof" json:"namespace,omitempty"`
+	Search     *string                `protobuf:"bytes,4,opt,name=search,proto3,oneof" json:"search,omitempty"`
+	// Границы по времени изменения (RFC3339): updated_at >= gte, < lt.
+	UpdatedAtGte  *timestamppb.Timestamp `protobuf:"bytes,5,opt,name=updated_at_gte,json=updatedAtGte,proto3,oneof" json:"updated_at_gte,omitempty"`
+	UpdatedAtLt   *timestamppb.Timestamp `protobuf:"bytes,6,opt,name=updated_at_lt,json=updatedAtLt,proto3,oneof" json:"updated_at_lt,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -190,6 +193,20 @@ func (x *AppListReq) GetSearch() string {
 		return *x.Search
 	}
 	return ""
+}
+
+func (x *AppListReq) GetUpdatedAtGte() *timestamppb.Timestamp {
+	if x != nil {
+		return x.UpdatedAtGte
+	}
+	return nil
+}
+
+func (x *AppListReq) GetUpdatedAtLt() *timestamppb.Timestamp {
+	if x != nil {
+		return x.UpdatedAtLt
+	}
+	return nil
 }
 
 type AppListRep struct {
@@ -408,6 +425,495 @@ func (x *AppCreateRep) GetId() string {
 	return ""
 }
 
+type AppResolveReq struct {
+	state     protoimpl.MessageState `protogen:"open.v1"`
+	Namespace string                 `protobuf:"bytes,1,opt,name=namespace,proto3" json:"namespace,omitempty"`
+	// имя k8s-объекта (Secret или ConfigMap), например kusec-caravan-main
+	KubeName      string `protobuf:"bytes,2,opt,name=kube_name,json=kubeName,proto3" json:"kube_name,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *AppResolveReq) Reset() {
+	*x = AppResolveReq{}
+	mi := &file_kusec_v1_app_proto_msgTypes[6]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *AppResolveReq) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*AppResolveReq) ProtoMessage() {}
+
+func (x *AppResolveReq) ProtoReflect() protoreflect.Message {
+	mi := &file_kusec_v1_app_proto_msgTypes[6]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use AppResolveReq.ProtoReflect.Descriptor instead.
+func (*AppResolveReq) Descriptor() ([]byte, []int) {
+	return file_kusec_v1_app_proto_rawDescGZIP(), []int{6}
+}
+
+func (x *AppResolveReq) GetNamespace() string {
+	if x != nil {
+		return x.Namespace
+	}
+	return ""
+}
+
+func (x *AppResolveReq) GetKubeName() string {
+	if x != nil {
+		return x.KubeName
+	}
+	return ""
+}
+
+type AppResolveRep struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// false — объект с таким именем в namespace не описан в kusec
+	Found bool     `protobuf:"varint,1,opt,name=found,proto3" json:"found,omitempty"`
+	App   *AppMain `protobuf:"bytes,2,opt,name=app,proto3" json:"app,omitempty"`
+	// Secret | ConfigMap
+	KubeKind string `protobuf:"bytes,3,opt,name=kube_kind,json=kubeKind,proto3" json:"kube_kind,omitempty"`
+	// id записи kusec (secret или configmap)
+	ObjectId      string `protobuf:"bytes,4,opt,name=object_id,json=objectId,proto3" json:"object_id,omitempty"`
+	ObjectSlug    string `protobuf:"bytes,5,opt,name=object_slug,json=objectSlug,proto3" json:"object_slug,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *AppResolveRep) Reset() {
+	*x = AppResolveRep{}
+	mi := &file_kusec_v1_app_proto_msgTypes[7]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *AppResolveRep) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*AppResolveRep) ProtoMessage() {}
+
+func (x *AppResolveRep) ProtoReflect() protoreflect.Message {
+	mi := &file_kusec_v1_app_proto_msgTypes[7]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use AppResolveRep.ProtoReflect.Descriptor instead.
+func (*AppResolveRep) Descriptor() ([]byte, []int) {
+	return file_kusec_v1_app_proto_rawDescGZIP(), []int{7}
+}
+
+func (x *AppResolveRep) GetFound() bool {
+	if x != nil {
+		return x.Found
+	}
+	return false
+}
+
+func (x *AppResolveRep) GetApp() *AppMain {
+	if x != nil {
+		return x.App
+	}
+	return nil
+}
+
+func (x *AppResolveRep) GetKubeKind() string {
+	if x != nil {
+		return x.KubeKind
+	}
+	return ""
+}
+
+func (x *AppResolveRep) GetObjectId() string {
+	if x != nil {
+		return x.ObjectId
+	}
+	return ""
+}
+
+func (x *AppResolveRep) GetObjectSlug() string {
+	if x != nil {
+		return x.ObjectSlug
+	}
+	return ""
+}
+
+type AppKeySt struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	Key   string                 `protobuf:"bytes,1,opt,name=key,proto3" json:"key,omitempty"`
+	// Secret | ConfigMap
+	KubeKind string `protobuf:"bytes,2,opt,name=kube_kind,json=kubeKind,proto3" json:"kube_kind,omitempty"`
+	KubeName string `protobuf:"bytes,3,opt,name=kube_name,json=kubeName,proto3" json:"kube_name,omitempty"`
+	IsSecret bool   `protobuf:"varint,4,opt,name=is_secret,json=isSecret,proto3" json:"is_secret,omitempty"`
+	Active   bool   `protobuf:"varint,5,opt,name=active,proto3" json:"active,omitempty"`
+	// размер значения в байтах и HMAC-отпечаток; само значение не отдаётся
+	ValueSize int64                  `protobuf:"varint,6,opt,name=value_size,json=valueSize,proto3" json:"value_size,omitempty"`
+	ValueHash string                 `protobuf:"bytes,7,opt,name=value_hash,json=valueHash,proto3" json:"value_hash,omitempty"`
+	UpdatedAt *timestamppb.Timestamp `protobuf:"bytes,8,opt,name=updated_at,json=updatedAt,proto3" json:"updated_at,omitempty"`
+	// последний актор из аудита (пусто — изменений после включения аудита
+	// не было)
+	UpdatedBy string `protobuf:"bytes,9,opt,name=updated_by,json=updatedBy,proto3" json:"updated_by,omitempty"`
+	// ключ применён в кластер: updated_at не позже последнего sync объекта
+	Synced bool `protobuf:"varint,10,opt,name=synced,proto3" json:"synced,omitempty"`
+	// id item/config_item и родительского secret/configmap
+	ItemId        string `protobuf:"bytes,11,opt,name=item_id,json=itemId,proto3" json:"item_id,omitempty"`
+	ParentId      string `protobuf:"bytes,12,opt,name=parent_id,json=parentId,proto3" json:"parent_id,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *AppKeySt) Reset() {
+	*x = AppKeySt{}
+	mi := &file_kusec_v1_app_proto_msgTypes[8]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *AppKeySt) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*AppKeySt) ProtoMessage() {}
+
+func (x *AppKeySt) ProtoReflect() protoreflect.Message {
+	mi := &file_kusec_v1_app_proto_msgTypes[8]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use AppKeySt.ProtoReflect.Descriptor instead.
+func (*AppKeySt) Descriptor() ([]byte, []int) {
+	return file_kusec_v1_app_proto_rawDescGZIP(), []int{8}
+}
+
+func (x *AppKeySt) GetKey() string {
+	if x != nil {
+		return x.Key
+	}
+	return ""
+}
+
+func (x *AppKeySt) GetKubeKind() string {
+	if x != nil {
+		return x.KubeKind
+	}
+	return ""
+}
+
+func (x *AppKeySt) GetKubeName() string {
+	if x != nil {
+		return x.KubeName
+	}
+	return ""
+}
+
+func (x *AppKeySt) GetIsSecret() bool {
+	if x != nil {
+		return x.IsSecret
+	}
+	return false
+}
+
+func (x *AppKeySt) GetActive() bool {
+	if x != nil {
+		return x.Active
+	}
+	return false
+}
+
+func (x *AppKeySt) GetValueSize() int64 {
+	if x != nil {
+		return x.ValueSize
+	}
+	return 0
+}
+
+func (x *AppKeySt) GetValueHash() string {
+	if x != nil {
+		return x.ValueHash
+	}
+	return ""
+}
+
+func (x *AppKeySt) GetUpdatedAt() *timestamppb.Timestamp {
+	if x != nil {
+		return x.UpdatedAt
+	}
+	return nil
+}
+
+func (x *AppKeySt) GetUpdatedBy() string {
+	if x != nil {
+		return x.UpdatedBy
+	}
+	return ""
+}
+
+func (x *AppKeySt) GetSynced() bool {
+	if x != nil {
+		return x.Synced
+	}
+	return false
+}
+
+func (x *AppKeySt) GetItemId() string {
+	if x != nil {
+		return x.ItemId
+	}
+	return ""
+}
+
+func (x *AppKeySt) GetParentId() string {
+	if x != nil {
+		return x.ParentId
+	}
+	return ""
+}
+
+type AppKeysRep struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Keys          []*AppKeySt            `protobuf:"bytes,1,rep,name=keys,proto3" json:"keys,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *AppKeysRep) Reset() {
+	*x = AppKeysRep{}
+	mi := &file_kusec_v1_app_proto_msgTypes[9]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *AppKeysRep) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*AppKeysRep) ProtoMessage() {}
+
+func (x *AppKeysRep) ProtoReflect() protoreflect.Message {
+	mi := &file_kusec_v1_app_proto_msgTypes[9]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use AppKeysRep.ProtoReflect.Descriptor instead.
+func (*AppKeysRep) Descriptor() ([]byte, []int) {
+	return file_kusec_v1_app_proto_rawDescGZIP(), []int{9}
+}
+
+func (x *AppKeysRep) GetKeys() []*AppKeySt {
+	if x != nil {
+		return x.Keys
+	}
+	return nil
+}
+
+type AppDriftObjectSt struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// Secret | ConfigMap
+	KubeKind  string `protobuf:"bytes,1,opt,name=kube_kind,json=kubeKind,proto3" json:"kube_kind,omitempty"`
+	KubeName  string `protobuf:"bytes,2,opt,name=kube_name,json=kubeName,proto3" json:"kube_name,omitempty"`
+	Namespace string `protobuf:"bytes,3,opt,name=namespace,proto3" json:"namespace,omitempty"`
+	// id записи kusec (secret или configmap)
+	ObjectId        string `protobuf:"bytes,4,opt,name=object_id,json=objectId,proto3" json:"object_id,omitempty"`
+	ExistsInCluster bool   `protobuf:"varint,5,opt,name=exists_in_cluster,json=existsInCluster,proto3" json:"exists_in_cluster,omitempty"`
+	// объект кластера под управлением kusec (лейбл managed-by)
+	Managed bool `protobuf:"varint,6,opt,name=managed,proto3" json:"managed,omitempty"`
+	// имена ключей (значения не отдаются)
+	MissingInCluster []string `protobuf:"bytes,7,rep,name=missing_in_cluster,json=missingInCluster,proto3" json:"missing_in_cluster,omitempty"`
+	ExtraInCluster   []string `protobuf:"bytes,8,rep,name=extra_in_cluster,json=extraInCluster,proto3" json:"extra_in_cluster,omitempty"`
+	ValueDiffers     []string `protobuf:"bytes,9,rep,name=value_differs,json=valueDiffers,proto3" json:"value_differs,omitempty"`
+	// время последнего изменения в kusec, ещё не применённого в кластер
+	// (null — изменений после последнего sync нет)
+	NotSyncedSince *timestamppb.Timestamp `protobuf:"bytes,10,opt,name=not_synced_since,json=notSyncedSince,proto3,oneof" json:"not_synced_since,omitempty"`
+	unknownFields  protoimpl.UnknownFields
+	sizeCache      protoimpl.SizeCache
+}
+
+func (x *AppDriftObjectSt) Reset() {
+	*x = AppDriftObjectSt{}
+	mi := &file_kusec_v1_app_proto_msgTypes[10]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *AppDriftObjectSt) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*AppDriftObjectSt) ProtoMessage() {}
+
+func (x *AppDriftObjectSt) ProtoReflect() protoreflect.Message {
+	mi := &file_kusec_v1_app_proto_msgTypes[10]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use AppDriftObjectSt.ProtoReflect.Descriptor instead.
+func (*AppDriftObjectSt) Descriptor() ([]byte, []int) {
+	return file_kusec_v1_app_proto_rawDescGZIP(), []int{10}
+}
+
+func (x *AppDriftObjectSt) GetKubeKind() string {
+	if x != nil {
+		return x.KubeKind
+	}
+	return ""
+}
+
+func (x *AppDriftObjectSt) GetKubeName() string {
+	if x != nil {
+		return x.KubeName
+	}
+	return ""
+}
+
+func (x *AppDriftObjectSt) GetNamespace() string {
+	if x != nil {
+		return x.Namespace
+	}
+	return ""
+}
+
+func (x *AppDriftObjectSt) GetObjectId() string {
+	if x != nil {
+		return x.ObjectId
+	}
+	return ""
+}
+
+func (x *AppDriftObjectSt) GetExistsInCluster() bool {
+	if x != nil {
+		return x.ExistsInCluster
+	}
+	return false
+}
+
+func (x *AppDriftObjectSt) GetManaged() bool {
+	if x != nil {
+		return x.Managed
+	}
+	return false
+}
+
+func (x *AppDriftObjectSt) GetMissingInCluster() []string {
+	if x != nil {
+		return x.MissingInCluster
+	}
+	return nil
+}
+
+func (x *AppDriftObjectSt) GetExtraInCluster() []string {
+	if x != nil {
+		return x.ExtraInCluster
+	}
+	return nil
+}
+
+func (x *AppDriftObjectSt) GetValueDiffers() []string {
+	if x != nil {
+		return x.ValueDiffers
+	}
+	return nil
+}
+
+func (x *AppDriftObjectSt) GetNotSyncedSince() *timestamppb.Timestamp {
+	if x != nil {
+		return x.NotSyncedSince
+	}
+	return nil
+}
+
+type AppDriftRep struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// false — kusec запущен вне кластера, сравнение недоступно
+	InCluster     bool                `protobuf:"varint,1,opt,name=in_cluster,json=inCluster,proto3" json:"in_cluster,omitempty"`
+	Objects       []*AppDriftObjectSt `protobuf:"bytes,2,rep,name=objects,proto3" json:"objects,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *AppDriftRep) Reset() {
+	*x = AppDriftRep{}
+	mi := &file_kusec_v1_app_proto_msgTypes[11]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *AppDriftRep) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*AppDriftRep) ProtoMessage() {}
+
+func (x *AppDriftRep) ProtoReflect() protoreflect.Message {
+	mi := &file_kusec_v1_app_proto_msgTypes[11]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use AppDriftRep.ProtoReflect.Descriptor instead.
+func (*AppDriftRep) Descriptor() ([]byte, []int) {
+	return file_kusec_v1_app_proto_rawDescGZIP(), []int{11}
+}
+
+func (x *AppDriftRep) GetInCluster() bool {
+	if x != nil {
+		return x.InCluster
+	}
+	return false
+}
+
+func (x *AppDriftRep) GetObjects() []*AppDriftObjectSt {
+	if x != nil {
+		return x.Objects
+	}
+	return nil
+}
+
 type AppUpdateReq struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
 	Id            string                 `protobuf:"bytes,1,opt,name=id,proto3" json:"id,omitempty"`
@@ -422,7 +928,7 @@ type AppUpdateReq struct {
 
 func (x *AppUpdateReq) Reset() {
 	*x = AppUpdateReq{}
-	mi := &file_kusec_v1_app_proto_msgTypes[6]
+	mi := &file_kusec_v1_app_proto_msgTypes[12]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -434,7 +940,7 @@ func (x *AppUpdateReq) String() string {
 func (*AppUpdateReq) ProtoMessage() {}
 
 func (x *AppUpdateReq) ProtoReflect() protoreflect.Message {
-	mi := &file_kusec_v1_app_proto_msgTypes[6]
+	mi := &file_kusec_v1_app_proto_msgTypes[12]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -447,7 +953,7 @@ func (x *AppUpdateReq) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use AppUpdateReq.ProtoReflect.Descriptor instead.
 func (*AppUpdateReq) Descriptor() ([]byte, []int) {
-	return file_kusec_v1_app_proto_rawDescGZIP(), []int{6}
+	return file_kusec_v1_app_proto_rawDescGZIP(), []int{12}
 }
 
 func (x *AppUpdateReq) GetId() string {
@@ -507,18 +1013,22 @@ const file_kusec_v1_app_proto_rawDesc = "" +
 	"\tnamespace\x18\x05 \x01(\tR\tnamespace\x12\x12\n" +
 	"\x04name\x18\x06 \x01(\tR\x04name\x12\x1b\n" +
 	"\tslug_name\x18\b \x01(\tR\bslugName\x12 \n" +
-	"\vdescription\x18\a \x01(\tR\vdescription\"\xc6\x01\n" +
+	"\vdescription\x18\a \x01(\tR\vdescription\"\xf7\x02\n" +
 	"\n" +
 	"AppListReq\x127\n" +
 	"\vlist_params\x18\x01 \x01(\v2\x16.kusec_v1.ListParamsStR\n" +
 	"listParams\x12\x1b\n" +
 	"\x06active\x18\x02 \x01(\bH\x00R\x06active\x88\x01\x01\x12!\n" +
 	"\tnamespace\x18\x03 \x01(\tH\x01R\tnamespace\x88\x01\x01\x12\x1b\n" +
-	"\x06search\x18\x04 \x01(\tH\x02R\x06search\x88\x01\x01B\t\n" +
+	"\x06search\x18\x04 \x01(\tH\x02R\x06search\x88\x01\x01\x12E\n" +
+	"\x0eupdated_at_gte\x18\x05 \x01(\v2\x1a.google.protobuf.TimestampH\x03R\fupdatedAtGte\x88\x01\x01\x12C\n" +
+	"\rupdated_at_lt\x18\x06 \x01(\v2\x1a.google.protobuf.TimestampH\x04R\vupdatedAtLt\x88\x01\x01B\t\n" +
 	"\a_activeB\f\n" +
 	"\n" +
 	"_namespaceB\t\n" +
-	"\a_search\"~\n" +
+	"\a_searchB\x11\n" +
+	"\x0f_updated_at_gteB\x10\n" +
+	"\x0e_updated_at_lt\"~\n" +
 	"\n" +
 	"AppListRep\x12C\n" +
 	"\x0fpagination_info\x18\x01 \x01(\v2\x1a.kusec_v1.PaginationInfoStR\x0epaginationInfo\x12+\n" +
@@ -533,7 +1043,55 @@ const file_kusec_v1_app_proto_rawDesc = "" +
 	"\vdescription\x18\x04 \x01(\tR\vdescriptionB\t\n" +
 	"\a_active\"\x1e\n" +
 	"\fAppCreateRep\x12\x0e\n" +
-	"\x02id\x18\x01 \x01(\tR\x02id\"\x80\x02\n" +
+	"\x02id\x18\x01 \x01(\tR\x02id\"J\n" +
+	"\rAppResolveReq\x12\x1c\n" +
+	"\tnamespace\x18\x01 \x01(\tR\tnamespace\x12\x1b\n" +
+	"\tkube_name\x18\x02 \x01(\tR\bkubeName\"\xa5\x01\n" +
+	"\rAppResolveRep\x12\x14\n" +
+	"\x05found\x18\x01 \x01(\bR\x05found\x12#\n" +
+	"\x03app\x18\x02 \x01(\v2\x11.kusec_v1.AppMainR\x03app\x12\x1b\n" +
+	"\tkube_kind\x18\x03 \x01(\tR\bkubeKind\x12\x1b\n" +
+	"\tobject_id\x18\x04 \x01(\tR\bobjectId\x12\x1f\n" +
+	"\vobject_slug\x18\x05 \x01(\tR\n" +
+	"objectSlug\"\xf1\x02\n" +
+	"\bAppKeySt\x12\x10\n" +
+	"\x03key\x18\x01 \x01(\tR\x03key\x12\x1b\n" +
+	"\tkube_kind\x18\x02 \x01(\tR\bkubeKind\x12\x1b\n" +
+	"\tkube_name\x18\x03 \x01(\tR\bkubeName\x12\x1b\n" +
+	"\tis_secret\x18\x04 \x01(\bR\bisSecret\x12\x16\n" +
+	"\x06active\x18\x05 \x01(\bR\x06active\x12\x1d\n" +
+	"\n" +
+	"value_size\x18\x06 \x01(\x03R\tvalueSize\x12\x1d\n" +
+	"\n" +
+	"value_hash\x18\a \x01(\tR\tvalueHash\x129\n" +
+	"\n" +
+	"updated_at\x18\b \x01(\v2\x1a.google.protobuf.TimestampR\tupdatedAt\x12\x1d\n" +
+	"\n" +
+	"updated_by\x18\t \x01(\tR\tupdatedBy\x12\x16\n" +
+	"\x06synced\x18\n" +
+	" \x01(\bR\x06synced\x12\x17\n" +
+	"\aitem_id\x18\v \x01(\tR\x06itemId\x12\x1b\n" +
+	"\tparent_id\x18\f \x01(\tR\bparentId\"4\n" +
+	"\n" +
+	"AppKeysRep\x12&\n" +
+	"\x04keys\x18\x01 \x03(\v2\x12.kusec_v1.AppKeyStR\x04keys\"\xaa\x03\n" +
+	"\x10AppDriftObjectSt\x12\x1b\n" +
+	"\tkube_kind\x18\x01 \x01(\tR\bkubeKind\x12\x1b\n" +
+	"\tkube_name\x18\x02 \x01(\tR\bkubeName\x12\x1c\n" +
+	"\tnamespace\x18\x03 \x01(\tR\tnamespace\x12\x1b\n" +
+	"\tobject_id\x18\x04 \x01(\tR\bobjectId\x12*\n" +
+	"\x11exists_in_cluster\x18\x05 \x01(\bR\x0fexistsInCluster\x12\x18\n" +
+	"\amanaged\x18\x06 \x01(\bR\amanaged\x12,\n" +
+	"\x12missing_in_cluster\x18\a \x03(\tR\x10missingInCluster\x12(\n" +
+	"\x10extra_in_cluster\x18\b \x03(\tR\x0eextraInCluster\x12#\n" +
+	"\rvalue_differs\x18\t \x03(\tR\fvalueDiffers\x12I\n" +
+	"\x10not_synced_since\x18\n" +
+	" \x01(\v2\x1a.google.protobuf.TimestampH\x00R\x0enotSyncedSince\x88\x01\x01B\x13\n" +
+	"\x11_not_synced_since\"b\n" +
+	"\vAppDriftRep\x12\x1d\n" +
+	"\n" +
+	"in_cluster\x18\x01 \x01(\bR\tinCluster\x124\n" +
+	"\aobjects\x18\x02 \x03(\v2\x1a.kusec_v1.AppDriftObjectStR\aobjects\"\x80\x02\n" +
 	"\fAppUpdateReq\x12\x0e\n" +
 	"\x02id\x18\x01 \x01(\tR\x02id\x12\x1b\n" +
 	"\x06active\x18\x02 \x01(\bH\x00R\x06active\x88\x01\x01\x12!\n" +
@@ -547,10 +1105,13 @@ const file_kusec_v1_app_proto_rawDesc = "" +
 	"\x05_nameB\f\n" +
 	"\n" +
 	"_slug_nameB\x0e\n" +
-	"\f_description2\xee\x02\n" +
+	"\f_description2\xda\x04\n" +
 	"\x03App\x12@\n" +
-	"\x04List\x12\x14.kusec_v1.AppListReq\x1a\x14.kusec_v1.AppListRep\"\f\x82\xd3\xe4\x93\x02\x06\x12\x04/app\x12@\n" +
+	"\x04List\x12\x14.kusec_v1.AppListReq\x1a\x14.kusec_v1.AppListRep\"\f\x82\xd3\xe4\x93\x02\x06\x12\x04/app\x12Q\n" +
+	"\aResolve\x12\x17.kusec_v1.AppResolveReq\x1a\x17.kusec_v1.AppResolveRep\"\x14\x82\xd3\xe4\x93\x02\x0e\x12\f/app/resolve\x12@\n" +
 	"\x03Get\x12\x13.kusec_v1.AppGetReq\x1a\x11.kusec_v1.AppMain\"\x11\x82\xd3\xe4\x93\x02\v\x12\t/app/{id}\x12I\n" +
+	"\x04Keys\x12\x13.kusec_v1.AppGetReq\x1a\x14.kusec_v1.AppKeysRep\"\x16\x82\xd3\xe4\x93\x02\x10\x12\x0e/app/{id}/keys\x12L\n" +
+	"\x05Drift\x12\x13.kusec_v1.AppGetReq\x1a\x15.kusec_v1.AppDriftRep\"\x17\x82\xd3\xe4\x93\x02\x11\x12\x0f/app/{id}/drift\x12I\n" +
 	"\x06Create\x12\x16.kusec_v1.AppCreateReq\x1a\x16.kusec_v1.AppCreateRep\"\x0f\x82\xd3\xe4\x93\x02\t:\x01*\"\x04/app\x12N\n" +
 	"\x06Update\x12\x16.kusec_v1.AppUpdateReq\x1a\x16.google.protobuf.Empty\"\x14\x82\xd3\xe4\x93\x02\x0e:\x01*\x1a\t/app/{id}\x12H\n" +
 	"\x06Delete\x12\x13.kusec_v1.AppGetReq\x1a\x16.google.protobuf.Empty\"\x11\x82\xd3\xe4\x93\x02\v*\t/app/{id}B\vZ\t/kusec_v1b\x06proto3"
@@ -567,7 +1128,7 @@ func file_kusec_v1_app_proto_rawDescGZIP() []byte {
 	return file_kusec_v1_app_proto_rawDescData
 }
 
-var file_kusec_v1_app_proto_msgTypes = make([]protoimpl.MessageInfo, 7)
+var file_kusec_v1_app_proto_msgTypes = make([]protoimpl.MessageInfo, 13)
 var file_kusec_v1_app_proto_goTypes = []any{
 	(*AppMain)(nil),               // 0: kusec_v1.AppMain
 	(*AppListReq)(nil),            // 1: kusec_v1.AppListReq
@@ -575,33 +1136,52 @@ var file_kusec_v1_app_proto_goTypes = []any{
 	(*AppGetReq)(nil),             // 3: kusec_v1.AppGetReq
 	(*AppCreateReq)(nil),          // 4: kusec_v1.AppCreateReq
 	(*AppCreateRep)(nil),          // 5: kusec_v1.AppCreateRep
-	(*AppUpdateReq)(nil),          // 6: kusec_v1.AppUpdateReq
-	(*timestamppb.Timestamp)(nil), // 7: google.protobuf.Timestamp
-	(*ListParamsSt)(nil),          // 8: kusec_v1.ListParamsSt
-	(*PaginationInfoSt)(nil),      // 9: kusec_v1.PaginationInfoSt
-	(*emptypb.Empty)(nil),         // 10: google.protobuf.Empty
+	(*AppResolveReq)(nil),         // 6: kusec_v1.AppResolveReq
+	(*AppResolveRep)(nil),         // 7: kusec_v1.AppResolveRep
+	(*AppKeySt)(nil),              // 8: kusec_v1.AppKeySt
+	(*AppKeysRep)(nil),            // 9: kusec_v1.AppKeysRep
+	(*AppDriftObjectSt)(nil),      // 10: kusec_v1.AppDriftObjectSt
+	(*AppDriftRep)(nil),           // 11: kusec_v1.AppDriftRep
+	(*AppUpdateReq)(nil),          // 12: kusec_v1.AppUpdateReq
+	(*timestamppb.Timestamp)(nil), // 13: google.protobuf.Timestamp
+	(*ListParamsSt)(nil),          // 14: kusec_v1.ListParamsSt
+	(*PaginationInfoSt)(nil),      // 15: kusec_v1.PaginationInfoSt
+	(*emptypb.Empty)(nil),         // 16: google.protobuf.Empty
 }
 var file_kusec_v1_app_proto_depIdxs = []int32{
-	7,  // 0: kusec_v1.AppMain.created_at:type_name -> google.protobuf.Timestamp
-	7,  // 1: kusec_v1.AppMain.updated_at:type_name -> google.protobuf.Timestamp
-	8,  // 2: kusec_v1.AppListReq.list_params:type_name -> kusec_v1.ListParamsSt
-	9,  // 3: kusec_v1.AppListRep.pagination_info:type_name -> kusec_v1.PaginationInfoSt
-	0,  // 4: kusec_v1.AppListRep.results:type_name -> kusec_v1.AppMain
-	1,  // 5: kusec_v1.App.List:input_type -> kusec_v1.AppListReq
-	3,  // 6: kusec_v1.App.Get:input_type -> kusec_v1.AppGetReq
-	4,  // 7: kusec_v1.App.Create:input_type -> kusec_v1.AppCreateReq
-	6,  // 8: kusec_v1.App.Update:input_type -> kusec_v1.AppUpdateReq
-	3,  // 9: kusec_v1.App.Delete:input_type -> kusec_v1.AppGetReq
-	2,  // 10: kusec_v1.App.List:output_type -> kusec_v1.AppListRep
-	0,  // 11: kusec_v1.App.Get:output_type -> kusec_v1.AppMain
-	5,  // 12: kusec_v1.App.Create:output_type -> kusec_v1.AppCreateRep
-	10, // 13: kusec_v1.App.Update:output_type -> google.protobuf.Empty
-	10, // 14: kusec_v1.App.Delete:output_type -> google.protobuf.Empty
-	10, // [10:15] is the sub-list for method output_type
-	5,  // [5:10] is the sub-list for method input_type
-	5,  // [5:5] is the sub-list for extension type_name
-	5,  // [5:5] is the sub-list for extension extendee
-	0,  // [0:5] is the sub-list for field type_name
+	13, // 0: kusec_v1.AppMain.created_at:type_name -> google.protobuf.Timestamp
+	13, // 1: kusec_v1.AppMain.updated_at:type_name -> google.protobuf.Timestamp
+	14, // 2: kusec_v1.AppListReq.list_params:type_name -> kusec_v1.ListParamsSt
+	13, // 3: kusec_v1.AppListReq.updated_at_gte:type_name -> google.protobuf.Timestamp
+	13, // 4: kusec_v1.AppListReq.updated_at_lt:type_name -> google.protobuf.Timestamp
+	15, // 5: kusec_v1.AppListRep.pagination_info:type_name -> kusec_v1.PaginationInfoSt
+	0,  // 6: kusec_v1.AppListRep.results:type_name -> kusec_v1.AppMain
+	0,  // 7: kusec_v1.AppResolveRep.app:type_name -> kusec_v1.AppMain
+	13, // 8: kusec_v1.AppKeySt.updated_at:type_name -> google.protobuf.Timestamp
+	8,  // 9: kusec_v1.AppKeysRep.keys:type_name -> kusec_v1.AppKeySt
+	13, // 10: kusec_v1.AppDriftObjectSt.not_synced_since:type_name -> google.protobuf.Timestamp
+	10, // 11: kusec_v1.AppDriftRep.objects:type_name -> kusec_v1.AppDriftObjectSt
+	1,  // 12: kusec_v1.App.List:input_type -> kusec_v1.AppListReq
+	6,  // 13: kusec_v1.App.Resolve:input_type -> kusec_v1.AppResolveReq
+	3,  // 14: kusec_v1.App.Get:input_type -> kusec_v1.AppGetReq
+	3,  // 15: kusec_v1.App.Keys:input_type -> kusec_v1.AppGetReq
+	3,  // 16: kusec_v1.App.Drift:input_type -> kusec_v1.AppGetReq
+	4,  // 17: kusec_v1.App.Create:input_type -> kusec_v1.AppCreateReq
+	12, // 18: kusec_v1.App.Update:input_type -> kusec_v1.AppUpdateReq
+	3,  // 19: kusec_v1.App.Delete:input_type -> kusec_v1.AppGetReq
+	2,  // 20: kusec_v1.App.List:output_type -> kusec_v1.AppListRep
+	7,  // 21: kusec_v1.App.Resolve:output_type -> kusec_v1.AppResolveRep
+	0,  // 22: kusec_v1.App.Get:output_type -> kusec_v1.AppMain
+	9,  // 23: kusec_v1.App.Keys:output_type -> kusec_v1.AppKeysRep
+	11, // 24: kusec_v1.App.Drift:output_type -> kusec_v1.AppDriftRep
+	5,  // 25: kusec_v1.App.Create:output_type -> kusec_v1.AppCreateRep
+	16, // 26: kusec_v1.App.Update:output_type -> google.protobuf.Empty
+	16, // 27: kusec_v1.App.Delete:output_type -> google.protobuf.Empty
+	20, // [20:28] is the sub-list for method output_type
+	12, // [12:20] is the sub-list for method input_type
+	12, // [12:12] is the sub-list for extension type_name
+	12, // [12:12] is the sub-list for extension extendee
+	0,  // [0:12] is the sub-list for field type_name
 }
 
 func init() { file_kusec_v1_app_proto_init() }
@@ -612,14 +1192,15 @@ func file_kusec_v1_app_proto_init() {
 	file_kusec_v1_common_proto_init()
 	file_kusec_v1_app_proto_msgTypes[1].OneofWrappers = []any{}
 	file_kusec_v1_app_proto_msgTypes[4].OneofWrappers = []any{}
-	file_kusec_v1_app_proto_msgTypes[6].OneofWrappers = []any{}
+	file_kusec_v1_app_proto_msgTypes[10].OneofWrappers = []any{}
+	file_kusec_v1_app_proto_msgTypes[12].OneofWrappers = []any{}
 	type x struct{}
 	out := protoimpl.TypeBuilder{
 		File: protoimpl.DescBuilder{
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_kusec_v1_app_proto_rawDesc), len(file_kusec_v1_app_proto_rawDesc)),
 			NumEnums:      0,
-			NumMessages:   7,
+			NumMessages:   13,
 			NumExtensions: 0,
 			NumServices:   1,
 		},
