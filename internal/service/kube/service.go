@@ -40,6 +40,8 @@ type Service struct {
 	itemSvc       ItemServiceI
 	configMapSvc  ConfigMapServiceI
 	configItemSvc ConfigItemServiceI
+	txm           TransactionManagerI
+	auditRec      AuditRecorderI
 
 	mu sync.Mutex // один sync одновременно
 
@@ -53,6 +55,8 @@ func New(
 	itemSvc ItemServiceI,
 	configMapSvc ConfigMapServiceI,
 	configItemSvc ConfigItemServiceI,
+	txm TransactionManagerI,
+	auditRec AuditRecorderI,
 ) *Service {
 	return &Service{
 		appSvc:        appSvc,
@@ -60,6 +64,8 @@ func New(
 		itemSvc:       itemSvc,
 		configMapSvc:  configMapSvc,
 		configItemSvc: configItemSvc,
+		txm:           txm,
+		auditRec:      auditRec,
 	}
 }
 

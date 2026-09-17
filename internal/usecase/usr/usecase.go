@@ -22,13 +22,42 @@ const (
 type Usecase struct {
 	svc        ServiceI
 	sessionSvc SessionServiceI
+	txm        TransactionManagerI
+	auditRec   AuditRecorderI
 }
 
-func New(svc ServiceI, sessionSvc SessionServiceI) *Usecase {
+func New(svc ServiceI, sessionSvc SessionServiceI, txm TransactionManagerI, auditRec AuditRecorderI) *Usecase {
 	return &Usecase{
 		svc:        svc,
 		sessionSvc: sessionSvc,
+		txm:        txm,
+		auditRec:   auditRec,
 	}
+}
+
+// auditUsrMutation выполняет мутацию пользователя в транзакции с записью
+// аудита: старое/новое состояние читаются вокруг мутации, пустой дифф
+// (например, привязка TOTP-секрета до подтверждения) не пишется.
+func (u *Usecase) auditUsrMutation(ctx context.Context, id int64, mutate func(ctx context.Context) error) error {
+	return u.txm.TxFn(ctx, func(ctx context.Context) error {
+		old, _, err := u.svc.Get(ctx, id, false)
+		if err != nil {
+			return fmt.Errorf("svc.Get: %w", err)
+		}
+
+		if err = mutate(ctx); err != nil {
+			return err
+		}
+
+		cur, _, err := u.svc.Get(ctx, id, false)
+		if err != nil {
+			return fmt.Errorf("svc.Get: %w", err)
+		}
+		if err = u.auditRec.RecordUsr(ctx, old, cur, nil); err != nil {
+			return fmt.Errorf("auditRec.RecordUsr: %w", err)
+		}
+		return nil
+	})
 }
 
 func (u *Usecase) issueTokenPair(item *model.Main) (string, string, error) {
@@ -126,9 +155,15 @@ func (u *Usecase) ConfirmTotp(ctx context.Context, setupToken, code string) (*Lo
 	if err != nil {
 		return nil, err
 	}
-	item, err := u.svc.ConfirmTotp(ctx, usrId, code)
+	var item *model.Main
+	err = u.auditUsrMutation(ctx, usrId, func(ctx context.Context) error {
+		if item, err = u.svc.ConfirmTotp(ctx, usrId, code); err != nil {
+			return fmt.Errorf("svc.ConfirmTotp: %w", err)
+		}
+		return nil
+	})
 	if err != nil {
-		return nil, fmt.Errorf("svc.ConfirmTotp: %w", err)
+		return nil, err
 	}
 	return u.issueLoginResult(item)
 }
@@ -139,10 +174,12 @@ func (u *Usecase) DisableTotp(ctx context.Context, code string) error {
 		return errs.NotAuthorized
 	}
 	session := u.sessionSvc.FromContext(ctx)
-	if err := u.svc.DisableTotp(ctx, session.Id, code); err != nil {
-		return fmt.Errorf("svc.DisableTotp: %w", err)
-	}
-	return nil
+	return u.auditUsrMutation(ctx, session.Id, func(ctx context.Context) error {
+		if err := u.svc.DisableTotp(ctx, session.Id, code); err != nil {
+			return fmt.Errorf("svc.DisableTotp: %w", err)
+		}
+		return nil
+	})
 }
 
 // ResetTotp принудительно сбрасывает 2FA пользователю (только админ).
@@ -153,10 +190,12 @@ func (u *Usecase) ResetTotp(ctx context.Context, id int64) error {
 	if id == 0 {
 		return errs.IdRequired
 	}
-	if err := u.svc.ResetTotp(ctx, id); err != nil {
-		return fmt.Errorf("svc.ResetTotp: %w", err)
-	}
-	return nil
+	return u.auditUsrMutation(ctx, id, func(ctx context.Context) error {
+		if err := u.svc.ResetTotp(ctx, id); err != nil {
+			return fmt.Errorf("svc.ResetTotp: %w", err)
+		}
+		return nil
+	})
 }
 
 // RefreshToken обменивает валидный refresh-токен на новую пару токенов
@@ -243,11 +282,12 @@ func (u *Usecase) UpdateProfile(ctx context.Context, req *UpdateProfileReq) erro
 		return err
 	}
 
-	if err = u.svc.Update(ctx, session.Id, edit); err != nil {
-		return fmt.Errorf("svc.Update: %w", err)
-	}
-
-	return nil
+	return u.auditUsrMutation(ctx, session.Id, func(ctx context.Context) error {
+		if err = u.svc.Update(ctx, session.Id, edit); err != nil {
+			return fmt.Errorf("svc.Update: %w", err)
+		}
+		return nil
+	})
 }
 
 func (u *Usecase) List(ctx context.Context, pars *model.ListReq) ([]*model.Main, int64, error) {
@@ -312,9 +352,25 @@ func (u *Usecase) Create(ctx context.Context, obj *model.Edit) (int64, error) {
 		return 0, err
 	}
 
-	newId, err := u.svc.Create(ctx, obj)
+	var newId int64
+	err := u.txm.TxFn(ctx, func(ctx context.Context) error {
+		var err error
+		newId, err = u.svc.Create(ctx, obj)
+		if err != nil {
+			return fmt.Errorf("svc.Create: %w", err)
+		}
+
+		created, _, err := u.svc.Get(ctx, newId, true)
+		if err != nil {
+			return fmt.Errorf("svc.Get: %w", err)
+		}
+		if err = u.auditRec.RecordUsr(ctx, nil, created, nil); err != nil {
+			return fmt.Errorf("auditRec.RecordUsr: %w", err)
+		}
+		return nil
+	})
 	if err != nil {
-		return 0, fmt.Errorf("svc.Create: %w", err)
+		return 0, err
 	}
 
 	return newId, nil
@@ -336,11 +392,12 @@ func (u *Usecase) Update(ctx context.Context, id int64, obj *model.Edit) error {
 		obj.AppIds = []string{}
 	}
 
-	if err := u.svc.Update(ctx, id, obj); err != nil {
-		return fmt.Errorf("svc.Update: %w", err)
-	}
-
-	return nil
+	return u.auditUsrMutation(ctx, id, func(ctx context.Context) error {
+		if err := u.svc.Update(ctx, id, obj); err != nil {
+			return fmt.Errorf("svc.Update: %w", err)
+		}
+		return nil
+	})
 }
 
 func (u *Usecase) Delete(ctx context.Context, id int64) error {
@@ -351,11 +408,20 @@ func (u *Usecase) Delete(ctx context.Context, id int64) error {
 		return errs.IdRequired
 	}
 
-	if err := u.svc.Delete(ctx, id); err != nil {
-		return fmt.Errorf("svc.Delete: %w", err)
-	}
+	return u.txm.TxFn(ctx, func(ctx context.Context) error {
+		old, _, err := u.svc.Get(ctx, id, true)
+		if err != nil {
+			return fmt.Errorf("svc.Get: %w", err)
+		}
 
-	return nil
+		if err = u.svc.Delete(ctx, id); err != nil {
+			return fmt.Errorf("svc.Delete: %w", err)
+		}
+		if err = u.auditRec.RecordUsr(ctx, old, nil, nil); err != nil {
+			return fmt.Errorf("auditRec.RecordUsr: %w", err)
+		}
+		return nil
+	})
 }
 
 func (u *Usecase) validateEdit(obj *model.Edit, forCreate bool) error {

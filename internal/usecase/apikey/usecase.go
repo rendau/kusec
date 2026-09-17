@@ -24,16 +24,26 @@ type Usecase struct {
 	svc        ServiceI
 	usrSvc     UsrServiceI
 	sessionSvc SessionServiceI
+	txm        TransactionManagerI
+	auditRec   AuditRecorderI
 
 	touchMu   sync.Mutex
 	lastTouch map[string]time.Time
 }
 
-func New(svc ServiceI, usrSvc UsrServiceI, sessionSvc SessionServiceI) *Usecase {
+func New(
+	svc ServiceI,
+	usrSvc UsrServiceI,
+	sessionSvc SessionServiceI,
+	txm TransactionManagerI,
+	auditRec AuditRecorderI,
+) *Usecase {
 	return &Usecase{
 		svc:        svc,
 		usrSvc:     usrSvc,
 		sessionSvc: sessionSvc,
+		txm:        txm,
+		auditRec:   auditRec,
 		lastTouch:  map[string]time.Time{},
 	}
 }
@@ -97,16 +107,31 @@ func (u *Usecase) Create(ctx context.Context, name string, usrId *int64, mcpOnly
 		return "", "", fmt.Errorf("apikeyService.GenerateKey: %w", err)
 	}
 
-	newId, err := u.svc.Create(ctx, &model.Edit{
-		UsrId:     &targetUsrId,
-		Active:    new(true),
-		McpOnly:   &mcpOnly,
-		Name:      &name,
-		KeyHash:   &hash,
-		KeyPrefix: &prefix,
+	var newId string
+	err = u.txm.TxFn(ctx, func(ctx context.Context) error {
+		newId, err = u.svc.Create(ctx, &model.Edit{
+			UsrId:     &targetUsrId,
+			Active:    new(true),
+			McpOnly:   &mcpOnly,
+			Name:      &name,
+			KeyHash:   &hash,
+			KeyPrefix: &prefix,
+		})
+		if err != nil {
+			return fmt.Errorf("svc.Create: %w", err)
+		}
+
+		created, _, err := u.svc.Get(ctx, newId, true)
+		if err != nil {
+			return fmt.Errorf("svc.Get: %w", err)
+		}
+		if err = u.auditRec.RecordApiKey(ctx, nil, created, nil); err != nil {
+			return fmt.Errorf("auditRec.RecordApiKey: %w", err)
+		}
+		return nil
 	})
 	if err != nil {
-		return "", "", fmt.Errorf("svc.Create: %w", err)
+		return "", "", err
 	}
 
 	return newId, key, nil
@@ -123,26 +148,42 @@ func (u *Usecase) Update(ctx context.Context, id string, active *bool, name *str
 		return errs.NoPermission
 	}
 
-	err = u.svc.Update(ctx, id, &model.Edit{
-		Active:  active,
-		McpOnly: mcpOnly,
-		Name:    name,
+	return u.txm.TxFn(ctx, func(ctx context.Context) error {
+		err = u.svc.Update(ctx, id, &model.Edit{
+			Active:  active,
+			McpOnly: mcpOnly,
+			Name:    name,
+		})
+		if err != nil {
+			return fmt.Errorf("svc.Update: %w", err)
+		}
+
+		updated, _, err := u.svc.Get(ctx, id, true)
+		if err != nil {
+			return fmt.Errorf("svc.Get: %w", err)
+		}
+		if err = u.auditRec.RecordApiKey(ctx, item, updated, nil); err != nil {
+			return fmt.Errorf("auditRec.RecordApiKey: %w", err)
+		}
+		return nil
 	})
-	if err != nil {
-		return fmt.Errorf("svc.Update: %w", err)
-	}
-	return nil
 }
 
 func (u *Usecase) Delete(ctx context.Context, id string) error {
-	if _, err := u.requireOwnership(ctx, id); err != nil {
+	item, err := u.requireOwnership(ctx, id)
+	if err != nil {
 		return err
 	}
 
-	if err := u.svc.Delete(ctx, id); err != nil {
-		return fmt.Errorf("svc.Delete: %w", err)
-	}
-	return nil
+	return u.txm.TxFn(ctx, func(ctx context.Context) error {
+		if err := u.svc.Delete(ctx, id); err != nil {
+			return fmt.Errorf("svc.Delete: %w", err)
+		}
+		if err := u.auditRec.RecordApiKey(ctx, item, nil, nil); err != nil {
+			return fmt.Errorf("auditRec.RecordApiKey: %w", err)
+		}
+		return nil
+	})
 }
 
 // requireOwnership: не-админ управляет только своими ключами.

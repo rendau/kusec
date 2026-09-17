@@ -27,3 +27,11 @@ type SessionServiceI interface {
 	CtxIsAuthorized(ctx context.Context) bool
 	CtxIsAdmin(ctx context.Context) bool
 }
+
+type TransactionManagerI interface {
+	TxFn(ctx context.Context, f func(context.Context) error) error
+}
+
+type AuditRecorderI interface {
+	RecordApiKey(ctx context.Context, old, cur *model.Main, batchId *string) error
+}

@@ -15,6 +15,7 @@ import (
 
 	"github.com/grpc-ecosystem/grpc-gateway/v2/runtime"
 	"github.com/jackc/pgx/v5/pgxpool"
+	"github.com/rendau/mobone/v2"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials/insecure"
 
@@ -25,6 +26,8 @@ import (
 	apikeyService "github.com/rendau/kusec/internal/domain/apikey/service"
 	appDb "github.com/rendau/kusec/internal/domain/app/repo/db"
 	appService "github.com/rendau/kusec/internal/domain/app/service"
+	auditDb "github.com/rendau/kusec/internal/domain/audit/repo/db"
+	auditService "github.com/rendau/kusec/internal/domain/audit/service"
 	configitemDb "github.com/rendau/kusec/internal/domain/configitem/repo/db"
 	configitemService "github.com/rendau/kusec/internal/domain/configitem/service"
 	configmapDb "github.com/rendau/kusec/internal/domain/configmap/repo/db"
@@ -34,12 +37,15 @@ import (
 	secretDb "github.com/rendau/kusec/internal/domain/secret/repo/db"
 	secretService "github.com/rendau/kusec/internal/domain/secret/service"
 	sessionService "github.com/rendau/kusec/internal/domain/session/service"
+	syncrunDb "github.com/rendau/kusec/internal/domain/syncrun/repo/db"
+	syncrunService "github.com/rendau/kusec/internal/domain/syncrun/service"
 	usrDb "github.com/rendau/kusec/internal/domain/usr/repo/db"
 	usrService "github.com/rendau/kusec/internal/domain/usr/service"
 
 	grpcHandler "github.com/rendau/kusec/internal/handler/grpc"
 	mcpHandler "github.com/rendau/kusec/internal/handler/mcp"
 
+	auditRecorder "github.com/rendau/kusec/internal/service/audit"
 	kubeService "github.com/rendau/kusec/internal/service/kube"
 
 	apikeyUsc "github.com/rendau/kusec/internal/usecase/apikey"
@@ -110,6 +116,10 @@ func (a *App) Init() {
 	// session service (stateless HS256 JWT)
 	sessionSvc := sessionService.New(config.Conf.JWTSecret)
 
+	// transaction manager: общий для usecase-слоя (repo-слой участвует в
+	// транзакции через свой Base.TxM — контекстный ключ у mobone общий)
+	txm := mobone.NewTransactionManager(a.pgpool)
+
 	// dependency graph
 	usrSvc := usrService.New(usrDb.New(a.pgpool))
 	a.usrSvc = usrSvc
@@ -119,23 +129,33 @@ func (a *App) Init() {
 	configMapSvc := configmapService.New(configmapDb.New(a.pgpool))
 	configItemSvc := configitemService.New(configitemDb.New(a.pgpool))
 	apikeySvc := apikeyService.New(apikeyDb.New(a.pgpool))
+	auditSvc := auditService.New(auditDb.New(a.pgpool))
+	syncRunSvc := syncrunService.New(syncrunDb.New(a.pgpool))
+	_ = syncRunSvc // подключается к kube-сервису журналом sync
+
+	// регистратор аудита: пишется usecase-ами внутри транзакции мутации
+	auditRec := auditRecorder.New(auditSvc, usrSvc, appSvc, secretSvc, configMapSvc, sessionSvc, config.Conf.AuditHashKey)
 
 	// api-key usecase используется и хендлером, и session-интерсептором
-	apikeyUsecase := apikeyUsc.New(apikeySvc, usrSvc, sessionSvc)
+	apikeyUsecase := apikeyUsc.New(apikeySvc, usrSvc, sessionSvc, txm, auditRec)
 
-	usrHandler := grpcHandler.NewUsr(usrUsc.New(usrSvc, sessionSvc))
-	appHandler := grpcHandler.NewApp(appUsc.New(appSvc, sessionSvc))
-	secretHandler := grpcHandler.NewSecret(secretUsc.New(secretSvc, appSvc, sessionSvc))
-	itemHandler := grpcHandler.NewItem(itemUsc.New(itemSvc, secretSvc, sessionSvc))
-	configMapHandler := grpcHandler.NewConfigMap(configmapUsc.New(configMapSvc, appSvc, sessionSvc))
-	configItemHandler := grpcHandler.NewConfigItem(configitemUsc.New(configItemSvc, configMapSvc, sessionSvc))
+	usrHandler := grpcHandler.NewUsr(usrUsc.New(usrSvc, sessionSvc, txm, auditRec))
+	appHandler := grpcHandler.NewApp(
+		appUsc.New(appSvc, secretSvc, itemSvc, configMapSvc, configItemSvc, sessionSvc, txm, auditRec),
+	)
+	secretHandler := grpcHandler.NewSecret(secretUsc.New(secretSvc, appSvc, itemSvc, sessionSvc, txm, auditRec))
+	itemHandler := grpcHandler.NewItem(itemUsc.New(itemSvc, secretSvc, sessionSvc, txm, auditRec))
+	configMapHandler := grpcHandler.NewConfigMap(
+		configmapUsc.New(configMapSvc, appSvc, configItemSvc, sessionSvc, txm, auditRec),
+	)
+	configItemHandler := grpcHandler.NewConfigItem(configitemUsc.New(configItemSvc, configMapSvc, sessionSvc, txm, auditRec))
 	dashboardHandler := grpcHandler.NewDashboard(
 		dashboardUsc.New(appSvc, secretSvc, itemSvc, configMapSvc, configItemSvc, usrSvc, sessionSvc),
 	)
 	// kube usecase общий для gRPC и MCP: лок «один sync одновременно» живёт
 	// в kube-сервисе и должен быть один на процесс
 	kubeUsecase := kubeUsc.New(
-		kubeService.New(appSvc, secretSvc, itemSvc, configMapSvc, configItemSvc),
+		kubeService.New(appSvc, secretSvc, itemSvc, configMapSvc, configItemSvc, txm, auditRec),
 		appSvc,
 		secretSvc,
 		configMapSvc,
@@ -238,11 +258,11 @@ func (a *App) Init() {
 		mcpH := mcpHandler.New(
 			sessionSvc,
 			apikeyUsecase,
-			appUsc.New(appSvc, sessionSvc),
-			secretUsc.New(secretSvc, appSvc, sessionSvc),
-			itemUsc.New(itemSvc, secretSvc, sessionSvc),
-			configmapUsc.New(configMapSvc, appSvc, sessionSvc),
-			configitemUsc.New(configItemSvc, configMapSvc, sessionSvc),
+			appUsc.New(appSvc, secretSvc, itemSvc, configMapSvc, configItemSvc, sessionSvc, txm, auditRec),
+			secretUsc.New(secretSvc, appSvc, itemSvc, sessionSvc, txm, auditRec),
+			itemUsc.New(itemSvc, secretSvc, sessionSvc, txm, auditRec),
+			configmapUsc.New(configMapSvc, appSvc, configItemSvc, sessionSvc, txm, auditRec),
+			configitemUsc.New(configItemSvc, configMapSvc, sessionSvc, txm, auditRec),
 			kubeUsecase,
 		)
 

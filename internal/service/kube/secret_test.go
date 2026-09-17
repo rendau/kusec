@@ -18,11 +18,19 @@ import (
 
 type secretSvcStub struct {
 	listFn   func(_ context.Context, req *secretModel.ListReq) ([]*secretModel.Main, int64, error)
+	getFn    func(_ context.Context, id string, errNE bool) (*secretModel.Main, bool, error)
 	createFn func(_ context.Context, obj *secretModel.Edit) (string, error)
 }
 
 func (s secretSvcStub) List(ctx context.Context, req *secretModel.ListReq) ([]*secretModel.Main, int64, error) {
 	return s.listFn(ctx, req)
+}
+
+func (s secretSvcStub) Get(ctx context.Context, id string, errNE bool) (*secretModel.Main, bool, error) {
+	if s.getFn != nil {
+		return s.getFn(ctx, id, errNE)
+	}
+	return &secretModel.Main{Id: id}, true, nil
 }
 
 func (s secretSvcStub) Create(ctx context.Context, obj *secretModel.Edit) (string, error) {
@@ -31,12 +39,20 @@ func (s secretSvcStub) Create(ctx context.Context, obj *secretModel.Edit) (strin
 
 type itemSvcStub struct {
 	listFn   func(_ context.Context, req *itemModel.ListReq) ([]*itemModel.Main, int64, error)
+	getFn    func(_ context.Context, id string, errNE bool) (*itemModel.Main, bool, error)
 	createFn func(_ context.Context, obj *itemModel.Edit) (string, error)
 	updateFn func(_ context.Context, id string, obj *itemModel.Edit) error
 }
 
 func (s itemSvcStub) List(ctx context.Context, req *itemModel.ListReq) ([]*itemModel.Main, int64, error) {
 	return s.listFn(ctx, req)
+}
+
+func (s itemSvcStub) Get(ctx context.Context, id string, errNE bool) (*itemModel.Main, bool, error) {
+	if s.getFn != nil {
+		return s.getFn(ctx, id, errNE)
+	}
+	return &itemModel.Main{Id: id}, true, nil
 }
 
 func (s itemSvcStub) Create(ctx context.Context, obj *itemModel.Edit) (string, error) {
@@ -46,6 +62,28 @@ func (s itemSvcStub) Create(ctx context.Context, obj *itemModel.Edit) (string, e
 func (s itemSvcStub) Update(ctx context.Context, id string, obj *itemModel.Edit) error {
 	return s.updateFn(ctx, id, obj)
 }
+
+// txmStub выполняет функцию транзакции без реальной транзакции.
+type txmStub struct{}
+
+func (txmStub) TxFn(ctx context.Context, f func(context.Context) error) error {
+	return f(ctx)
+}
+
+// auditRecStub — no-op регистратор аудита.
+type auditRecStub struct{}
+
+func (auditRecStub) NewBatchId() string { return "batch-test" }
+
+func (auditRecStub) RecordSecret(context.Context, *secretModel.Main, *secretModel.Main, string, *string) error {
+	return nil
+}
+
+func (auditRecStub) RecordItem(context.Context, *itemModel.Main, *itemModel.Main, string, *string) error {
+	return nil
+}
+
+func (auditRecStub) RecordSyncRun(context.Context, string, *string) error { return nil }
 
 func TestBuildSecretData_OK(t *testing.T) {
 	t.Parallel()

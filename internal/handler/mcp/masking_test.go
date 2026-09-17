@@ -101,6 +101,8 @@ func TestMaskingE2E(t *testing.T) {
 			10: {Id: 10, Active: true, AppIds: []string{"app1"}},
 		}},
 		nil,
+		txmStub{},
+		auditRecStub{},
 	)
 	itemUsecase := itemUsc.New(
 		&itemSvcMock{items: map[string]*itemModel.Main{
@@ -110,6 +112,8 @@ func TestMaskingE2E(t *testing.T) {
 			"sec1": {Id: "sec1", AppId: "app1", Active: true, SlugName: "db"},
 		}},
 		sessionSvc,
+		txmStub{},
+		auditRecStub{},
 	)
 
 	h := New(sessionSvc, apikeyUsecase, nil, nil, itemUsecase, nil, nil, nil)

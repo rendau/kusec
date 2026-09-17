@@ -43,6 +43,23 @@ func (m *svcMock) GetByKeyHash(_ context.Context, keyHash string) (*model.Main, 
 
 func (m *svcMock) Create(_ context.Context, obj *model.Edit) (string, error) {
 	m.created = append(m.created, obj)
+	if m.byId == nil {
+		m.byId = map[string]*model.Main{}
+	}
+	created := &model.Main{Id: "new-id"}
+	if obj.UsrId != nil {
+		created.UsrId = *obj.UsrId
+	}
+	if obj.Active != nil {
+		created.Active = *obj.Active
+	}
+	if obj.McpOnly != nil {
+		created.McpOnly = *obj.McpOnly
+	}
+	if obj.Name != nil {
+		created.Name = *obj.Name
+	}
+	m.byId["new-id"] = created
 	return "new-id", nil
 }
 
@@ -78,6 +95,20 @@ func (m *sessionSvcMock) FromContext(_ context.Context) *sessionModel.Session { 
 func (m *sessionSvcMock) CtxIsAuthorized(_ context.Context) bool              { return m.session.IsAuthorized() }
 func (m *sessionSvcMock) CtxIsAdmin(_ context.Context) bool                   { return m.session.IsAdmin() }
 
+// txmStub выполняет функцию транзакции без реальной транзакции.
+type txmStub struct{}
+
+func (txmStub) TxFn(ctx context.Context, f func(context.Context) error) error {
+	return f(ctx)
+}
+
+// auditRecStub — no-op регистратор аудита.
+type auditRecStub struct{}
+
+func (auditRecStub) RecordApiKey(context.Context, *model.Main, *model.Main, *string) error {
+	return nil
+}
+
 // ── Тесты ───────────────────────────────────────────────
 
 func TestSessionFromKey(t *testing.T) {
@@ -102,7 +133,7 @@ func TestSessionFromKey(t *testing.T) {
 		10: {Id: 10, Active: true, IsAdmin: false, AppIds: []string{"app1"}},
 	}}
 
-	u := New(svc, usrSvc, &sessionSvcMock{})
+	u := New(svc, usrSvc, &sessionSvcMock{}, txmStub{}, auditRecStub{})
 
 	// валидный ключ активного пользователя
 	session, err := u.SessionFromKey(context.Background(), activeKey)
@@ -158,7 +189,7 @@ func TestCreate_Permissions(t *testing.T) {
 
 	// не-админ создаёт ключ себе
 	svc := &svcMock{}
-	u := New(svc, usrSvc, &sessionSvcMock{session: &sessionModel.Session{Id: 10}})
+	u := New(svc, usrSvc, &sessionSvcMock{session: &sessionModel.Session{Id: 10}}, txmStub{}, auditRecStub{})
 
 	id, key, err := u.Create(context.Background(), "мой ключ", nil, true)
 	require.NoError(t, err)
@@ -179,14 +210,14 @@ func TestCreate_Permissions(t *testing.T) {
 	assert.ErrorIs(t, err, errs.NoPermission)
 
 	// админ — может
-	uAdmin := New(svc, usrSvc, &sessionSvcMock{session: &sessionModel.Session{Id: 1, Admin: true}})
+	uAdmin := New(svc, usrSvc, &sessionSvcMock{session: &sessionModel.Session{Id: 1, Admin: true}}, txmStub{}, auditRecStub{})
 	_, _, err = uAdmin.Create(context.Background(), "для сервисного", new(int64(20)), false)
 	require.NoError(t, err)
 	assert.Equal(t, int64(20), *svc.created[len(svc.created)-1].UsrId)
 	assert.False(t, *svc.created[len(svc.created)-1].McpOnly)
 
 	// неавторизованный
-	uAnon := New(svc, usrSvc, &sessionSvcMock{})
+	uAnon := New(svc, usrSvc, &sessionSvcMock{}, txmStub{}, auditRecStub{})
 	_, _, err = uAnon.Create(context.Background(), "x", nil, false)
 	assert.ErrorIs(t, err, errs.NotAuthorized)
 }
@@ -207,7 +238,7 @@ func TestUpdate_McpOnlyPermissions(t *testing.T) {
 
 	// не-админ не может снять mcp_only со своего ключа
 	svc := newSvc()
-	u := New(svc, usrSvc, &sessionSvcMock{session: &sessionModel.Session{Id: 10}})
+	u := New(svc, usrSvc, &sessionSvcMock{session: &sessionModel.Session{Id: 10}}, txmStub{}, auditRecStub{})
 	err := u.Update(context.Background(), "k-mcp", nil, nil, new(false))
 	assert.ErrorIs(t, err, errs.NoPermission)
 	assert.Empty(t, svc.updated)
@@ -223,7 +254,7 @@ func TestUpdate_McpOnlyPermissions(t *testing.T) {
 
 	// админ снимает mcp_only свободно
 	svcAdmin := newSvc()
-	uAdmin := New(svcAdmin, usrSvc, &sessionSvcMock{session: &sessionModel.Session{Id: 1, Admin: true}})
+	uAdmin := New(svcAdmin, usrSvc, &sessionSvcMock{session: &sessionModel.Session{Id: 1, Admin: true}}, txmStub{}, auditRecStub{})
 	err = uAdmin.Update(context.Background(), "k-mcp", nil, nil, new(false))
 	require.NoError(t, err)
 	require.Len(t, svcAdmin.updated, 1)

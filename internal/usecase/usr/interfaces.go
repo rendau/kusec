@@ -23,6 +23,14 @@ type ServiceI interface {
 	ResetTotp(ctx context.Context, usrId int64) error
 }
 
+type TransactionManagerI interface {
+	TxFn(ctx context.Context, f func(context.Context) error) error
+}
+
+type AuditRecorderI interface {
+	RecordUsr(ctx context.Context, old, cur *model.Main, batchId *string) error
+}
+
 type SessionServiceI interface {
 	FromContext(ctx context.Context) *sessionModel.Session
 	CtxIsAuthorized(ctx context.Context) bool

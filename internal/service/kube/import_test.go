@@ -99,7 +99,9 @@ func TestImportSecret_CreatesSecretItemsInTargetApp(t *testing.T) {
 	createdItems := map[string]string{} // key -> encoding
 
 	svc := &Service{
-		client: client,
+		client:   client,
+		txm:      txmStub{},
+		auditRec: auditRecStub{},
 		appSvc: appSvcStub{
 			getFn: func(_ context.Context, id string, _ bool) (*appModel.Main, bool, error) {
 				if id != "app-1" {
@@ -168,7 +170,9 @@ func TestImportSecret_TopsUpAndOverrides(t *testing.T) {
 	updatedItems := map[string]string{} // id -> value
 
 	svc := &Service{
-		client: client,
+		client:   client,
+		txm:      txmStub{},
+		auditRec: auditRecStub{},
 		appSvc: appSvcStub{
 			getFn: func(_ context.Context, _ string, _ bool) (*appModel.Main, bool, error) {
 				return &appModel.Main{Id: "app-1", Namespace: "web", SlugName: "web"}, true, nil

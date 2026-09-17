@@ -12,6 +12,7 @@ import (
 
 	apikeyModel "github.com/rendau/kusec/internal/domain/apikey/model"
 	apikeyService "github.com/rendau/kusec/internal/domain/apikey/service"
+	itemModel "github.com/rendau/kusec/internal/domain/item/model"
 	sessionModel "github.com/rendau/kusec/internal/domain/session/model"
 	sessionService "github.com/rendau/kusec/internal/domain/session/service"
 	usrModel "github.com/rendau/kusec/internal/domain/usr/model"
@@ -58,6 +59,25 @@ func (m *usrSvcMock) Get(_ context.Context, id int64, errNE bool) (*usrModel.Mai
 	return usr, ok, nil
 }
 
+// txmStub выполняет функцию транзакции без реальной транзакции
+// (удовлетворяет TransactionManagerI всех usecase-пакетов).
+type txmStub struct{}
+
+func (txmStub) TxFn(ctx context.Context, f func(context.Context) error) error {
+	return f(ctx)
+}
+
+// auditRecStub — no-op регистратор аудита для usecase-моков.
+type auditRecStub struct{}
+
+func (auditRecStub) RecordApiKey(context.Context, *apikeyModel.Main, *apikeyModel.Main, *string) error {
+	return nil
+}
+
+func (auditRecStub) RecordItem(context.Context, *itemModel.Main, *itemModel.Main, string, *string) error {
+	return nil
+}
+
 // ── Тесты ───────────────────────────────────────────────
 
 func TestAuthMiddleware(t *testing.T) {
@@ -75,6 +95,8 @@ func TestAuthMiddleware(t *testing.T) {
 			10: {Id: 10, Active: true, AppIds: []string{"app1"}},
 		}},
 		nil,
+		txmStub{},
+		auditRecStub{},
 	)
 
 	h := New(sessionSvc, apikeyUsecase, nil, nil, nil, nil, nil, nil)

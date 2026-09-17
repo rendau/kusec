@@ -14,13 +14,23 @@ type Usecase struct {
 	svc        ServiceI
 	secretSvc  SecretServiceI
 	sessionSvc SessionServiceI
+	txm        TransactionManagerI
+	auditRec   AuditRecorderI
 }
 
-func New(svc ServiceI, secretSvc SecretServiceI, sessionSvc SessionServiceI) *Usecase {
+func New(
+	svc ServiceI,
+	secretSvc SecretServiceI,
+	sessionSvc SessionServiceI,
+	txm TransactionManagerI,
+	auditRec AuditRecorderI,
+) *Usecase {
 	return &Usecase{
 		svc:        svc,
 		secretSvc:  secretSvc,
 		sessionSvc: sessionSvc,
+		txm:        txm,
+		auditRec:   auditRec,
 	}
 }
 
@@ -149,9 +159,26 @@ func (u *Usecase) Create(ctx context.Context, obj *model.Edit) (string, error) {
 	if err := u.requireSecretAccess(ctx, *obj.SecretId); err != nil {
 		return "", err
 	}
-	newId, err := u.svc.Create(ctx, obj)
+
+	var newId string
+	err := u.txm.TxFn(ctx, func(ctx context.Context) error {
+		var err error
+		newId, err = u.svc.Create(ctx, obj)
+		if err != nil {
+			return fmt.Errorf("svc.Create: %w", err)
+		}
+
+		created, _, err := u.svc.Get(ctx, newId, true)
+		if err != nil {
+			return fmt.Errorf("svc.Get: %w", err)
+		}
+		if err = u.auditRec.RecordItem(ctx, nil, created, "", nil); err != nil {
+			return fmt.Errorf("auditRec.RecordItem: %w", err)
+		}
+		return nil
+	})
 	if err != nil {
-		return "", fmt.Errorf("svc.Create: %w", err)
+		return "", err
 	}
 	return newId, nil
 }
@@ -180,10 +207,20 @@ func (u *Usecase) Update(ctx context.Context, id string, obj *model.Edit) error 
 		}
 	}
 
-	if err = u.svc.Update(ctx, id, obj); err != nil {
-		return fmt.Errorf("svc.Update: %w", err)
-	}
-	return nil
+	return u.txm.TxFn(ctx, func(ctx context.Context) error {
+		if err = u.svc.Update(ctx, id, obj); err != nil {
+			return fmt.Errorf("svc.Update: %w", err)
+		}
+
+		updated, _, err := u.svc.Get(ctx, id, true)
+		if err != nil {
+			return fmt.Errorf("svc.Get: %w", err)
+		}
+		if err = u.auditRec.RecordItem(ctx, current, updated, "", nil); err != nil {
+			return fmt.Errorf("auditRec.RecordItem: %w", err)
+		}
+		return nil
+	})
 }
 
 func (u *Usecase) Delete(ctx context.Context, id string) error {
@@ -202,8 +239,14 @@ func (u *Usecase) Delete(ctx context.Context, id string) error {
 		return err
 	}
 
-	if err = u.svc.Delete(ctx, id); err != nil {
-		return fmt.Errorf("svc.Delete: %w", err)
-	}
-	return nil
+	return u.txm.TxFn(ctx, func(ctx context.Context) error {
+		// запись аудита — до удаления, пока резолвится контекст secret/app
+		if err = u.auditRec.RecordItem(ctx, current, nil, "", nil); err != nil {
+			return fmt.Errorf("auditRec.RecordItem: %w", err)
+		}
+		if err = u.svc.Delete(ctx, id); err != nil {
+			return fmt.Errorf("svc.Delete: %w", err)
+		}
+		return nil
+	})
 }

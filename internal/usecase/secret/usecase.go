@@ -7,6 +7,7 @@ import (
 	"github.com/samber/lo"
 
 	appModel "github.com/rendau/kusec/internal/domain/app/model"
+	itemModel "github.com/rendau/kusec/internal/domain/item/model"
 	"github.com/rendau/kusec/internal/domain/secret/model"
 	"github.com/rendau/kusec/internal/errs"
 	"github.com/rendau/kusec/internal/service/kube"
@@ -16,14 +17,27 @@ import (
 type Usecase struct {
 	svc        ServiceI
 	appSvc     AppServiceI
+	itemSvc    ItemServiceI
 	sessionSvc SessionServiceI
+	txm        TransactionManagerI
+	auditRec   AuditRecorderI
 }
 
-func New(svc ServiceI, appSvc AppServiceI, sessionSvc SessionServiceI) *Usecase {
+func New(
+	svc ServiceI,
+	appSvc AppServiceI,
+	itemSvc ItemServiceI,
+	sessionSvc SessionServiceI,
+	txm TransactionManagerI,
+	auditRec AuditRecorderI,
+) *Usecase {
 	return &Usecase{
 		svc:        svc,
 		appSvc:     appSvc,
+		itemSvc:    itemSvc,
 		sessionSvc: sessionSvc,
+		txm:        txm,
+		auditRec:   auditRec,
 	}
 }
 
@@ -145,9 +159,25 @@ func (u *Usecase) Create(ctx context.Context, obj *model.Edit) (string, error) {
 	if obj.ExactSlug != nil && *obj.ExactSlug && !u.sessionSvc.CtxIsAdmin(ctx) {
 		return "", errs.NoPermission
 	}
-	newId, err := u.svc.Create(ctx, obj)
+	var newId string
+	err := u.txm.TxFn(ctx, func(ctx context.Context) error {
+		var err error
+		newId, err = u.svc.Create(ctx, obj)
+		if err != nil {
+			return fmt.Errorf("svc.Create: %w", err)
+		}
+
+		created, _, err := u.svc.Get(ctx, newId, true)
+		if err != nil {
+			return fmt.Errorf("svc.Get: %w", err)
+		}
+		if err = u.auditRec.RecordSecret(ctx, nil, created, "", nil); err != nil {
+			return fmt.Errorf("auditRec.RecordSecret: %w", err)
+		}
+		return nil
+	})
 	if err != nil {
-		return "", fmt.Errorf("svc.Create: %w", err)
+		return "", err
 	}
 	return newId, nil
 }
@@ -180,12 +210,24 @@ func (u *Usecase) Update(ctx context.Context, id string, obj *model.Edit) error 
 		return errs.NoPermission
 	}
 
-	if err = u.svc.Update(ctx, id, obj); err != nil {
-		return fmt.Errorf("svc.Update: %w", err)
-	}
-	return nil
+	return u.txm.TxFn(ctx, func(ctx context.Context) error {
+		if err = u.svc.Update(ctx, id, obj); err != nil {
+			return fmt.Errorf("svc.Update: %w", err)
+		}
+
+		updated, _, err := u.svc.Get(ctx, id, true)
+		if err != nil {
+			return fmt.Errorf("svc.Get: %w", err)
+		}
+		if err = u.auditRec.RecordSecret(ctx, current, updated, "", nil); err != nil {
+			return fmt.Errorf("auditRec.RecordSecret: %w", err)
+		}
+		return nil
+	})
 }
 
+// Delete удаляет secret; item-ы удаляет каскад FK, записи аудита на каждый
+// item пишутся здесь явно (общий batch_id) — до удаления.
 func (u *Usecase) Delete(ctx context.Context, id string) error {
 	if !u.sessionSvc.CtxIsAuthorized(ctx) {
 		return errs.NotAuthorized
@@ -202,8 +244,25 @@ func (u *Usecase) Delete(ctx context.Context, id string) error {
 		return err
 	}
 
-	if err = u.svc.Delete(ctx, id); err != nil {
-		return fmt.Errorf("svc.Delete: %w", err)
-	}
-	return nil
+	return u.txm.TxFn(ctx, func(ctx context.Context) error {
+		batchId := new(u.auditRec.NewBatchId())
+
+		items, _, err := u.itemSvc.List(ctx, &itemModel.ListReq{SecretId: new(id)})
+		if err != nil {
+			return fmt.Errorf("itemSvc.List: %w", err)
+		}
+		for _, item := range items {
+			if err = u.auditRec.RecordItem(ctx, item, nil, "", batchId); err != nil {
+				return fmt.Errorf("auditRec.RecordItem: %w", err)
+			}
+		}
+
+		if err = u.svc.Delete(ctx, id); err != nil {
+			return fmt.Errorf("svc.Delete: %w", err)
+		}
+		if err = u.auditRec.RecordSecret(ctx, current, nil, "", batchId); err != nil {
+			return fmt.Errorf("auditRec.RecordSecret: %w", err)
+		}
+		return nil
+	})
 }

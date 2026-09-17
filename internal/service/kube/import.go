@@ -19,6 +19,10 @@ import (
 	"github.com/rendau/kusec/internal/errs"
 )
 
+// importAction — действие записей аудита, порождённых импортом
+// (auditModel.ActionImport; литерал — чтобы не тянуть домен audit сюда).
+const importAction = "import"
+
 // importSkippedTypes — типы секретов, не предназначенные для импорта:
 // служебные токены ServiceAccount и хранилища релизов helm.
 var importSkippedTypes = map[corev1.SecretType]bool{
@@ -113,61 +117,94 @@ func (s *Service) ImportSecret(ctx context.Context, appId string, ref ImportRef,
 
 	result := &ImportResult{SecretSlug: slug}
 
-	// Существующий секрет переиспользуем (дозаполнение), иначе создаём новый.
-	// existingItems: ключ → id item-а (active и неактивные — чтобы найти любой
-	// совпавший ключ и не плодить дубли).
-	existingItems := map[string]string{}
-	if existing != nil {
-		result.SecretId = existing.Id
-		items, _, err := s.itemSvc.List(ctx, &itemModel.ListReq{SecretId: new(existing.Id)})
-		if err != nil {
-			return nil, fmt.Errorf("list existing items: %w", err)
-		}
-		for _, it := range items {
-			existingItems[it.Key] = it.Id
-		}
-	} else {
-		secretId, err := s.secretSvc.Create(ctx, &secretModel.Edit{
-			AppId:       new(app.Id),
-			Active:      new(true),
-			SlugName:    new(slug),
-			Description: new(fmt.Sprintf("Imported from %s/%s", ref.Namespace, ref.Name)),
-			KubeType:    new(displaySecretType(ksec.Type)),
-		})
-		if err != nil {
-			return nil, fmt.Errorf("create secret: %w", err)
-		}
-		result.SecretId = secretId
-		result.SecretCreated = true
-	}
+	// Мутации и записи аудита (action=import, общий batch_id) — в одной
+	// транзакции: частичный импорт не оставит следов ни в базе, ни в аудите.
+	err = s.txm.TxFn(ctx, func(ctx context.Context) error {
+		batchId := new(s.auditRec.NewBatchId())
 
-	for _, dataKey := range sortedDataKeys(ksec.Data) {
-		value, encoding := encodeImportValue(ksec.Data[dataKey])
+		// Существующий секрет переиспользуем (дозаполнение), иначе создаём
+		// новый. existingItems: ключ → item (active и неактивные — чтобы найти
+		// любой совпавший ключ и не плодить дубли).
+		existingItems := map[string]*itemModel.Main{}
+		if existing != nil {
+			result.SecretId = existing.Id
+			items, _, err := s.itemSvc.List(ctx, &itemModel.ListReq{SecretId: new(existing.Id)})
+			if err != nil {
+				return fmt.Errorf("list existing items: %w", err)
+			}
+			for _, it := range items {
+				existingItems[it.Key] = it
+			}
+		} else {
+			secretId, err := s.secretSvc.Create(ctx, &secretModel.Edit{
+				AppId:       new(app.Id),
+				Active:      new(true),
+				SlugName:    new(slug),
+				Description: new(fmt.Sprintf("Imported from %s/%s", ref.Namespace, ref.Name)),
+				KubeType:    new(displaySecretType(ksec.Type)),
+			})
+			if err != nil {
+				return fmt.Errorf("create secret: %w", err)
+			}
+			result.SecretId = secretId
+			result.SecretCreated = true
 
-		// Совпавший ключ — перезаписываем значение существующего item-а.
-		if itemId, ok := existingItems[dataKey]; ok {
-			err = s.itemSvc.Update(ctx, itemId, &itemModel.Edit{
+			created, _, err := s.secretSvc.Get(ctx, secretId, true)
+			if err != nil {
+				return fmt.Errorf("get created secret: %w", err)
+			}
+			if err = s.auditRec.RecordSecret(ctx, nil, created, importAction, batchId); err != nil {
+				return fmt.Errorf("auditRec.RecordSecret: %w", err)
+			}
+		}
+
+		for _, dataKey := range sortedDataKeys(ksec.Data) {
+			value, encoding := encodeImportValue(ksec.Data[dataKey])
+
+			// Совпавший ключ — перезаписываем значение существующего item-а.
+			if old, ok := existingItems[dataKey]; ok {
+				err = s.itemSvc.Update(ctx, old.Id, &itemModel.Edit{
+					Value:    new(value),
+					Encoding: new(encoding),
+				})
+				if err != nil {
+					return fmt.Errorf("key %q: update item: %w", dataKey, err)
+				}
+				updated, _, err := s.itemSvc.Get(ctx, old.Id, true)
+				if err != nil {
+					return fmt.Errorf("key %q: get updated item: %w", dataKey, err)
+				}
+				if err = s.auditRec.RecordItem(ctx, old, updated, importAction, batchId); err != nil {
+					return fmt.Errorf("auditRec.RecordItem: %w", err)
+				}
+				result.UpdatedItems++
+				continue
+			}
+
+			itemId, err := s.itemSvc.Create(ctx, &itemModel.Edit{
+				SecretId: new(result.SecretId),
+				Active:   new(true),
+				Key:      new(dataKey),
 				Value:    new(value),
 				Encoding: new(encoding),
 			})
 			if err != nil {
-				return nil, fmt.Errorf("key %q: update item: %w", dataKey, err)
+				return fmt.Errorf("key %q: create item: %w", dataKey, err)
 			}
-			result.UpdatedItems++
-			continue
+			created, _, err := s.itemSvc.Get(ctx, itemId, true)
+			if err != nil {
+				return fmt.Errorf("key %q: get created item: %w", dataKey, err)
+			}
+			if err = s.auditRec.RecordItem(ctx, nil, created, importAction, batchId); err != nil {
+				return fmt.Errorf("auditRec.RecordItem: %w", err)
+			}
+			result.CreatedItems++
 		}
 
-		_, err = s.itemSvc.Create(ctx, &itemModel.Edit{
-			SecretId: new(result.SecretId),
-			Active:   new(true),
-			Key:      new(dataKey),
-			Value:    new(value),
-			Encoding: new(encoding),
-		})
-		if err != nil {
-			return nil, fmt.Errorf("key %q: create item: %w", dataKey, err)
-		}
-		result.CreatedItems++
+		return nil
+	})
+	if err != nil {
+		return nil, err
 	}
 
 	return result, nil
