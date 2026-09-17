@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { computed, h, onMounted, reactive, ref } from 'vue'
 import {
+  NButton,
   NDataTable,
   NEmpty,
   NFlex,
@@ -148,6 +149,32 @@ const opTagType: Record<string, 'success' | 'info' | 'error' | 'warning' | 'defa
   error: 'error',
 }
 
+// Unchanged-объекты — подтверждение сверки, а не событие: по умолчанию они
+// схлопнуты в одну строку-счётчик, чтобы не топить created/updated/error.
+const unchangedShown = reactive<Record<string, boolean>>({})
+
+function renderObjectRow(obj: SyncRunObject) {
+  return h(NSpace, { size: 6, wrapItem: false, align: 'center' }, {
+    default: () => [
+      h(
+        NTag,
+        { size: 'tiny', type: opTagType[obj.op] ?? 'default' },
+        { default: () => obj.op },
+      ),
+      h(
+        NText,
+        { code: true, style: 'font-size: 12px; word-break: break-all' },
+        {
+          default: () =>
+            `${obj.namespace}/${obj.kube_name} (${obj.kube_kind})` +
+            (obj.changed_keys.length ? ` · keys: ${obj.changed_keys.join(', ')}` : '') +
+            (obj.error ? ` · ${obj.error}` : ''),
+        },
+      ),
+    ],
+  })
+}
+
 function renderObjects(row: SyncRunMain) {
   const state = objectsByRun[row.id]
   if (state === 'loading' || state === undefined) {
@@ -159,34 +186,39 @@ function renderObjects(row: SyncRunMain) {
   if (!state.length) {
     return h(NText, { depth: 3 }, { default: () => 'No objects touched by this run.' })
   }
-  return h(
-    NSpace,
-    { vertical: true, size: 4 },
-    {
-      default: () =>
-        state.map((obj) =>
-          h(NSpace, { size: 6, wrapItem: false, align: 'center' }, {
-            default: () => [
-              h(
-                NTag,
-                { size: 'tiny', type: opTagType[obj.op] ?? 'default' },
-                { default: () => obj.op },
-              ),
-              h(
-                NText,
-                { code: true, style: 'font-size: 12px; word-break: break-all' },
-                {
-                  default: () =>
-                    `${obj.namespace}/${obj.kube_name} (${obj.kube_kind})` +
-                    (obj.changed_keys.length ? ` · keys: ${obj.changed_keys.join(', ')}` : '') +
-                    (obj.error ? ` · ${obj.error}` : ''),
-                },
-              ),
-            ],
-          }),
-        ),
-    },
-  )
+
+  // изменения и ошибки — всегда сверху; unchanged — за счётчиком-тумблером
+  const changed = state.filter((obj) => obj.op !== 'unchanged')
+  const unchanged = state.filter((obj) => obj.op === 'unchanged')
+  const shown = unchangedShown[row.id] ?? false
+
+  const rows = [
+    ...changed.map(renderObjectRow),
+    ...(changed.length === 0
+      ? [h(NText, { depth: 3, style: 'font-size: 12px' }, { default: () => 'No changes in this run.' })]
+      : []),
+    ...(unchanged.length
+      ? [
+          h(
+            NButton,
+            {
+              text: true,
+              size: 'tiny',
+              onClick: () => {
+                unchangedShown[row.id] = !shown
+              },
+            },
+            {
+              default: () =>
+                `${unchanged.length} unchanged (verified in sync) — ${shown ? 'hide' : 'show'}`,
+            },
+          ),
+        ]
+      : []),
+    ...(shown ? unchanged.map(renderObjectRow) : []),
+  ]
+
+  return h(NSpace, { vertical: true, size: 4 }, { default: () => rows })
 }
 
 /** "app scope" cell: one app or the whole accessible set. */
