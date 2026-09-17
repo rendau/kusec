@@ -16,18 +16,20 @@ service App {
     };
   }
 
-  // Поиск app и его secret/configmap по имени k8s-объекта (например из
-  // envFrom пода или аннотации reloader). Объявлен раньше Get, чтобы путь
-  // /app/resolve не перехватывался шаблоном /app/{id}.
-  rpc Resolve(AppResolveReq) returns (AppResolveRep) {
-    option (google.api.http) = {
-      get: "/app/resolve"
-    };
-  }
-
   rpc Get(AppGetReq) returns (AppMain) {
     option (google.api.http) = {
       get: "/app/{id}"
+    };
+  }
+
+  // Поиск app и его secret/configmap по имени k8s-объекта (например из
+  // envFrom пода или аннотации reloader). Объявлен ПОСЛЕ Get намеренно:
+  // gateway-mux prepend-ит хендлеры (последний зарегистрированный
+  // проверяется первым), поэтому только так /app/resolve не
+  // перехватывается шаблоном /app/{id}.
+  rpc Resolve(AppResolveReq) returns (AppResolveRep) {
+    option (google.api.http) = {
+      get: "/app/resolve"
     };
   }
 

@@ -358,7 +358,7 @@
     },
     "/app/resolve": {
       "get": {
-        "summary": "Поиск app и его secret/configmap по имени k8s-объекта (например из\nenvFrom пода или аннотации reloader). Объявлен раньше Get, чтобы путь\n/app/resolve не перехватывался шаблоном /app/{id}.",
+        "summary": "Поиск app и его secret/configmap по имени k8s-объекта (например из\nenvFrom пода или аннотации reloader). Объявлен ПОСЛЕ Get намеренно:\ngateway-mux prepend-ит хендлеры (последний зарегистрированный\nпроверяется первым), поэтому только так /app/resolve не\nперехватывается шаблоном /app/{id}.",
         "operationId": "App_Resolve",
         "responses": {
           "200": {

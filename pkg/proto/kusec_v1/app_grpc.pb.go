@@ -21,8 +21,8 @@ const _ = grpc.SupportPackageIsVersion9
 
 const (
 	App_List_FullMethodName    = "/kusec_v1.App/List"
-	App_Resolve_FullMethodName = "/kusec_v1.App/Resolve"
 	App_Get_FullMethodName     = "/kusec_v1.App/Get"
+	App_Resolve_FullMethodName = "/kusec_v1.App/Resolve"
 	App_Keys_FullMethodName    = "/kusec_v1.App/Keys"
 	App_Drift_FullMethodName   = "/kusec_v1.App/Drift"
 	App_Create_FullMethodName  = "/kusec_v1.App/Create"
@@ -35,11 +35,13 @@ const (
 // For semantics around ctx use and closing/ending streaming RPCs, please refer to https://pkg.go.dev/google.golang.org/grpc/?tab=doc#ClientConn.NewStream.
 type AppClient interface {
 	List(ctx context.Context, in *AppListReq, opts ...grpc.CallOption) (*AppListRep, error)
-	// Поиск app и его secret/configmap по имени k8s-объекта (например из
-	// envFrom пода или аннотации reloader). Объявлен раньше Get, чтобы путь
-	// /app/resolve не перехватывался шаблоном /app/{id}.
-	Resolve(ctx context.Context, in *AppResolveReq, opts ...grpc.CallOption) (*AppResolveRep, error)
 	Get(ctx context.Context, in *AppGetReq, opts ...grpc.CallOption) (*AppMain, error)
+	// Поиск app и его secret/configmap по имени k8s-объекта (например из
+	// envFrom пода или аннотации reloader). Объявлен ПОСЛЕ Get намеренно:
+	// gateway-mux prepend-ит хендлеры (последний зарегистрированный
+	// проверяется первым), поэтому только так /app/resolve не
+	// перехватывается шаблоном /app/{id}.
+	Resolve(ctx context.Context, in *AppResolveReq, opts ...grpc.CallOption) (*AppResolveRep, error)
 	// Все ключи app (secret + configmap) без значений: размер, HMAC-отпечаток,
 	// кто и когда менял, применён ли ключ в кластер последним sync-ом.
 	Keys(ctx context.Context, in *AppGetReq, opts ...grpc.CallOption) (*AppKeysRep, error)
@@ -68,20 +70,20 @@ func (c *appClient) List(ctx context.Context, in *AppListReq, opts ...grpc.CallO
 	return out, nil
 }
 
-func (c *appClient) Resolve(ctx context.Context, in *AppResolveReq, opts ...grpc.CallOption) (*AppResolveRep, error) {
+func (c *appClient) Get(ctx context.Context, in *AppGetReq, opts ...grpc.CallOption) (*AppMain, error) {
 	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
-	out := new(AppResolveRep)
-	err := c.cc.Invoke(ctx, App_Resolve_FullMethodName, in, out, cOpts...)
+	out := new(AppMain)
+	err := c.cc.Invoke(ctx, App_Get_FullMethodName, in, out, cOpts...)
 	if err != nil {
 		return nil, err
 	}
 	return out, nil
 }
 
-func (c *appClient) Get(ctx context.Context, in *AppGetReq, opts ...grpc.CallOption) (*AppMain, error) {
+func (c *appClient) Resolve(ctx context.Context, in *AppResolveReq, opts ...grpc.CallOption) (*AppResolveRep, error) {
 	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
-	out := new(AppMain)
-	err := c.cc.Invoke(ctx, App_Get_FullMethodName, in, out, cOpts...)
+	out := new(AppResolveRep)
+	err := c.cc.Invoke(ctx, App_Resolve_FullMethodName, in, out, cOpts...)
 	if err != nil {
 		return nil, err
 	}
@@ -143,11 +145,13 @@ func (c *appClient) Delete(ctx context.Context, in *AppGetReq, opts ...grpc.Call
 // for forward compatibility.
 type AppServer interface {
 	List(context.Context, *AppListReq) (*AppListRep, error)
-	// Поиск app и его secret/configmap по имени k8s-объекта (например из
-	// envFrom пода или аннотации reloader). Объявлен раньше Get, чтобы путь
-	// /app/resolve не перехватывался шаблоном /app/{id}.
-	Resolve(context.Context, *AppResolveReq) (*AppResolveRep, error)
 	Get(context.Context, *AppGetReq) (*AppMain, error)
+	// Поиск app и его secret/configmap по имени k8s-объекта (например из
+	// envFrom пода или аннотации reloader). Объявлен ПОСЛЕ Get намеренно:
+	// gateway-mux prepend-ит хендлеры (последний зарегистрированный
+	// проверяется первым), поэтому только так /app/resolve не
+	// перехватывается шаблоном /app/{id}.
+	Resolve(context.Context, *AppResolveReq) (*AppResolveRep, error)
 	// Все ключи app (secret + configmap) без значений: размер, HMAC-отпечаток,
 	// кто и когда менял, применён ли ключ в кластер последним sync-ом.
 	Keys(context.Context, *AppGetReq) (*AppKeysRep, error)
@@ -169,11 +173,11 @@ type UnimplementedAppServer struct{}
 func (UnimplementedAppServer) List(context.Context, *AppListReq) (*AppListRep, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method List not implemented")
 }
-func (UnimplementedAppServer) Resolve(context.Context, *AppResolveReq) (*AppResolveRep, error) {
-	return nil, status.Errorf(codes.Unimplemented, "method Resolve not implemented")
-}
 func (UnimplementedAppServer) Get(context.Context, *AppGetReq) (*AppMain, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method Get not implemented")
+}
+func (UnimplementedAppServer) Resolve(context.Context, *AppResolveReq) (*AppResolveRep, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method Resolve not implemented")
 }
 func (UnimplementedAppServer) Keys(context.Context, *AppGetReq) (*AppKeysRep, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method Keys not implemented")
@@ -229,24 +233,6 @@ func _App_List_Handler(srv interface{}, ctx context.Context, dec func(interface{
 	return interceptor(ctx, in, info, handler)
 }
 
-func _App_Resolve_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
-	in := new(AppResolveReq)
-	if err := dec(in); err != nil {
-		return nil, err
-	}
-	if interceptor == nil {
-		return srv.(AppServer).Resolve(ctx, in)
-	}
-	info := &grpc.UnaryServerInfo{
-		Server:     srv,
-		FullMethod: App_Resolve_FullMethodName,
-	}
-	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(AppServer).Resolve(ctx, req.(*AppResolveReq))
-	}
-	return interceptor(ctx, in, info, handler)
-}
-
 func _App_Get_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
 	in := new(AppGetReq)
 	if err := dec(in); err != nil {
@@ -261,6 +247,24 @@ func _App_Get_Handler(srv interface{}, ctx context.Context, dec func(interface{}
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
 		return srv.(AppServer).Get(ctx, req.(*AppGetReq))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _App_Resolve_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(AppResolveReq)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(AppServer).Resolve(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: App_Resolve_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(AppServer).Resolve(ctx, req.(*AppResolveReq))
 	}
 	return interceptor(ctx, in, info, handler)
 }
@@ -367,12 +371,12 @@ var App_ServiceDesc = grpc.ServiceDesc{
 			Handler:    _App_List_Handler,
 		},
 		{
-			MethodName: "Resolve",
-			Handler:    _App_Resolve_Handler,
-		},
-		{
 			MethodName: "Get",
 			Handler:    _App_Get_Handler,
+		},
+		{
+			MethodName: "Resolve",
+			Handler:    _App_Resolve_Handler,
 		},
 		{
 			MethodName: "Keys",

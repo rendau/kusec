@@ -1107,9 +1107,9 @@ const file_kusec_v1_app_proto_rawDesc = "" +
 	"_slug_nameB\x0e\n" +
 	"\f_description2\xda\x04\n" +
 	"\x03App\x12@\n" +
-	"\x04List\x12\x14.kusec_v1.AppListReq\x1a\x14.kusec_v1.AppListRep\"\f\x82\xd3\xe4\x93\x02\x06\x12\x04/app\x12Q\n" +
-	"\aResolve\x12\x17.kusec_v1.AppResolveReq\x1a\x17.kusec_v1.AppResolveRep\"\x14\x82\xd3\xe4\x93\x02\x0e\x12\f/app/resolve\x12@\n" +
-	"\x03Get\x12\x13.kusec_v1.AppGetReq\x1a\x11.kusec_v1.AppMain\"\x11\x82\xd3\xe4\x93\x02\v\x12\t/app/{id}\x12I\n" +
+	"\x04List\x12\x14.kusec_v1.AppListReq\x1a\x14.kusec_v1.AppListRep\"\f\x82\xd3\xe4\x93\x02\x06\x12\x04/app\x12@\n" +
+	"\x03Get\x12\x13.kusec_v1.AppGetReq\x1a\x11.kusec_v1.AppMain\"\x11\x82\xd3\xe4\x93\x02\v\x12\t/app/{id}\x12Q\n" +
+	"\aResolve\x12\x17.kusec_v1.AppResolveReq\x1a\x17.kusec_v1.AppResolveRep\"\x14\x82\xd3\xe4\x93\x02\x0e\x12\f/app/resolve\x12I\n" +
 	"\x04Keys\x12\x13.kusec_v1.AppGetReq\x1a\x14.kusec_v1.AppKeysRep\"\x16\x82\xd3\xe4\x93\x02\x10\x12\x0e/app/{id}/keys\x12L\n" +
 	"\x05Drift\x12\x13.kusec_v1.AppGetReq\x1a\x15.kusec_v1.AppDriftRep\"\x17\x82\xd3\xe4\x93\x02\x11\x12\x0f/app/{id}/drift\x12I\n" +
 	"\x06Create\x12\x16.kusec_v1.AppCreateReq\x1a\x16.kusec_v1.AppCreateRep\"\x0f\x82\xd3\xe4\x93\x02\t:\x01*\"\x04/app\x12N\n" +
@@ -1162,16 +1162,16 @@ var file_kusec_v1_app_proto_depIdxs = []int32{
 	13, // 10: kusec_v1.AppDriftObjectSt.not_synced_since:type_name -> google.protobuf.Timestamp
 	10, // 11: kusec_v1.AppDriftRep.objects:type_name -> kusec_v1.AppDriftObjectSt
 	1,  // 12: kusec_v1.App.List:input_type -> kusec_v1.AppListReq
-	6,  // 13: kusec_v1.App.Resolve:input_type -> kusec_v1.AppResolveReq
-	3,  // 14: kusec_v1.App.Get:input_type -> kusec_v1.AppGetReq
+	3,  // 13: kusec_v1.App.Get:input_type -> kusec_v1.AppGetReq
+	6,  // 14: kusec_v1.App.Resolve:input_type -> kusec_v1.AppResolveReq
 	3,  // 15: kusec_v1.App.Keys:input_type -> kusec_v1.AppGetReq
 	3,  // 16: kusec_v1.App.Drift:input_type -> kusec_v1.AppGetReq
 	4,  // 17: kusec_v1.App.Create:input_type -> kusec_v1.AppCreateReq
 	12, // 18: kusec_v1.App.Update:input_type -> kusec_v1.AppUpdateReq
 	3,  // 19: kusec_v1.App.Delete:input_type -> kusec_v1.AppGetReq
 	2,  // 20: kusec_v1.App.List:output_type -> kusec_v1.AppListRep
-	7,  // 21: kusec_v1.App.Resolve:output_type -> kusec_v1.AppResolveRep
-	0,  // 22: kusec_v1.App.Get:output_type -> kusec_v1.AppMain
+	0,  // 21: kusec_v1.App.Get:output_type -> kusec_v1.AppMain
+	7,  // 22: kusec_v1.App.Resolve:output_type -> kusec_v1.AppResolveRep
 	9,  // 23: kusec_v1.App.Keys:output_type -> kusec_v1.AppKeysRep
 	11, // 24: kusec_v1.App.Drift:output_type -> kusec_v1.AppDriftRep
 	5,  // 25: kusec_v1.App.Create:output_type -> kusec_v1.AppCreateRep
