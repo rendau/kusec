@@ -14,6 +14,7 @@ import (
 	appModel "github.com/rendau/kusec/internal/domain/app/model"
 	commonModel "github.com/rendau/kusec/internal/domain/common/model"
 	sessionModel "github.com/rendau/kusec/internal/domain/session/model"
+	"github.com/rendau/kusec/internal/util"
 )
 
 func hashKey(key string) string {
@@ -66,6 +67,9 @@ func (s *sessionServer) toolCtx(ctx context.Context, req *mcpsdk.CallToolRequest
 	if err != nil {
 		return nil, fmt.Errorf("api-ключ недействителен: %w", err)
 	}
+
+	// request id на каждый вызов инструмента — для записей аудита
+	ctx = util.RequestIdToContext(ctx, util.NewRequestId())
 
 	return s.h.sessionSvc.WithContext(ctx, session), nil
 }

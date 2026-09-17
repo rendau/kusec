@@ -9,6 +9,7 @@ import (
 	"net/http"
 	"os"
 	"os/signal"
+	"strings"
 	"syscall"
 	"time"
 
@@ -80,6 +81,12 @@ func (a *App) Init() {
 
 	// logger
 	initLogger(config.Conf.Debug, config.Conf.LogLevel)
+
+	// AUDIT_HASH_KEY обязателен: на нём HMAC-отпечатки значений в аудите,
+	// журнале sync и read-only ответах.
+	if strings.TrimSpace(config.Conf.AuditHashKey) == "" {
+		errCheck(errors.New("AUDIT_HASH_KEY is required"), "config")
+	}
 
 	// globalTracer
 	{

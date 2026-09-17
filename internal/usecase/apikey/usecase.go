@@ -180,7 +180,8 @@ func (u *Usecase) McpSessionFromKey(ctx context.Context, key string) (*sessionMo
 	return u.sessionFromKey(ctx, key, true)
 }
 
-// sessionFromKey: ключ активен, владелец активен — сессия наследует права владельца.
+// sessionFromKey: ключ активен, владелец активен — сессия наследует права
+// владельца. source — канал запроса (constant.SourceApi / SourceMcp).
 func (u *Usecase) sessionFromKey(ctx context.Context, key string, allowMcpOnly bool) (*sessionModel.Session, error) {
 	if !strings.HasPrefix(key, constant.ApiKeyPrefix) {
 		return nil, errs.NotAuthorized
@@ -207,10 +208,19 @@ func (u *Usecase) sessionFromKey(ctx context.Context, key string, allowMcpOnly b
 
 	u.touchLastUsed(ctx, item.Id)
 
+	source := constant.SourceApi
+	if allowMcpOnly {
+		source = constant.SourceMcp
+	}
+
 	return &sessionModel.Session{
-		Id:     usr.Id,
-		Admin:  usr.IsAdmin,
-		AppIds: usr.AppIds,
+		Id:         usr.Id,
+		Admin:      usr.IsAdmin,
+		AppIds:     usr.AppIds,
+		Name:       usr.Name,
+		Source:     source,
+		ApiKeyId:   item.Id,
+		ApiKeyName: item.Name,
 	}, nil
 }
 

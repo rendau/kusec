@@ -26,6 +26,7 @@ import (
 	sessionService "github.com/rendau/kusec/internal/domain/session/service"
 	"github.com/rendau/kusec/internal/errs"
 	"github.com/rendau/kusec/internal/infra/metrics"
+	"github.com/rendau/kusec/internal/util"
 	proto "github.com/rendau/kusec/pkg/proto/kusec_v1"
 )
 
@@ -35,10 +36,13 @@ type GrpcServer struct {
 }
 
 func NewGrpcServer(name string, sessionSvc *sessionService.Service, apiKeyAuth ApiKeyAuthI, register func(*grpc.Server)) *GrpcServer {
-	interceptors := make([]grpc.UnaryServerInterceptor, 0, 6)
+	interceptors := make([]grpc.UnaryServerInterceptor, 0, 7)
 
 	// ctx without cancel
 	interceptors = append(interceptors, GrpcInterceptorCtxWithoutCancel())
+
+	// request id (for audit)
+	interceptors = append(interceptors, GrpcInterceptorRequestId())
 
 	// session (extract bearer token -> session in context)
 	interceptors = append(interceptors, GrpcInterceptorSession(sessionSvc, apiKeyAuth))
@@ -106,6 +110,24 @@ func GrpcInterceptorCtxWithoutCancel() grpc.UnaryServerInterceptor {
 	}
 }
 
+// GrpcInterceptorRequestId кладёт request id в контекст: из metadata
+// x-request-id (через gateway — заголовок Grpc-Metadata-X-Request-Id) либо
+// генерирует новый. Попадает в записи аудита.
+func GrpcInterceptorRequestId() grpc.UnaryServerInterceptor {
+	return func(ctx context.Context, req any, _ *grpc.UnaryServerInfo, handler grpc.UnaryHandler) (resp any, err error) {
+		id := ""
+		if md, ok := metadata.FromIncomingContext(ctx); ok {
+			if values := md.Get("x-request-id"); len(values) > 0 {
+				id = strings.TrimSpace(values[0])
+			}
+		}
+		if id == "" {
+			id = util.NewRequestId()
+		}
+		return handler(util.RequestIdToContext(ctx, id), req)
+	}
+}
+
 // ApiKeyAuthI — аутентификация по API-ключу (реализуется apikey usecase).
 type ApiKeyAuthI interface {
 	SessionFromKey(ctx context.Context, key string) (*sessionModel.Session, error)
@@ -128,6 +150,7 @@ func GrpcInterceptorSession(sessionSvc *sessionService.Service, apiKeyAuth ApiKe
 		default:
 			parsedSession, parseErr := sessionSvc.FromToken(token)
 			if parseErr == nil && parsedSession != nil && parsedSession.Id != 0 {
+				parsedSession.Source = constant.SourceUi
 				session = parsedSession
 			}
 		}
