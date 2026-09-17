@@ -47,6 +47,8 @@ import (
 
 	auditRecorder "github.com/rendau/kusec/internal/service/audit"
 	kubeService "github.com/rendau/kusec/internal/service/kube"
+	retentionService "github.com/rendau/kusec/internal/service/retention"
+	syncmetricsService "github.com/rendau/kusec/internal/service/syncmetrics"
 
 	apikeyUsc "github.com/rendau/kusec/internal/usecase/apikey"
 	appUsc "github.com/rendau/kusec/internal/usecase/app"
@@ -79,6 +81,10 @@ type App struct {
 	ctxCancel context.CancelFunc
 
 	usrSvc *usrService.Service
+
+	// фоновые сервисы (запускаются в Start, ждутся в WaitJobs)
+	retentionSvc   *retentionService.Service
+	syncMetricsSvc *syncmetricsService.Service
 
 	exitCode int
 }
@@ -290,6 +296,10 @@ func (a *App) Init() {
 		}
 	}
 
+	// фоновые сервисы: ретеншн аудита/журнала и гейджи состояния sync
+	a.retentionSvc = retentionService.New(auditSvc, syncRunSvc, config.Conf.AuditRetentionDays)
+	a.syncMetricsSvc = syncmetricsService.New(syncRunSvc)
+
 	// system http server (healthcheck, docs, metrics)
 	{
 		a.systemHttpServer = SystemHttpServerCreate()
@@ -341,6 +351,10 @@ func (a *App) Start() {
 		}()
 		slog.Info("system-http-server started " + a.systemHttpServer.Addr)
 	}
+
+	// background jobs
+	a.retentionSvc.Start(a.ctx)
+	a.syncMetricsSvc.Start(a.ctx)
 }
 
 func (a *App) Listen() {
@@ -396,6 +410,9 @@ func (a *App) Stop() {
 
 func (a *App) WaitJobs() {
 	slog.Info("waiting jobs")
+
+	a.retentionSvc.Wait()
+	a.syncMetricsSvc.Wait()
 }
 
 func (a *App) Exit() {

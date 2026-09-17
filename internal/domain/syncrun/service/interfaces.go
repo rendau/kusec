@@ -14,5 +14,6 @@ type RepoDbI interface {
 	Update(ctx context.Context, id string, obj *model.Edit) error
 	CreateObjects(ctx context.Context, runId string, objects []*model.Object) error
 	ListObjects(ctx context.Context, runIds []string) ([]*model.Object, error)
+	AppSyncStats(ctx context.Context) ([]*model.AppSyncStat, error)
 	DeleteOlderThan(ctx context.Context, before time.Time) (int64, error)
 }

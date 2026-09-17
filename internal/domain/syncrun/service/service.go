@@ -85,6 +85,15 @@ func (s *Service) ListObjects(ctx context.Context, runIds []string) ([]*model.Ob
 	return objects, nil
 }
 
+// AppSyncStats — сводка синхронизации по приложениям (для метрик).
+func (s *Service) AppSyncStats(ctx context.Context) ([]*model.AppSyncStat, error) {
+	stats, err := s.repoDb.AppSyncStats(ctx)
+	if err != nil {
+		return nil, fmt.Errorf("repoDb.AppSyncStats: %w", err)
+	}
+	return stats, nil
+}
+
 // DeleteOlderThan удаляет запуски старше границы (фоновый ретеншн).
 func (s *Service) DeleteOlderThan(ctx context.Context, before time.Time) (int64, error) {
 	count, err := s.repoDb.DeleteOlderThan(ctx, before)

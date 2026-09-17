@@ -68,6 +68,16 @@ type Edit struct {
 	DurationMs *int64
 }
 
+// AppSyncStat — сводка синхронизации по приложению (для метрик):
+// время последнего применения и количество объектов с непримененными
+// изменениями.
+type AppSyncStat struct {
+	Namespace     string
+	AppSlug       string
+	LastSyncedAt  *time.Time
+	UnsyncedCount int64
+}
+
 // ListReq — параметры выборки запусков
 type ListReq struct {
 	commonModel.ListParams
