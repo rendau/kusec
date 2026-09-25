@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, inject, onMounted, ref, watch } from 'vue'
+import { computed, inject, onMounted, ref } from 'vue'
 import {
   NButton,
   NFlex,
@@ -11,22 +11,11 @@ import {
   useDialog,
   useMessage,
 } from 'naive-ui'
-import {
-  Binary,
-  Clipboard,
-  Copy,
-  Download,
-  Eye,
-  EyeOff,
-  Pencil,
-  Plus,
-  Trash,
-} from '@vicons/tabler'
+import { Binary, Clipboard, Copy, Download, Pencil, Plus, Trash } from '@vicons/tabler'
 
 import { apiErrorMessage } from '@/api/http'
 import { deleteItem, updateItem } from '@/api/item'
 import type { ItemMain } from '@/api/types'
-import { itemsRevealCommandKey } from '@/constants/injection'
 import { useBreakpoint } from '@/composables/useBreakpoint'
 import { useClipboard } from '@/composables/useClipboard'
 import { createSecretItemsStore, secretItemsKey } from '@/composables/useSecretItems'
@@ -84,47 +73,6 @@ function downloadFile(row: ItemMain): void {
     message.error('Failed to download file')
   }
 }
-
-// Ids whose value block is revealed (shown under the row).
-const opened = ref(new Set<string>())
-
-function isOpen(id: string): boolean {
-  return opened.value.has(id)
-}
-
-function toggleReveal(id: string): void {
-  const next = new Set(opened.value)
-  if (next.has(id)) next.delete(id)
-  else next.add(id)
-  opened.value = next
-}
-
-// Workspace "Show all / Hide all" broadcasts a command that sets our per-row
-// flags — rows stay individually togglable afterwards.
-const revealCommand = inject(
-  itemsRevealCommandKey,
-  ref({ action: 'hide' as const, seq: 0 }),
-)
-
-function applyRevealCommand(): void {
-  opened.value =
-    revealCommand.value.action === 'show'
-      ? new Set(rows.value.map((r) => r.id))
-      : new Set()
-}
-
-watch(() => revealCommand.value.seq, applyRevealCommand)
-// Items arrive asynchronously from the shared store. Under "show all" newly
-// loaded rows get revealed too; otherwise keep individually revealed rows
-// revealed across reloads (e.g. after an inline value edit), dropping stale ids.
-watch(rows, () => {
-  if (revealCommand.value.action === 'show') {
-    applyRevealCommand()
-    return
-  }
-  const ids = new Set(rows.value.map((r) => r.id))
-  opened.value = new Set([...opened.value].filter((id) => ids.has(id)))
-})
 
 const detailId = ref<string | null>(null)
 const showDetail = ref(false)
@@ -274,18 +222,6 @@ onMounted(() => {
                   quaternary
                   circle
                   size="tiny"
-                  :title="isOpen(row.id) ? 'Hide value' : 'Show value'"
-                  :aria-label="isOpen(row.id) ? 'Hide value' : 'Show value'"
-                  @click="toggleReveal(row.id)"
-                >
-                  <template #icon>
-                    <NIcon :component="isOpen(row.id) ? EyeOff : Eye" />
-                  </template>
-                </NButton>
-                <NButton
-                  quaternary
-                  circle
-                  size="tiny"
                   title="Copy value"
                   aria-label="Copy value"
                   @click="copy(row.value)"
@@ -347,19 +283,17 @@ onMounted(() => {
             </NSpace>
           </div>
 
-          <Transition name="value">
-            <div
-              v-if="!isFileRow(row) && isOpen(row.id)"
-              class="items__value"
-              :class="{ 'items__cell--dim': !row.active }"
-            >
-              <ItemValueBlock
-                :value="row.value"
-                :format="row.value_format"
-                :save="(v: string) => saveValue(row, v)"
-              />
-            </div>
-          </Transition>
+          <div
+            v-if="!isFileRow(row)"
+            class="items__value"
+            :class="{ 'items__cell--dim': !row.active }"
+          >
+            <ItemValueBlock
+              :value="row.value"
+              :format="row.value_format"
+              :save="(v: string) => saveValue(row, v)"
+            />
+          </div>
         </template>
       </div>
 
@@ -404,17 +338,6 @@ onMounted(() => {
               </NButton>
             </template>
             <template v-else>
-              <NButton
-                quaternary
-                circle
-                size="tiny"
-                :aria-label="isOpen(row.id) ? 'Hide value' : 'Show value'"
-                @click="toggleReveal(row.id)"
-              >
-                <template #icon>
-                  <NIcon :component="isOpen(row.id) ? EyeOff : Eye" />
-                </template>
-              </NButton>
               <NButton
                 quaternary
                 circle
@@ -467,15 +390,13 @@ onMounted(() => {
             </NButton>
           </div>
 
-          <Transition name="value">
-            <div v-if="!isFileRow(row) && isOpen(row.id)" class="item-m__value">
-              <ItemValueBlock
-                :value="row.value"
-                :format="row.value_format"
-                :save="(v: string) => saveValue(row, v)"
-              />
-            </div>
-          </Transition>
+          <div v-if="!isFileRow(row)" class="item-m__value">
+            <ItemValueBlock
+              :value="row.value"
+              :format="row.value_format"
+              :save="(v: string) => saveValue(row, v)"
+            />
+          </div>
         </div>
       </div>
     </NSpin>
@@ -629,35 +550,5 @@ onMounted(() => {
   position: relative;
   grid-column: 2 / -1;
   margin: 2px 0 6px;
-}
-
-/* Reveal animation. */
-.value-enter-active,
-.value-leave-active {
-  overflow: hidden;
-  transition:
-    opacity 0.2s ease,
-    max-height 0.2s ease,
-    transform 0.2s ease;
-}
-
-.value-enter-from,
-.value-leave-to {
-  opacity: 0;
-  max-height: 0;
-  transform: translateY(-4px);
-}
-
-.value-enter-to,
-.value-leave-from {
-  opacity: 1;
-  max-height: 360px;
-}
-
-@media (prefers-reduced-motion: reduce) {
-  .value-enter-active,
-  .value-leave-active {
-    transition: none;
-  }
 }
 </style>

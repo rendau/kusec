@@ -18,8 +18,16 @@ const props = withDefaults(
     minHeight?: string
     maxHeight?: string
     readonly?: boolean
+    /** Focus the editor on mount, caret at the end (inline edit). */
+    autofocus?: boolean
   }>(),
-  { format: 'text', minHeight: '180px', maxHeight: '420px', readonly: false },
+  {
+    format: 'text',
+    minHeight: '180px',
+    maxHeight: '420px',
+    readonly: false,
+    autofocus: false,
+  },
 )
 
 const emit = defineEmits<{ 'update:value': [value: string] }>()
@@ -93,6 +101,10 @@ onMounted(() => {
     ],
   })
   view = new EditorView({ state, parent: container.value })
+  if (props.autofocus) {
+    view.dispatch({ selection: { anchor: view.state.doc.length } })
+    view.focus()
+  }
 })
 
 onBeforeUnmount(() => {

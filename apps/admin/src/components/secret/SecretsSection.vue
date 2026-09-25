@@ -13,13 +13,12 @@ import {
   NText,
   NTooltip,
   useMessage,
+  useThemeVars,
 } from 'naive-ui'
 import type { DataTableColumns } from 'naive-ui'
 import {
   ChevronDown,
   ChevronUp,
-  Eye,
-  EyeOff,
   InfoCircle,
   Pencil,
   Plus,
@@ -31,8 +30,6 @@ import { deleteSecret, listSecrets } from '@/api/secret'
 import type { SecretMain } from '@/api/types'
 import { useBreakpoint } from '@/composables/useBreakpoint'
 import { useClipboard } from '@/composables/useClipboard'
-import { itemsRevealCommandKey } from '@/constants/injection'
-import type { RevealCommand } from '@/constants/injection'
 import { createSecretItemsStore, secretItemsKey } from '@/composables/useSecretItems'
 import { useChunkedExpand } from '@/composables/useChunkedExpand'
 
@@ -46,6 +43,7 @@ const props = defineProps<{
 }>()
 
 const message = useMessage()
+const themeVars = useThemeVars()
 const { copy } = useClipboard()
 const { isMobile } = useBreakpoint()
 
@@ -64,12 +62,6 @@ function isExpanded(id: string): boolean {
   return expandedKeys.value.includes(id)
 }
 
-// Broadcast a one-shot reveal/hide command; each items panel applies it to its
-// own per-row flags, so individual rows stay togglable afterwards.
-const showAll = ref(false)
-const revealCommand = ref<RevealCommand>({ action: 'hide', seq: 0 })
-provide(itemsRevealCommandKey, revealCommand)
-
 // Shared items cache for all panels: lets us load several secrets' items in a
 // single request instead of one request per expanded panel.
 const itemsStore = createSecretItemsStore()
@@ -79,30 +71,16 @@ const allExpanded = computed(
   () => rows.value.length > 0 && expandedKeys.value.length === rows.value.length,
 )
 
-function broadcastReveal(show: boolean): void {
-  showAll.value = show
-  revealCommand.value = {
-    action: show ? 'show' : 'hide',
-    seq: revealCommand.value.seq + 1,
-  }
-}
-
 function toggleExpandAll(): void {
   if (allExpanded.value) {
-    // Collapsing all secrets also hides all revealed values.
     cancelExpand()
     expandedKeys.value = []
-    broadcastReveal(false)
   } else {
     // Items are already cached by the app-wide prefetch — this is a no-op
     // safety net (e.g. after a failed load).
     void itemsStore.prefetchApp(props.appId, rows.value.map((r) => r.id))
     void expandAllChunked(rows.value.map((r) => r.id))
   }
-}
-
-function toggleRevealAll(): void {
-  broadcastReveal(!showAll.value)
 }
 
 const editing = ref<SecretMain | null>(null)
@@ -161,7 +139,7 @@ async function removeSecret(row: SecretMain): Promise<void> {
 }
 
 function iconButton(
-  icon: typeof Eye,
+  icon: typeof Pencil,
   tooltip: string,
   onClick: () => void,
 ) {
@@ -186,9 +164,10 @@ function iconButton(
   )
 }
 
-// Dim inactive secrets so they stand out from active ones at a glance.
+// Every secret row is tinted (`row--parent`) so it stands apart from its items
+// once expanded; inactive ones are also dimmed.
 function rowClassName(row: SecretMain): string {
-  return row.active ? '' : 'row--inactive'
+  return row.active ? 'row--parent' : 'row--parent row--inactive'
 }
 
 const columns = computed<DataTableColumns<SecretMain>>(() => [
@@ -311,7 +290,6 @@ watch(
     cancelExpand()
     expandedKeys.value = []
     itemsStore.reset()
-    broadcastReveal(false)
     await fetchSecrets()
     if (rows.value.length) {
       // Load every item of the app in one request up front, so expanding
@@ -337,18 +315,6 @@ defineExpose({ refresh: fetchSecrets, count: computed(() => rows.value.length) }
           <NIcon :component="allExpanded ? ChevronUp : ChevronDown" />
         </template>
         {{ allExpanded ? 'Collapse all' : 'Expand all' }}
-      </NButton>
-      <NButton
-        v-if="rows.length"
-        size="small"
-        tertiary
-        :type="showAll ? 'warning' : 'default'"
-        @click="toggleRevealAll"
-      >
-        <template #icon>
-          <NIcon :component="showAll ? EyeOff : Eye" />
-        </template>
-        {{ showAll ? 'Hide all' : 'Show all' }}
       </NButton>
       <NButton type="primary" @click="openCreate">
         <template #icon>
@@ -541,6 +507,24 @@ defineExpose({ refresh: fetchSecrets, count: computed(() => rows.value.length) }
 .secret-card__mono {
   cursor: pointer;
   word-break: break-all;
+}
+
+/*
+ * Secret rows are tinted to read as group headers above their items.
+ * The tint sits on the <tr> with transparent cells, so the opacity of inactive
+ * cells below does not fade it.
+ */
+.secrets-section :deep(tr.row--parent) {
+  background-color: v-bind('themeVars.hoverColor');
+}
+
+.secrets-section :deep(tr.row--parent > td) {
+  background-color: transparent;
+}
+
+/* Code chips share the tint colour — lift them onto the card colour. */
+.secrets-section :deep(tr.row--parent .n-text--code) {
+  background-color: v-bind('themeVars.cardColor');
 }
 
 /* Inactive secrets are dimmed; the status tag and actions stay full-strength. */

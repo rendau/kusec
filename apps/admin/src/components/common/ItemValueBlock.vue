@@ -33,6 +33,7 @@ function startEdit(): void {
 }
 
 function cancelEdit(): void {
+  if (saving.value) return
   editing.value = false
 }
 
@@ -72,22 +73,24 @@ async function submit(): Promise<void> {
       <pre class="value-block__pre" @dblclick="startEdit">{{ value }}</pre>
     </template>
 
-    <template v-else>
+    <!-- Escape anywhere in the editor or its buttons discards the draft. -->
+    <div v-else @keydown.esc.stop.prevent="cancelEdit">
       <ValueEditor
         v-model:value="draft"
         :format="editorFormat"
         min-height="0"
         max-height="320px"
+        autofocus
       />
       <NSpace :size="8" justify="end" style="margin-top: 6px">
-        <NButton size="tiny" :disabled="saving" @click="cancelEdit">
+        <NButton size="tiny" :disabled="saving" title="Esc" @click="cancelEdit">
           Cancel
         </NButton>
         <NButton size="tiny" type="primary" :loading="saving" @click="submit">
           Save
         </NButton>
       </NSpace>
-    </template>
+    </div>
   </div>
 </template>
 

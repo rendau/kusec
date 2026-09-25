@@ -13,6 +13,7 @@ import {
   NText,
   NTooltip,
   useMessage,
+  useThemeVars,
 } from 'naive-ui'
 import type { DataTableColumns } from 'naive-ui'
 import { ChevronDown, ChevronUp, InfoCircle, Pencil, Plus, Trash } from '@vicons/tabler'
@@ -35,6 +36,7 @@ const props = defineProps<{
 }>()
 
 const message = useMessage()
+const themeVars = useThemeVars()
 const { copy } = useClipboard()
 const { isMobile } = useBreakpoint()
 
@@ -150,9 +152,10 @@ function iconButton(icon: typeof InfoCircle, tooltip: string, onClick: () => voi
   )
 }
 
-// Dim inactive config maps so they stand out from active ones at a glance.
+// Every config map row is tinted (`row--parent`) so it stands apart from its
+// items once expanded; inactive ones are also dimmed.
 function rowClassName(row: ConfigMapMain): string {
-  return row.active ? '' : 'row--inactive'
+  return row.active ? 'row--parent' : 'row--parent row--inactive'
 }
 
 const columns = computed<DataTableColumns<ConfigMapMain>>(() => [
@@ -478,6 +481,24 @@ defineExpose({ refresh: fetchConfigMaps, count: computed(() => rows.value.length
 .cm-card__mono {
   cursor: pointer;
   word-break: break-all;
+}
+
+/*
+ * Config map rows are tinted to read as group headers above their items.
+ * The tint sits on the <tr> with transparent cells, so the opacity of inactive
+ * cells below does not fade it.
+ */
+.cm-section :deep(tr.row--parent) {
+  background-color: v-bind('themeVars.hoverColor');
+}
+
+.cm-section :deep(tr.row--parent > td) {
+  background-color: transparent;
+}
+
+/* Code chips share the tint colour — lift them onto the card colour. */
+.cm-section :deep(tr.row--parent .n-text--code) {
+  background-color: v-bind('themeVars.cardColor');
 }
 
 /* Inactive config maps are dimmed; the status tag and actions stay full-strength. */

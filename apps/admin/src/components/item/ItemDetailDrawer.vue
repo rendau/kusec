@@ -36,7 +36,6 @@ const message = useMessage()
 const { copy } = useClipboard()
 const { nameOf, ensure } = useSecretOptions()
 
-const revealed = ref(false)
 // Local copy so "Decode base64" can transform the shown value non-destructively.
 const displayValue = ref('')
 
@@ -45,7 +44,6 @@ const { loading, item } = useDrawerResource({
   id: () => props.itemId,
   fetch: getItem,
   onLoaded: async (loaded) => {
-    revealed.value = false
     displayValue.value = loaded.value
     await ensure(loaded.secret_id)
   },
@@ -75,7 +73,6 @@ function downloadFile(): void {
 function decodeBase64(): void {
   try {
     displayValue.value = base64ToText(displayValue.value.trim())
-    revealed.value = true
     message.success('Decoded from base64')
   } catch {
     message.error('Invalid base64 value')
@@ -126,9 +123,6 @@ function decodeBase64(): void {
                 <NButton size="tiny" tertiary @click="downloadFile">Download</NButton>
               </NSpace>
               <NSpace v-else :size="8">
-                <NButton size="tiny" tertiary @click="revealed = !revealed">
-                  {{ revealed ? 'Hide' : 'Show' }}
-                </NButton>
                 <NButton size="tiny" tertiary @click="decodeBase64">Decode</NButton>
                 <NButton size="tiny" tertiary @click="copy(displayValue)">Copy</NButton>
               </NSpace>
@@ -147,19 +141,16 @@ function decodeBase64(): void {
               </NTag>
             </div>
 
-            <template v-else>
-              <div v-if="revealed" class="value-box">
-                <ValueFormatChip :format="item.value_format" />
-                <ValueEditor
-                  :value="displayValue"
-                  :format="valueFormat"
-                  readonly
-                  min-height="80px"
-                  max-height="60vh"
-                />
-              </div>
-              <NText v-else code class="value-section__masked">••••••••</NText>
-            </template>
+            <div v-else class="value-box">
+              <ValueFormatChip :format="item.value_format" />
+              <ValueEditor
+                :value="displayValue"
+                :format="valueFormat"
+                readonly
+                min-height="80px"
+                max-height="60vh"
+              />
+            </div>
           </div>
         </template>
         <div v-else style="min-height: 120px" />
@@ -184,11 +175,6 @@ function decodeBase64(): void {
 
 .value-box {
   position: relative;
-}
-
-.value-section__masked {
-  display: block;
-  padding: 8px 0;
 }
 
 .value-file {
