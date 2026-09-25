@@ -220,6 +220,37 @@ docker stop kusec-test-pg
 - контейнер: `kusec-test-pg`, порт `55432`, логин/пароль `postgres`/`postgres`,
   БД `kusec_test`; миграции тесты применяют сами (`migrations/`).
 
+### Dev-стенд админки
+
+Локальный бэкенд + vite на одноразовом docker Postgres с постоянными кредами —
+для ручной/визуальной проверки фронта. Пересоздаётся с нуля за минуту:
+
+```
+docker run --rm -d --name kusec-dev-pg \
+  -e POSTGRES_PASSWORD=postgres -e POSTGRES_DB=kusec_dev \
+  -p 55433:5432 postgres:17
+
+PG_DSN='postgres://postgres:postgres@localhost:55433/kusec_dev?sslmode=disable' \
+  JWT_SECRET=kusec-dev-jwt AUDIT_HASH_KEY=kusec-dev-audit \
+  HTTP_PORT=18080 GRPC_PORT=15050 \
+  HTTP_CORS=true HTTP_CORS_ALLOWED_ORIGINS=http://127.0.0.1:5199 \
+  go run ./cmd/.
+
+python3 scripts/devstand/seed.py      # админ + демо-app с секретами/конфигмапами
+
+cd apps/admin && VITE_API_BASE_URL=http://127.0.0.1:18080/api \
+  pnpm exec vite --port 5199 --host 127.0.0.1 --strictPort
+
+docker stop kusec-dev-pg              # стенд сносится вместе с данными
+```
+
+- контейнер `kusec-dev-pg`, порт `55433`, БД `kusec_dev` (`postgres`/`postgres`);
+  бэкенд — HTTP `18080` (API под `/api`), gRPC `15050`; админка — `http://127.0.0.1:5199`.
+- вход в админку: `admin` / `admin12345`, 2FA включена с постоянным секретом
+  `KUSECDEVTOTPSECRETKUSECDEVTOTP23` — текущий код: `python3 scripts/devstand/totp.py`
+  (или добавить секрет в любой authenticator).
+- креды только для этого одноразового стенда, нигде больше не использовать.
+
 ### Flow проверки изменений
 ```
 make generate-proto  →  gofmt  →  go test ./...  →  go run ./cmd/.
