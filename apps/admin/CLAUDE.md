@@ -41,8 +41,7 @@ Naive UI. Раздаётся Go-бэкендом с `/`, API под `/api`.
 ## API-слой (`src/api/`)
 
 - Все аутентифицированные запросы идут через `apiFetch` ([http.ts](src/api/http.ts)).
-  Несколько **неаутентифицированных** POST (login, bootstrap, TOTP
-  enroll/confirm по setup-токену) используют обычный `fetch` — см. `postPublic`
+  Неаутентифицированный POST логина использует обычный `fetch` — см. `postPublic`
   в [usr.ts](src/api/usr.ts).
 - **gRPC-gateway возвращает HTTP 400 на ВСЕ бизнес-ошибки** с телом
   `{ code, message, fields }`. Поэтому успех определяется по `response.ok`, а вид
@@ -67,10 +66,9 @@ Naive UI. Раздаётся Go-бэкендом с `/`, API под `/api`.
 - `useAuthStore().initialize()` вызывается один раз в `router.beforeEach` до
   первой навигации.
 - **2FA-флоу логина** (см. [usr.ts](src/api/usr.ts), [stores/auth.ts](src/stores/auth.ts)):
-  `login()` возвращает `UsrLoginRep` с тремя исходами — пара токенов /
-  `totp_required` (нужен код) / `totp_setup_required` + `setup_token`
-  (обязательная привязка для админа). Setup-токен годится только для
-  TOTP-эндпоинтов. Секрет TOTP **никогда** не отправляй во внешний QR-сервис —
+  `login()` возвращает `UsrLoginRep` с двумя исходами — пара токенов /
+  `totp_required` (нужен код). 2FA необязательна ни для кого, в том числе для
+  админов: включается/выключается самим пользователем в профиле. Секрет TOTP **никогда** не отправляй во внешний QR-сервис —
   QR генерится локально (`qrcode`).
 
 ## Контракт API (зеркалит правила бэкенда)

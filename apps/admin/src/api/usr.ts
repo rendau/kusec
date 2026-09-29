@@ -39,8 +39,7 @@ async function postPublic<T>(path: string, body: unknown): Promise<T> {
 /**
  * Authenticate. Returns the raw `UsrLoginRep` so the caller can branch on the
  * 2FA flags. The session is persisted here only when a token pair is issued;
- * a 2FA continuation (`totp_required` / `totp_setup_required`) is a non-error
- * 200 response and leaves the session untouched.
+ * a 2FA continuation (`totp_required`) is a non-error 200 response and leaves the session untouched.
  */
 export async function login(
   username: string,
@@ -60,18 +59,11 @@ export async function login(
 
 // ── 2FA (TOTP) ─────────────────────────────────────────────
 
-/**
- * Generate a new TOTP secret + otpauth URL to bind. Pass `setupToken` to enrol
- * right after login (mandatory-admin flow, no session yet); omit it to enrol
- * voluntarily from the profile while authenticated.
- */
-export function enrollTotp(setupToken = ''): Promise<UsrEnrollTotpRep> {
-  if (setupToken) {
-    return postPublic<UsrEnrollTotpRep>('/usr/totp/enroll', { setup_token: setupToken })
-  }
+/** Generate a new TOTP secret + otpauth URL to bind for the current user. */
+export function enrollTotp(): Promise<UsrEnrollTotpRep> {
   return apiFetch<UsrEnrollTotpRep>('/usr/totp/enroll', {
     method: 'POST',
-    body: JSON.stringify({ setup_token: '' }),
+    body: JSON.stringify({}),
   })
 }
 
@@ -79,16 +71,11 @@ export function enrollTotp(setupToken = ''): Promise<UsrEnrollTotpRep> {
  * Confirm enrolment with the first code, enabling 2FA. Returns a fresh token
  * pair (persisted), so the user ends up with a full session afterwards.
  */
-export async function confirmTotp(code: string, setupToken = ''): Promise<UsrLoginRep> {
-  const rep = setupToken
-    ? await postPublic<UsrLoginRep>('/usr/totp/confirm', {
-        setup_token: setupToken,
-        code,
-      })
-    : await apiFetch<UsrLoginRep>('/usr/totp/confirm', {
-        method: 'POST',
-        body: JSON.stringify({ setup_token: '', code }),
-      })
+export async function confirmTotp(code: string): Promise<UsrLoginRep> {
+  const rep = await apiFetch<UsrLoginRep>('/usr/totp/confirm', {
+    method: 'POST',
+    body: JSON.stringify({ code }),
+  })
   if (rep.jwt) {
     setSession({ jwt: rep.jwt, refresh_token: rep.refresh_token ?? '' })
   }

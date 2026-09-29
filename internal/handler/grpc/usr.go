@@ -110,7 +110,7 @@ func (h *Usr) UpdateProfile(ctx context.Context, req *proto.UsrUpdateProfileReq)
 }
 
 func (h *Usr) EnrollTotp(ctx context.Context, req *proto.UsrEnrollTotpReq) (*proto.UsrEnrollTotpRep, error) {
-	secret, url, err := h.usecase.EnrollTotp(ctx, req.SetupToken)
+	secret, url, err := h.usecase.EnrollTotp(ctx)
 	if err != nil {
 		return nil, err
 	}
@@ -118,7 +118,7 @@ func (h *Usr) EnrollTotp(ctx context.Context, req *proto.UsrEnrollTotpReq) (*pro
 }
 
 func (h *Usr) ConfirmTotp(ctx context.Context, req *proto.UsrConfirmTotpReq) (*proto.UsrLoginRep, error) {
-	res, err := h.usecase.ConfirmTotp(ctx, req.SetupToken, req.Code)
+	res, err := h.usecase.ConfirmTotp(ctx, req.Code)
 	if err != nil {
 		return nil, err
 	}

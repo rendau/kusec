@@ -2,7 +2,7 @@
 """Наполняет пустую БД dev-стенда: админ с постоянными кредами + демо-данные.
 
 Админ заводится SQL-ом в контейнере kusec-dev-pg (bcrypt через pgcrypto,
-2FA включена с постоянным секретом), остальное — через API запущенного
+без 2FA), остальное — через API запущенного
 бэкенда. Порядок и параметры — «Dev-стенд админки» в CLAUDE.md.
 """
 import base64
@@ -14,7 +14,6 @@ import urllib.request
 API = os.environ.get('KUSEC_API', 'http://localhost:18080/api')
 PG_CONTAINER = 'kusec-dev-pg'
 USERNAME, PASSWORD = 'admin', 'admin12345'
-HERE = os.path.dirname(os.path.abspath(__file__))
 
 
 def call(method, path, body=None, token=None):
@@ -31,9 +30,8 @@ def call(method, path, body=None, token=None):
 def seed_admin():
     sql = (
         'create extension if not exists pgcrypto;'
-        'insert into usr (active, is_admin, name, username, password, totp_secret, totp_enabled) '
-        f"values (true, true, 'Dev Admin', '{USERNAME}', crypt('{PASSWORD}', gen_salt('bf', 10)), "
-        "'KUSECDEVTOTPSECRETKUSECDEVTOTP23', true);"
+        'insert into usr (active, is_admin, name, username, password) '
+        f"values (true, true, 'Dev Admin', '{USERNAME}', crypt('{PASSWORD}', gen_salt('bf', 10)));"
     )
     subprocess.run(
         ['docker', 'exec', PG_CONTAINER, 'psql', '-U', 'postgres', '-d', 'kusec_dev',
@@ -43,8 +41,7 @@ def seed_admin():
 
 
 def login():
-    code = subprocess.check_output(['python3', os.path.join(HERE, 'totp.py')]).decode().strip()
-    return call('POST', '/usr/login', {'username': USERNAME, 'password': PASSWORD, 'totp_code': code})['jwt']
+    return call('POST', '/usr/login', {'username': USERNAME, 'password': PASSWORD})['jwt']
 
 
 def seed_data(tok):

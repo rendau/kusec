@@ -564,13 +564,9 @@ type UsrLoginRep struct {
 	Jwt          string                 `protobuf:"bytes,1,opt,name=jwt,proto3" json:"jwt,omitempty"`
 	RefreshToken string                 `protobuf:"bytes,2,opt,name=refresh_token,json=refreshToken,proto3" json:"refresh_token,omitempty"`
 	// totp_required — пароль верный, но требуется код 2FA (повторить логин с totp_code).
-	TotpRequired bool `protobuf:"varint,3,opt,name=totp_required,json=totpRequired,proto3" json:"totp_required,omitempty"`
-	// totp_setup_required — админ без настроенной 2FA обязан её привязать;
-	// setup_token годится только для эндпоинтов настройки 2FA.
-	TotpSetupRequired bool   `protobuf:"varint,4,opt,name=totp_setup_required,json=totpSetupRequired,proto3" json:"totp_setup_required,omitempty"`
-	SetupToken        string `protobuf:"bytes,5,opt,name=setup_token,json=setupToken,proto3" json:"setup_token,omitempty"`
-	unknownFields     protoimpl.UnknownFields
-	sizeCache         protoimpl.SizeCache
+	TotpRequired  bool `protobuf:"varint,3,opt,name=totp_required,json=totpRequired,proto3" json:"totp_required,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
 }
 
 func (x *UsrLoginRep) Reset() {
@@ -622,20 +618,6 @@ func (x *UsrLoginRep) GetTotpRequired() bool {
 		return x.TotpRequired
 	}
 	return false
-}
-
-func (x *UsrLoginRep) GetTotpSetupRequired() bool {
-	if x != nil {
-		return x.TotpSetupRequired
-	}
-	return false
-}
-
-func (x *UsrLoginRep) GetSetupToken() string {
-	if x != nil {
-		return x.SetupToken
-	}
-	return ""
 }
 
 type UsrRefreshTokenReq struct {
@@ -787,10 +769,7 @@ func (x *UsrUpdateProfileReq) GetUsername() string {
 }
 
 type UsrEnrollTotpReq struct {
-	state protoimpl.MessageState `protogen:"open.v1"`
-	// setup_token нужен, если привязка выполняется по enroll-токену (админ сразу
-	// после логина). Для уже авторизованного пользователя поле можно не слать.
-	SetupToken    string `protobuf:"bytes,1,opt,name=setup_token,json=setupToken,proto3" json:"setup_token,omitempty"`
+	state         protoimpl.MessageState `protogen:"open.v1"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -823,13 +802,6 @@ func (x *UsrEnrollTotpReq) ProtoReflect() protoreflect.Message {
 // Deprecated: Use UsrEnrollTotpReq.ProtoReflect.Descriptor instead.
 func (*UsrEnrollTotpReq) Descriptor() ([]byte, []int) {
 	return file_kusec_v1_usr_proto_rawDescGZIP(), []int{12}
-}
-
-func (x *UsrEnrollTotpReq) GetSetupToken() string {
-	if x != nil {
-		return x.SetupToken
-	}
-	return ""
 }
 
 type UsrEnrollTotpRep struct {
@@ -886,7 +858,6 @@ func (x *UsrEnrollTotpRep) GetOtpauthUrl() string {
 
 type UsrConfirmTotpReq struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
-	SetupToken    string                 `protobuf:"bytes,1,opt,name=setup_token,json=setupToken,proto3" json:"setup_token,omitempty"`
 	Code          string                 `protobuf:"bytes,2,opt,name=code,proto3" json:"code,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
@@ -920,13 +891,6 @@ func (x *UsrConfirmTotpReq) ProtoReflect() protoreflect.Message {
 // Deprecated: Use UsrConfirmTotpReq.ProtoReflect.Descriptor instead.
 func (*UsrConfirmTotpReq) Descriptor() ([]byte, []int) {
 	return file_kusec_v1_usr_proto_rawDescGZIP(), []int{14}
-}
-
-func (x *UsrConfirmTotpReq) GetSetupToken() string {
-	if x != nil {
-		return x.SetupToken
-	}
-	return ""
 }
 
 func (x *UsrConfirmTotpReq) GetCode() string {
@@ -1035,14 +999,11 @@ const file_kusec_v1_usr_proto_rawDesc = "" +
 	"\vUsrLoginReq\x12\x1a\n" +
 	"\busername\x18\x01 \x01(\tR\busername\x12\x1a\n" +
 	"\bpassword\x18\x02 \x01(\tR\bpassword\x12\x1b\n" +
-	"\ttotp_code\x18\x03 \x01(\tR\btotpCode\"\xba\x01\n" +
+	"\ttotp_code\x18\x03 \x01(\tR\btotpCode\"\x97\x01\n" +
 	"\vUsrLoginRep\x12\x10\n" +
 	"\x03jwt\x18\x01 \x01(\tR\x03jwt\x12#\n" +
 	"\rrefresh_token\x18\x02 \x01(\tR\frefreshToken\x12#\n" +
-	"\rtotp_required\x18\x03 \x01(\bR\ftotpRequired\x12.\n" +
-	"\x13totp_setup_required\x18\x04 \x01(\bR\x11totpSetupRequired\x12\x1f\n" +
-	"\vsetup_token\x18\x05 \x01(\tR\n" +
-	"setupToken\"9\n" +
+	"\rtotp_required\x18\x03 \x01(\bR\ftotpRequiredJ\x04\b\x04\x10\x05J\x04\b\x05\x10\x06R\x13totp_setup_requiredR\vsetup_token\"9\n" +
 	"\x12UsrRefreshTokenReq\x12#\n" +
 	"\rrefresh_token\x18\x01 \x01(\tR\frefreshToken\"L\n" +
 	"\x15UsrBootstrapStatusRep\x123\n" +
@@ -1053,18 +1014,14 @@ const file_kusec_v1_usr_proto_rawDesc = "" +
 	"\busername\x18\x03 \x01(\tH\x02R\busername\x88\x01\x01B\a\n" +
 	"\x05_nameB\v\n" +
 	"\t_passwordB\v\n" +
-	"\t_username\"3\n" +
-	"\x10UsrEnrollTotpReq\x12\x1f\n" +
-	"\vsetup_token\x18\x01 \x01(\tR\n" +
-	"setupToken\"K\n" +
+	"\t_username\"%\n" +
+	"\x10UsrEnrollTotpReqJ\x04\b\x01\x10\x02R\vsetup_token\"K\n" +
 	"\x10UsrEnrollTotpRep\x12\x16\n" +
 	"\x06secret\x18\x01 \x01(\tR\x06secret\x12\x1f\n" +
 	"\votpauth_url\x18\x02 \x01(\tR\n" +
-	"otpauthUrl\"H\n" +
-	"\x11UsrConfirmTotpReq\x12\x1f\n" +
-	"\vsetup_token\x18\x01 \x01(\tR\n" +
-	"setupToken\x12\x12\n" +
-	"\x04code\x18\x02 \x01(\tR\x04code\"'\n" +
+	"otpauthUrl\":\n" +
+	"\x11UsrConfirmTotpReq\x12\x12\n" +
+	"\x04code\x18\x02 \x01(\tR\x04codeJ\x04\b\x01\x10\x02R\vsetup_token\"'\n" +
 	"\x11UsrDisableTotpReq\x12\x12\n" +
 	"\x04code\x18\x01 \x01(\tR\x04code2\xb9\t\n" +
 	"\x03Usr\x12@\n" +

@@ -200,9 +200,7 @@ async function submit(): Promise<void> {
           {{
             profile?.totp_enabled
               ? 'A code from your authenticator app is required at sign-in.'
-              : profile?.is_admin
-                ? 'Required for administrators — set it up to keep access.'
-                : 'Add an extra layer of protection to your account.'
+              : 'Add an extra layer of protection to your account.'
           }}
         </NText>
       </NSpace>

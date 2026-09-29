@@ -39,6 +39,4 @@ type SessionServiceI interface {
 	CreateRefreshToken(usrId int64, passwordHash string) (string, error)
 	ParseRefreshToken(tokenStr, currentPasswordHash string) (int64, error)
 	RefreshTokenUserId(tokenStr string) (int64, error)
-	CreateEnrollToken(usrId int64) (string, error)
-	ParseEnrollToken(tokenStr string) (int64, error)
 }

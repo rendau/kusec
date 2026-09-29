@@ -178,10 +178,10 @@ message UsrLoginRep {
   string refresh_token = 2;
   // totp_required — пароль верный, но требуется код 2FA (повторить логин с totp_code).
   bool totp_required = 3;
-  // totp_setup_required — админ без настроенной 2FA обязан её привязать;
-  // setup_token годится только для эндпоинтов настройки 2FA.
-  bool totp_setup_required = 4;
-  string setup_token = 5;
+  // 4, 5 — totp_setup_required/setup_token: обязательная привязка 2FA для
+  // админов снята, 2FA включается по желанию из профиля.
+  reserved 4, 5;
+  reserved "totp_setup_required", "setup_token";
 }
 
 message UsrRefreshTokenReq {
@@ -201,9 +201,8 @@ message UsrUpdateProfileReq {
 // 2FA (TOTP)
 
 message UsrEnrollTotpReq {
-  // setup_token нужен, если привязка выполняется по enroll-токену (админ сразу
-  // после логина). Для уже авторизованного пользователя поле можно не слать.
-  string setup_token = 1;
+  reserved 1;
+  reserved "setup_token";
 }
 
 message UsrEnrollTotpRep {
@@ -212,7 +211,8 @@ message UsrEnrollTotpRep {
 }
 
 message UsrConfirmTotpReq {
-  string setup_token = 1;
+  reserved 1;
+  reserved "setup_token";
   string code = 2;
 }
 

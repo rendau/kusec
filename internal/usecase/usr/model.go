@@ -6,16 +6,12 @@ type UpdateProfileReq struct {
 	Password *string
 }
 
-// LoginResult — итог попытки логина. Возможны три исхода:
+// LoginResult — итог попытки логина. Возможны два исхода:
 //   - выдана пара токенов (Jwt+RefreshToken);
-//   - пароль верный, но включена 2FA и не передан код (TotpRequired);
-//   - админ без настроенной 2FA — обязан её привязать (TotpSetupRequired +
-//     краткоживущий SetupToken для эндпоинтов настройки).
+//   - пароль верный, но включена 2FA и не передан код (TotpRequired).
 type LoginResult struct {
 	Jwt          string
 	RefreshToken string
 
-	TotpRequired      bool
-	TotpSetupRequired bool
-	SetupToken        string
+	TotpRequired bool
 }

@@ -246,9 +246,8 @@ docker stop kusec-dev-pg              # стенд сносится вместе
 
 - контейнер `kusec-dev-pg`, порт `55433`, БД `kusec_dev` (`postgres`/`postgres`);
   бэкенд — HTTP `18080` (API под `/api`), gRPC `15050`; админка — `http://127.0.0.1:5199`.
-- вход в админку: `admin` / `admin12345`, 2FA включена с постоянным секретом
-  `KUSECDEVTOTPSECRETKUSECDEVTOTP23` — текущий код: `python3 scripts/devstand/totp.py`
-  (или добавить секрет в любой authenticator).
+- вход в админку: `admin` / `admin12345`, без 2FA. Проверить 2FA: включить её в
+  профиле и брать код через `python3 scripts/devstand/totp.py <ключ из профиля>`.
 - креды только для этого одноразового стенда, нигде больше не использовать.
 
 ### Flow проверки изменений

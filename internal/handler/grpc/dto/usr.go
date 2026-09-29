@@ -28,11 +28,9 @@ func EncodeUsrLoginResult(v *usecase.LoginResult) *proto.UsrLoginRep {
 		return &proto.UsrLoginRep{}
 	}
 	return &proto.UsrLoginRep{
-		Jwt:               v.Jwt,
-		RefreshToken:      v.RefreshToken,
-		TotpRequired:      v.TotpRequired,
-		TotpSetupRequired: v.TotpSetupRequired,
-		SetupToken:        v.SetupToken,
+		Jwt:          v.Jwt,
+		RefreshToken: v.RefreshToken,
+		TotpRequired: v.TotpRequired,
 	}
 }
 

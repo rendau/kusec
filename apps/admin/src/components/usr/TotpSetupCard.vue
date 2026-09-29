@@ -9,17 +9,6 @@ import { confirmTotp, enrollTotp } from '@/api/usr'
 import { useBreakpoint } from '@/composables/useBreakpoint'
 import { useClipboard } from '@/composables/useClipboard'
 
-const props = withDefaults(
-  defineProps<{
-    /**
-     * Enrol via a setup token (mandatory-admin flow, no session yet). Omit to
-     * enrol the currently authenticated user (voluntary, from the profile).
-     */
-    setupToken?: string
-  }>(),
-  { setupToken: '' },
-)
-
 const emit = defineEmits<{
   /** 2FA enabled — a fresh session token pair has been persisted. */
   confirmed: []
@@ -43,7 +32,7 @@ async function loadEnrollment(): Promise<void> {
   loading.value = true
   enrollError.value = ''
   try {
-    const rep = await enrollTotp(props.setupToken)
+    const rep = await enrollTotp()
     secret.value = rep.secret
     otpauthUrl.value = rep.otpauth_url
     qrDataUrl.value = await QRCode.toDataURL(rep.otpauth_url, {
@@ -66,7 +55,7 @@ async function submitConfirm(): Promise<void> {
   confirming.value = true
   confirmError.value = ''
   try {
-    await confirmTotp(trimmed, props.setupToken)
+    await confirmTotp(trimmed)
     emit('confirmed')
   } catch (error) {
     confirmError.value = apiErrorMessage(error, 'Invalid code, try again')

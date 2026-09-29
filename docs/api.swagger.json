@@ -4186,9 +4186,6 @@
     "kusec_v1UsrConfirmTotpReq": {
       "type": "object",
       "properties": {
-        "setup_token": {
-          "type": "string"
-        },
         "code": {
           "type": "string"
         }
@@ -4249,13 +4246,7 @@
       }
     },
     "kusec_v1UsrEnrollTotpReq": {
-      "type": "object",
-      "properties": {
-        "setup_token": {
-          "type": "string",
-          "description": "setup_token нужен, если привязка выполняется по enroll-токену (админ сразу\nпосле логина). Для уже авторизованного пользователя поле можно не слать."
-        }
-      }
+      "type": "object"
     },
     "kusec_v1UsrListRep": {
       "type": "object",
@@ -4284,13 +4275,6 @@
         "totp_required": {
           "type": "boolean",
           "description": "totp_required — пароль верный, но требуется код 2FA (повторить логин с totp_code)."
-        },
-        "totp_setup_required": {
-          "type": "boolean",
-          "description": "totp_setup_required — админ без настроенной 2FA обязан её привязать;\nsetup_token годится только для эндпоинтов настройки 2FA."
-        },
-        "setup_token": {
-          "type": "string"
         }
       }
     },

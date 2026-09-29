@@ -32,16 +32,12 @@ export interface UsrMain {
  * On a fully successful login the pair (`jwt` + `refresh_token`) is set. When
  * 2FA stands between the user and a session, the password was accepted but no
  * tokens are issued yet — instead exactly one flag is set:
- *   - `totp_required`: re-submit the login with a `totp_code`;
- *   - `totp_setup_required`: the (admin) account must enable 2FA first;
- *     `setup_token` authorises the TOTP enroll/confirm endpoints.
+ *   - `totp_required`: re-submit the login with a `totp_code`.
  */
 export interface UsrLoginRep {
   jwt: string
   refresh_token: string
   totp_required?: boolean
-  totp_setup_required?: boolean
-  setup_token?: string
 }
 
 /** `UsrEnrollTotpRep` — secret + otpauth URL to bind in an authenticator app. */
