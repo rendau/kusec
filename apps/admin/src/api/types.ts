@@ -414,6 +414,53 @@ export interface KubeImportSecretRep {
 }
 
 /**
+ * `KubeClusterConfigMapSt` — one cluster config map offered for import. Values
+ * are never sent; only `keys` (data + binaryData, sorted) are listed.
+ */
+export interface KubeClusterConfigMapSt {
+  namespace: string
+  name: string
+  keys: string[]
+  /** Already managed by kusec (label managed-by=kusec). */
+  managed: boolean
+}
+
+/**
+ * `KubeListClusterConfigMapsRep` — cluster config maps available for import.
+ * `in_cluster` is false when the service runs outside a cluster (empty list).
+ */
+export interface KubeListClusterConfigMapsRep {
+  in_cluster: boolean
+  configmaps: KubeClusterConfigMapSt[]
+}
+
+/**
+ * `KubeImportConfigMapReq` — import one cluster config map into `app_id`.
+ * `configmap_slug` is the landing kusec config map name (required). When a
+ * config map with that slug already exists, missing keys are added and
+ * matching keys are overridden with the cluster value.
+ */
+export interface KubeImportConfigMapReq {
+  app_id: string
+  namespace: string
+  name: string
+  configmap_slug: string
+}
+
+/**
+ * Cluster config map import result (`KubeImportConfigMapRep`).
+ * `configmap_created` is false when an existing config map was topped up.
+ * `created_items`/`updated_items` are int64 → may arrive as string.
+ */
+export interface KubeImportConfigMapRep {
+  configmap_id: string
+  configmap_slug: string
+  configmap_created: boolean
+  created_items: number | string
+  updated_items: number | string
+}
+
+/**
  * One key/value pair from a live cluster object (`KubeClusterResourceItemSt`).
  * `encoding` is 'plain' for text or 'base64' for binary values.
  */

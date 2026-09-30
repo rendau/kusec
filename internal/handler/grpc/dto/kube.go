@@ -50,11 +50,36 @@ func EncodeKubeImportResult(v *kubeService.ImportResult) *proto.KubeImportSecret
 		return nil
 	}
 	return &proto.KubeImportSecretRep{
-		SecretId:      v.SecretId,
-		SecretSlug:    v.SecretSlug,
-		SecretCreated: v.SecretCreated,
+		SecretId:      v.ObjectId,
+		SecretSlug:    v.Slug,
+		SecretCreated: v.ObjectCreated,
 		CreatedItems:  v.CreatedItems,
 		UpdatedItems:  v.UpdatedItems,
+	}
+}
+
+func EncodeKubeClusterConfigMap(v *kubeService.ClusterConfigMap, _ int) *proto.KubeClusterConfigMapSt {
+	if v == nil {
+		return nil
+	}
+	return &proto.KubeClusterConfigMapSt{
+		Namespace: v.Namespace,
+		Name:      v.Name,
+		Keys:      v.Keys,
+		Managed:   v.Managed,
+	}
+}
+
+func EncodeKubeImportConfigMapResult(v *kubeService.ImportResult) *proto.KubeImportConfigMapRep {
+	if v == nil {
+		return nil
+	}
+	return &proto.KubeImportConfigMapRep{
+		ConfigmapId:      v.ObjectId,
+		ConfigmapSlug:    v.Slug,
+		ConfigmapCreated: v.ObjectCreated,
+		CreatedItems:     v.CreatedItems,
+		UpdatedItems:     v.UpdatedItems,
 	}
 }
 

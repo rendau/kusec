@@ -163,6 +163,7 @@ type CreateSecretIn struct {
 	Description string `json:"description,omitempty"`
 	KubeType    string `json:"kube_type,omitempty" jsonschema:"тип k8s-секрета, пусто = Opaque (например kubernetes.io/basic-auth)"`
 	Active      *bool  `json:"active,omitempty"`
+	ExactSlug   *bool  `json:"exact_slug,omitempty" jsonschema:"true — имя k8s-секрета = slug_name как есть, без префикса и app-slug (только админ)"`
 }
 
 func (s *sessionServer) createSecret(ctx context.Context, req *mcpsdk.CallToolRequest, in CreateSecretIn) (*mcpsdk.CallToolResult, CreateOut, error) {
@@ -182,6 +183,7 @@ func (s *sessionServer) createSecret(ctx context.Context, req *mcpsdk.CallToolRe
 		SlugName:    &in.SlugName,
 		Description: &in.Description,
 		KubeType:    &in.KubeType,
+		ExactSlug:   in.ExactSlug,
 	})
 	if err != nil {
 		return nil, CreateOut{}, s.toolErr(err)
@@ -196,6 +198,7 @@ type UpdateSecretIn struct {
 	SlugName    *string `json:"slug_name,omitempty"`
 	Description *string `json:"description,omitempty"`
 	KubeType    *string `json:"kube_type,omitempty"`
+	ExactSlug   *bool   `json:"exact_slug,omitempty" jsonschema:"true — имя k8s-секрета = slug_name как есть (только админ; нельзя включить, пока есть активные item-ы с пустым значением)"`
 }
 
 func (s *sessionServer) updateSecret(ctx context.Context, req *mcpsdk.CallToolRequest, in UpdateSecretIn) (*mcpsdk.CallToolResult, StatusOut, error) {
@@ -209,6 +212,7 @@ func (s *sessionServer) updateSecret(ctx context.Context, req *mcpsdk.CallToolRe
 		SlugName:    in.SlugName,
 		Description: in.Description,
 		KubeType:    in.KubeType,
+		ExactSlug:   in.ExactSlug,
 	})
 	if err != nil {
 		return nil, StatusOut{}, s.toolErr(err)
@@ -224,6 +228,7 @@ type CreateConfigMapIn struct {
 	SlugName    string `json:"slug_name" jsonschema:"слаг конфигмапа (входит в имя k8s-configmap)"`
 	Description string `json:"description,omitempty"`
 	Active      *bool  `json:"active,omitempty"`
+	ExactSlug   *bool  `json:"exact_slug,omitempty" jsonschema:"true — имя k8s-configmap = slug_name как есть, без префикса и app-slug (только админ)"`
 }
 
 func (s *sessionServer) createConfigMap(ctx context.Context, req *mcpsdk.CallToolRequest, in CreateConfigMapIn) (*mcpsdk.CallToolResult, CreateOut, error) {
@@ -242,6 +247,7 @@ func (s *sessionServer) createConfigMap(ctx context.Context, req *mcpsdk.CallToo
 		Active:      in.Active,
 		SlugName:    &in.SlugName,
 		Description: &in.Description,
+		ExactSlug:   in.ExactSlug,
 	})
 	if err != nil {
 		return nil, CreateOut{}, s.toolErr(err)
@@ -255,6 +261,7 @@ type UpdateConfigMapIn struct {
 	Active      *bool   `json:"active,omitempty"`
 	SlugName    *string `json:"slug_name,omitempty"`
 	Description *string `json:"description,omitempty"`
+	ExactSlug   *bool   `json:"exact_slug,omitempty" jsonschema:"true — имя k8s-configmap = slug_name как есть (только админ)"`
 }
 
 func (s *sessionServer) updateConfigMap(ctx context.Context, req *mcpsdk.CallToolRequest, in UpdateConfigMapIn) (*mcpsdk.CallToolResult, StatusOut, error) {
@@ -267,6 +274,7 @@ func (s *sessionServer) updateConfigMap(ctx context.Context, req *mcpsdk.CallToo
 		Active:      in.Active,
 		SlugName:    in.SlugName,
 		Description: in.Description,
+		ExactSlug:   in.ExactSlug,
 	})
 	if err != nil {
 		return nil, StatusOut{}, s.toolErr(err)

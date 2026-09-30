@@ -16,7 +16,11 @@ type KubeServiceI interface {
 	Sync(ctx context.Context, appIds []string) (*kubeService.SyncResult, *kubeService.SyncResult, error)
 	ListNamespaces(ctx context.Context) ([]string, bool, error)
 	ListClusterSecrets(ctx context.Context, namespace string) ([]*kubeService.ClusterSecret, bool, error)
-	ImportSecret(ctx context.Context, appId string, ref kubeService.ImportRef, secretSlug string) (*kubeService.ImportResult, error)
+	ImportSecret(ctx context.Context, appId string, ref kubeService.ImportRef, secretSlug string, opts kubeService.ImportOptions) (*kubeService.ImportResult, error)
+	ImportSecrets(ctx context.Context, appId string, specs []kubeService.ImportSpec) ([]kubeService.ImportBatchItem, error)
+	ListClusterConfigMaps(ctx context.Context, namespace string) ([]*kubeService.ClusterConfigMap, bool, error)
+	ImportConfigMap(ctx context.Context, appId string, ref kubeService.ImportRef, configMapSlug string, opts kubeService.ImportOptions) (*kubeService.ImportResult, error)
+	ImportConfigMaps(ctx context.Context, appId string, specs []kubeService.ImportSpec) ([]kubeService.ImportBatchItem, error)
 	GetClusterSecret(ctx context.Context, namespace, name string) (*kubeService.ClusterResource, bool, bool, error)
 	GetClusterConfigMap(ctx context.Context, namespace, name string) (*kubeService.ClusterResource, bool, bool, error)
 }

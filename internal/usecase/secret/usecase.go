@@ -3,6 +3,8 @@ package secret
 import (
 	"context"
 	"fmt"
+	"sort"
+	"strings"
 
 	"github.com/samber/lo"
 
@@ -209,6 +211,11 @@ func (u *Usecase) Update(ctx context.Context, id string, obj *model.Edit) error 
 	if obj.ExactSlug != nil && *obj.ExactSlug != current.ExactSlug && !u.sessionSvc.CtxIsAdmin(ctx) {
 		return errs.NoPermission
 	}
+	if obj.ExactSlug != nil && *obj.ExactSlug && !current.ExactSlug {
+		if err = u.requireNoEmptyItems(ctx, id); err != nil {
+			return err
+		}
+	}
 
 	return u.txm.TxFn(ctx, func(ctx context.Context) error {
 		if err = u.svc.Update(ctx, id, obj); err != nil {
@@ -224,6 +231,37 @@ func (u *Usecase) Update(ctx context.Context, id string, obj *model.Edit) error 
 		}
 		return nil
 	})
+}
+
+// requireNoEmptyItems не даёт включить exact_slug, пока у секрета есть
+// активные item-ы с пустым значением. С exact_slug имя k8s-секрета совпадает
+// с slug — sync усыновит уже живущий в кластере объект с таким именем и
+// перепишет его пустыми значениями (Opaque k8s пропустит молча). Сначала
+// значения, потом флаг.
+func (u *Usecase) requireNoEmptyItems(ctx context.Context, secretId string) error {
+	items, _, err := u.itemSvc.List(ctx, &itemModel.ListReq{
+		SecretId: new(secretId),
+		Active:   new(true),
+	})
+	if err != nil {
+		return fmt.Errorf("itemSvc.List: %w", err)
+	}
+
+	emptyKeys := lo.FilterMap(items, func(item *itemModel.Main, _ int) (string, bool) {
+		return item.Key, item.Value == ""
+	})
+	if len(emptyKeys) == 0 {
+		return nil
+	}
+	sort.Strings(emptyKeys)
+
+	return errs.ErrFull{
+		Err: errs.InvalidRequest,
+		Desc: fmt.Sprintf("cannot enable exact_slug while the secret has active items with empty value (%s): "+
+			"sync would adopt the live k8s secret with the same name and overwrite its data with empty values; "+
+			"fill the values (e.g. import_secret from the cluster) or deactivate the items first",
+			strings.Join(emptyKeys, ", ")),
+	}
 }
 
 // Delete удаляет secret; item-ы удаляет каскад FK, записи аудита на каждый

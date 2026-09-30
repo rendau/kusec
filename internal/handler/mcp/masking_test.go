@@ -28,9 +28,16 @@ type itemSvcMock struct {
 	items map[string]*itemModel.Main
 }
 
-func (m *itemSvcMock) List(_ context.Context, _ *itemModel.ListReq) ([]*itemModel.Main, int64, error) {
+// List учитывает фильтры SecretId и Active — как реальный репозиторий.
+func (m *itemSvcMock) List(_ context.Context, pars *itemModel.ListReq) ([]*itemModel.Main, int64, error) {
 	result := make([]*itemModel.Main, 0, len(m.items))
 	for _, item := range m.items {
+		if pars.SecretId != nil && item.SecretId != *pars.SecretId {
+			continue
+		}
+		if pars.Active != nil && item.Active != *pars.Active {
+			continue
+		}
 		result = append(result, item)
 	}
 	return result, int64(len(result)), nil

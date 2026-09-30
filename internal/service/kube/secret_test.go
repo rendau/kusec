@@ -13,6 +13,8 @@ import (
 	k8sfake "k8s.io/client-go/kubernetes/fake"
 
 	appModel "github.com/rendau/kusec/internal/domain/app/model"
+	configitemModel "github.com/rendau/kusec/internal/domain/configitem/model"
+	configmapModel "github.com/rendau/kusec/internal/domain/configmap/model"
 	itemModel "github.com/rendau/kusec/internal/domain/item/model"
 	secretModel "github.com/rendau/kusec/internal/domain/secret/model"
 	syncrunModel "github.com/rendau/kusec/internal/domain/syncrun/model"
@@ -84,6 +86,14 @@ func (auditRecStub) RecordSecret(context.Context, *secretModel.Main, *secretMode
 }
 
 func (auditRecStub) RecordItem(context.Context, *itemModel.Main, *itemModel.Main, string, *string) error {
+	return nil
+}
+
+func (auditRecStub) RecordConfigMap(context.Context, *configmapModel.Main, *configmapModel.Main, string, *string) error {
+	return nil
+}
+
+func (auditRecStub) RecordConfigItem(context.Context, *configitemModel.Main, *configitemModel.Main, string, *string) error {
 	return nil
 }
 

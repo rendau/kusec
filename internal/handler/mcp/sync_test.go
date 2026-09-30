@@ -30,6 +30,14 @@ type kubeSvcMock struct {
 	gotAppIds     []string
 	secretsResult *kubeSvc.SyncResult
 	configMaps    *kubeSvc.SyncResult
+
+	// импорт / списки объектов кластера (import_test.go); importFn и
+	// importBatchFn обслуживают и секреты, и configmap-ы
+	importFn          func(appId string, ref kubeSvc.ImportRef, slug string, opts kubeSvc.ImportOptions) (*kubeSvc.ImportResult, error)
+	importBatchFn     func(appId string, specs []kubeSvc.ImportSpec) ([]kubeSvc.ImportBatchItem, error)
+	clusterSecrets    []*kubeSvc.ClusterSecret
+	clusterConfigMaps []*kubeSvc.ClusterConfigMap
+	gotNamespace      string
 }
 
 func (m *kubeSvcMock) Sync(_ context.Context, appIds []string) (*kubeSvc.SyncResult, *kubeSvc.SyncResult, error) {
@@ -49,12 +57,42 @@ func (m *kubeSvcMock) ListNamespaces(_ context.Context) ([]string, bool, error) 
 	return nil, false, nil
 }
 
-func (m *kubeSvcMock) ListClusterSecrets(_ context.Context, _ string) ([]*kubeSvc.ClusterSecret, bool, error) {
-	return nil, false, nil
+func (m *kubeSvcMock) ListClusterSecrets(_ context.Context, namespace string) ([]*kubeSvc.ClusterSecret, bool, error) {
+	m.gotNamespace = namespace
+	return m.clusterSecrets, len(m.clusterSecrets) > 0, nil
 }
 
-func (m *kubeSvcMock) ImportSecret(_ context.Context, _ string, _ kubeSvc.ImportRef, _ string) (*kubeSvc.ImportResult, error) {
-	return nil, errs.NotImplemented
+func (m *kubeSvcMock) ImportSecret(_ context.Context, appId string, ref kubeSvc.ImportRef, secretSlug string, opts kubeSvc.ImportOptions) (*kubeSvc.ImportResult, error) {
+	if m.importFn == nil {
+		return nil, errs.NotImplemented
+	}
+	return m.importFn(appId, ref, secretSlug, opts)
+}
+
+func (m *kubeSvcMock) ImportSecrets(_ context.Context, appId string, specs []kubeSvc.ImportSpec) ([]kubeSvc.ImportBatchItem, error) {
+	if m.importBatchFn == nil {
+		return nil, errs.NotImplemented
+	}
+	return m.importBatchFn(appId, specs)
+}
+
+func (m *kubeSvcMock) ListClusterConfigMaps(_ context.Context, namespace string) ([]*kubeSvc.ClusterConfigMap, bool, error) {
+	m.gotNamespace = namespace
+	return m.clusterConfigMaps, len(m.clusterConfigMaps) > 0, nil
+}
+
+func (m *kubeSvcMock) ImportConfigMap(_ context.Context, appId string, ref kubeSvc.ImportRef, configMapSlug string, opts kubeSvc.ImportOptions) (*kubeSvc.ImportResult, error) {
+	if m.importFn == nil {
+		return nil, errs.NotImplemented
+	}
+	return m.importFn(appId, ref, configMapSlug, opts)
+}
+
+func (m *kubeSvcMock) ImportConfigMaps(_ context.Context, appId string, specs []kubeSvc.ImportSpec) ([]kubeSvc.ImportBatchItem, error) {
+	if m.importBatchFn == nil {
+		return nil, errs.NotImplemented
+	}
+	return m.importBatchFn(appId, specs)
 }
 
 func (m *kubeSvcMock) GetClusterSecret(_ context.Context, _, _ string) (*kubeSvc.ClusterResource, bool, bool, error) {

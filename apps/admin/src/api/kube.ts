@@ -2,7 +2,9 @@ import { apiFetch } from './http'
 import { buildListQuery } from './query'
 import type {
   KubeClusterResourceRep,
+  KubeImportConfigMapRep,
   KubeImportSecretRep,
+  KubeListClusterConfigMapsRep,
   KubeListClusterSecretsRep,
   KubeListNamespacesRep,
   KubeSyncConfigMapsRep,
@@ -108,6 +110,39 @@ export function importClusterSecret(
       namespace: ref.namespace,
       name: ref.name,
       secret_slug: secretSlug,
+    }),
+  })
+}
+
+/**
+ * List cluster config maps available for import (admin only). Same scoping as
+ * {@link listClusterSecrets}; the auto-created `kube-root-ca.crt` is hidden.
+ */
+export function listClusterConfigMaps(
+  namespace?: string,
+): Promise<KubeListClusterConfigMapsRep> {
+  const query = buildListQuery(undefined, { namespace })
+  return apiFetch<KubeListClusterConfigMapsRep>(`/kube/cluster-configmap${query}`)
+}
+
+/**
+ * Import one cluster config map into application `appId` (admin only). It
+ * becomes a kusec config map with one item per data/binaryData key.
+ * `configMapSlug` is the landing config map name. The cluster source is left
+ * intact.
+ */
+export function importClusterConfigMap(
+  appId: string,
+  ref: { namespace: string; name: string },
+  configMapSlug: string,
+): Promise<KubeImportConfigMapRep> {
+  return apiFetch<KubeImportConfigMapRep>('/kube/import-configmap', {
+    method: 'POST',
+    body: JSON.stringify({
+      app_id: appId,
+      namespace: ref.namespace,
+      name: ref.name,
+      configmap_slug: configMapSlug,
     }),
   })
 }

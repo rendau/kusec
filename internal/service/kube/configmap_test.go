@@ -19,7 +19,16 @@ import (
 )
 
 type configMapSvcStub struct {
-	listFn func(_ context.Context, req *configmapModel.ListReq) ([]*configmapModel.Main, int64, error)
+	listFn   func(_ context.Context, req *configmapModel.ListReq) ([]*configmapModel.Main, int64, error)
+	createFn func(_ context.Context, obj *configmapModel.Edit) (string, error)
+}
+
+func (s configMapSvcStub) Get(_ context.Context, id string, _ bool) (*configmapModel.Main, bool, error) {
+	return &configmapModel.Main{Id: id}, true, nil
+}
+
+func (s configMapSvcStub) Create(ctx context.Context, obj *configmapModel.Edit) (string, error) {
+	return s.createFn(ctx, obj)
 }
 
 func (s configMapSvcStub) TouchSynced(context.Context, string, time.Time, string) error { return nil }
@@ -29,7 +38,21 @@ func (s configMapSvcStub) List(ctx context.Context, req *configmapModel.ListReq)
 }
 
 type configItemSvcStub struct {
-	listFn func(_ context.Context, req *configitemModel.ListReq) ([]*configitemModel.Main, int64, error)
+	listFn   func(_ context.Context, req *configitemModel.ListReq) ([]*configitemModel.Main, int64, error)
+	createFn func(_ context.Context, obj *configitemModel.Edit) (string, error)
+	updateFn func(_ context.Context, id string, obj *configitemModel.Edit) error
+}
+
+func (s configItemSvcStub) Get(_ context.Context, id string, _ bool) (*configitemModel.Main, bool, error) {
+	return &configitemModel.Main{Id: id}, true, nil
+}
+
+func (s configItemSvcStub) Create(ctx context.Context, obj *configitemModel.Edit) (string, error) {
+	return s.createFn(ctx, obj)
+}
+
+func (s configItemSvcStub) Update(ctx context.Context, id string, obj *configitemModel.Edit) error {
+	return s.updateFn(ctx, id, obj)
 }
 
 func (s configItemSvcStub) List(ctx context.Context, req *configitemModel.ListReq) ([]*configitemModel.Main, int64, error) {

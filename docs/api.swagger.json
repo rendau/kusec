@@ -1427,6 +1427,38 @@
         ]
       }
     },
+    "/kube/cluster-configmap": {
+      "get": {
+        "summary": "Список configmap-ов кластера для выбора при импорте (только админ).\nnamespace в query пуст — берутся все namespace-ы без системных kube-*;\nслужебный kube-root-ca.crt скрыт.",
+        "operationId": "Kube_ListClusterConfigMaps",
+        "responses": {
+          "200": {
+            "description": "A successful response.",
+            "schema": {
+              "$ref": "#/definitions/kusec_v1KubeListClusterConfigMapsRep"
+            }
+          },
+          "default": {
+            "description": "An unexpected error response.",
+            "schema": {
+              "$ref": "#/definitions/rpcStatus"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "namespace",
+            "description": "Namespace для выборки; пусто — все namespace-ы без системных kube-*.",
+            "in": "query",
+            "required": false,
+            "type": "string"
+          }
+        ],
+        "tags": [
+          "Kube"
+        ]
+      }
+    },
     "/kube/cluster-secret": {
       "get": {
         "summary": "Список секретов кластера для выбора при импорте (только админ).\nnamespace в query пуст — берутся все namespace-ы без системных kube-*.",
@@ -1483,6 +1515,39 @@
             "in": "path",
             "required": true,
             "type": "string"
+          }
+        ],
+        "tags": [
+          "Kube"
+        ]
+      }
+    },
+    "/kube/import-configmap": {
+      "post": {
+        "summary": "Импорт одного configmap-а кластера в указанное приложение (только админ).\nConfigmap кластера становится записью configmap в app_id с item-ами по\nключам data (текст) и binaryData (base64). Имя посадочного configmap-а\n(slug) обязательно. Если configmap с таким slug в приложении уже есть —\nвыполняется дозаполнение: недостающие ключи создаются, совпавшие —\nперезаписываются значением из кластера. Источник в кластере не меняется.",
+        "operationId": "Kube_ImportConfigMap",
+        "responses": {
+          "200": {
+            "description": "A successful response.",
+            "schema": {
+              "$ref": "#/definitions/kusec_v1KubeImportConfigMapRep"
+            }
+          },
+          "default": {
+            "description": "An unexpected error response.",
+            "schema": {
+              "$ref": "#/definitions/rpcStatus"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "body",
+            "in": "body",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/kusec_v1KubeImportConfigMapReq"
+            }
           }
         ],
         "tags": [
@@ -3461,6 +3526,28 @@
         }
       }
     },
+    "kusec_v1KubeClusterConfigMapSt": {
+      "type": "object",
+      "properties": {
+        "namespace": {
+          "type": "string"
+        },
+        "name": {
+          "type": "string"
+        },
+        "keys": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "description": "Ключи data и binaryData (отсортированы), значения не передаются."
+        },
+        "managed": {
+          "type": "boolean",
+          "description": "true — configmap уже под управлением kusec (лейбл managed-by=kusec)."
+        }
+      }
+    },
     "kusec_v1KubeClusterResourceItemSt": {
       "type": "object",
       "properties": {
@@ -3538,6 +3625,53 @@
         }
       }
     },
+    "kusec_v1KubeImportConfigMapRep": {
+      "type": "object",
+      "properties": {
+        "configmap_id": {
+          "type": "string",
+          "description": "Запись configmap (созданная или дозаполненная)."
+        },
+        "configmap_slug": {
+          "type": "string",
+          "description": "Фактический slug посадочного configmap-а."
+        },
+        "configmap_created": {
+          "type": "boolean",
+          "description": "false — configmap уже существовал, выполнено дозаполнение."
+        },
+        "created_items": {
+          "type": "string",
+          "format": "int64",
+          "description": "Сколько item-ов создано (новые ключи)."
+        },
+        "updated_items": {
+          "type": "string",
+          "format": "int64",
+          "description": "Сколько item-ов обновлено (совпавшие ключи — значение перезаписано)."
+        }
+      }
+    },
+    "kusec_v1KubeImportConfigMapReq": {
+      "type": "object",
+      "properties": {
+        "app_id": {
+          "type": "string",
+          "description": "Целевое приложение, в которое импортируется configmap."
+        },
+        "namespace": {
+          "type": "string",
+          "description": "Configmap-источник в кластере."
+        },
+        "name": {
+          "type": "string"
+        },
+        "configmap_slug": {
+          "type": "string",
+          "description": "Имя посадочного configmap-а kusec (slug). Обязательно."
+        }
+      }
+    },
     "kusec_v1KubeImportSecretRep": {
       "type": "object",
       "properties": {
@@ -3582,6 +3716,22 @@
         "secret_slug": {
           "type": "string",
           "description": "Имя посадочного секрета kusec (slug). Обязательно."
+        }
+      }
+    },
+    "kusec_v1KubeListClusterConfigMapsRep": {
+      "type": "object",
+      "properties": {
+        "in_cluster": {
+          "type": "boolean",
+          "description": "false — сервис запущен вне кластера (configmaps тогда пуст)."
+        },
+        "configmaps": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "$ref": "#/definitions/kusec_v1KubeClusterConfigMapSt"
+          }
         }
       }
     },

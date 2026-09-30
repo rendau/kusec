@@ -85,7 +85,7 @@ const dialog = useDialog()
 // shows results of per-app syncs triggered from a workspace.
 const { syncing, confirmSync, report, reportVisible } = useKubeSync()
 
-// Importing cluster secrets creates applications, so it is admin-only.
+// Importing cluster secrets / config maps is admin-only.
 const appsStore = useAppsStore()
 const showImport = ref(false)
 
@@ -209,7 +209,7 @@ function confirmLogout(): void {
             <NButton
               quaternary
               circle
-              aria-label="Import secrets from cluster"
+              aria-label="Import from cluster"
               @click="showImport = true"
             >
               <template #icon>
@@ -217,7 +217,7 @@ function confirmLogout(): void {
               </template>
             </NButton>
           </template>
-          Import secrets from cluster
+          Import from cluster
         </NTooltip>
         <NTooltip>
           <template #trigger>

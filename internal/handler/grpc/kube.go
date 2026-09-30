@@ -59,12 +59,50 @@ func (h *Kube) ImportSecret(ctx context.Context, req *proto.KubeImportSecretReq)
 		ref = kubeService.ImportRef{Namespace: req.Namespace, Name: req.Name}
 	}
 
-	result, err := h.usecase.ImportSecret(ctx, appId, ref, secretSlug)
+	// REST-импорт переносит все ключи и перезаписывает совпавшие —
+	// поведение до появления опций (UI «Import from cluster» на него
+	// рассчитывает).
+	result, err := h.usecase.ImportSecret(ctx, appId, ref, secretSlug, kubeService.ImportOptions{Overwrite: true})
 	if err != nil {
 		return nil, err
 	}
 
 	return dto.EncodeKubeImportResult(result), nil
+}
+
+func (h *Kube) ListClusterConfigMaps(ctx context.Context, req *proto.KubeListClusterConfigMapsReq) (*proto.KubeListClusterConfigMapsRep, error) {
+	var namespace string
+	if req != nil {
+		namespace = req.Namespace
+	}
+
+	configMaps, inCluster, err := h.usecase.ListClusterConfigMaps(ctx, namespace)
+	if err != nil {
+		return nil, err
+	}
+
+	return &proto.KubeListClusterConfigMapsRep{
+		InCluster:  inCluster,
+		Configmaps: lo.Map(configMaps, dto.EncodeKubeClusterConfigMap),
+	}, nil
+}
+
+func (h *Kube) ImportConfigMap(ctx context.Context, req *proto.KubeImportConfigMapReq) (*proto.KubeImportConfigMapRep, error) {
+	var appId, configMapSlug string
+	var ref kubeService.ImportRef
+	if req != nil {
+		appId = req.AppId
+		configMapSlug = req.ConfigmapSlug
+		ref = kubeService.ImportRef{Namespace: req.Namespace, Name: req.Name}
+	}
+
+	// Как и REST-импорт секретов: все ключи, совпавшие перезаписываются.
+	result, err := h.usecase.ImportConfigMap(ctx, appId, ref, configMapSlug, kubeService.ImportOptions{Overwrite: true})
+	if err != nil {
+		return nil, err
+	}
+
+	return dto.EncodeKubeImportConfigMapResult(result), nil
 }
 
 func (h *Kube) GetClusterSecret(ctx context.Context, req *proto.KubeGetClusterSecretReq) (*proto.KubeClusterResourceRep, error) {

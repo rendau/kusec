@@ -9,6 +9,7 @@ import {
   NInput,
   NModal,
   NRadio,
+  NRadioButton,
   NRadioGroup,
   NResult,
   NScrollbar,
@@ -24,8 +25,12 @@ import { Refresh, Search } from '@vicons/tabler'
 import { storeToRefs } from 'pinia'
 
 import { ApiError, apiErrorMessage } from '@/api/http'
-import { importClusterSecret, listClusterSecrets } from '@/api/kube'
-import type { KubeClusterSecretSt } from '@/api/types'
+import {
+  importClusterConfigMap,
+  importClusterSecret,
+  listClusterConfigMaps,
+  listClusterSecrets,
+} from '@/api/kube'
 import { useBreakpoint } from '@/composables/useBreakpoint'
 import { useAppsStore } from '@/stores/apps'
 
@@ -47,12 +52,46 @@ const { isMobile } = useBreakpoint()
 const appsStore = useAppsStore()
 const { apps } = storeToRefs(appsStore)
 
+/** What is being imported: cluster secrets or config maps. */
+type ImportKind = 'secret' | 'configmap'
+
+/** One cluster object offered for import; config maps have no `type`. */
+interface ClusterRow {
+  namespace: string
+  name: string
+  type: string
+  keys: string[]
+  managed: boolean
+}
+
+/** Per-kind UI texts (the flow itself is identical for both kinds). */
+const KIND_TEXT: Record<
+  ImportKind,
+  { column: string; one: string; many: string; landing: string }
+> = {
+  secret: {
+    column: 'Secret',
+    one: 'secret',
+    many: 'secrets',
+    landing: 'Landing secret name',
+  },
+  configmap: {
+    column: 'Config map',
+    one: 'config map',
+    many: 'config maps',
+    landing: 'Landing config map name',
+  },
+}
+
 const loading = ref(false)
 const importing = ref(false)
 const inCluster = ref(true)
-const secrets = ref<KubeClusterSecretSt[]>([])
+const kind = ref<ImportKind>('secret')
+const rows = ref<ClusterRow[]>([])
 
-// Один секрет за импорт: выбранный ключ строки и имя посадочного секрета.
+const text = computed(() => KIND_TEXT[kind.value])
+
+// Один объект за импорт: выбранный ключ строки и имя посадочной записи.
 const selectedKey = ref<string | null>(null)
 const secretSlug = ref('')
 
@@ -60,12 +99,12 @@ const targetAppId = ref<string | null>(null)
 const namespaceFilter = ref<string>('')
 const search = ref('')
 
-/** Currently selected cluster secret (single selection). */
-const selectedSecret = computed<KubeClusterSecretSt | null>(
-  () => secrets.value.find((s) => rowKey(s) === selectedKey.value) ?? null,
+/** Currently selected cluster object (single selection). */
+const selectedSecret = computed<ClusterRow | null>(
+  () => rows.value.find((s) => rowKey(s) === selectedKey.value) ?? null,
 )
 
-// При выборе секрета подставляем его имя как имя посадочного секрета —
+// При выборе объекта подставляем его имя как имя посадочной записи —
 // пользователь может отредактировать перед импортом.
 watch(selectedSecret, (secret) => {
   secretSlug.value = secret?.name ?? ''
@@ -79,8 +118,8 @@ const appOptions = computed<SelectOption[]>(() =>
   })),
 )
 
-/** Stable row key — a cluster secret is unique by namespace + name. */
-function rowKey(row: KubeClusterSecretSt): string {
+/** Stable row key — a cluster object is unique by namespace + name. */
+function rowKey(row: ClusterRow): string {
   return `${row.namespace}/${row.name}`
 }
 
@@ -91,16 +130,16 @@ function toCount(value: number | string | undefined): number {
 }
 
 const namespaceOptions = computed<SelectOption[]>(() => {
-  const names = [...new Set(secrets.value.map((s) => s.namespace))].sort()
+  const names = [...new Set(rows.value.map((s) => s.namespace))].sort()
   return [
     { label: 'All namespaces', value: '' },
     ...names.map((name) => ({ label: name, value: name })),
   ]
 })
 
-const filteredSecrets = computed<KubeClusterSecretSt[]>(() => {
+const filteredSecrets = computed<ClusterRow[]>(() => {
   const q = search.value.trim().toLowerCase()
-  return secrets.value.filter((s) => {
+  return rows.value.filter((s) => {
     if (namespaceFilter.value && s.namespace !== namespaceFilter.value) return false
     if (!q) return true
     return (
@@ -111,7 +150,7 @@ const filteredSecrets = computed<KubeClusterSecretSt[]>(() => {
   })
 })
 
-const columns = computed<DataTableColumns<KubeClusterSecretSt>>(() => [
+const columns = computed<DataTableColumns<ClusterRow>>(() => [
   { type: 'selection', multiple: false },
   {
     title: 'Namespace',
@@ -122,22 +161,27 @@ const columns = computed<DataTableColumns<KubeClusterSecretSt>>(() => [
       h(NTag, { size: 'small', type: 'info', bordered: false }, () => row.namespace),
   },
   {
-    title: 'Secret',
+    title: text.value.column,
     key: 'name',
     minWidth: 160,
     ellipsis: { tooltip: true },
     render: (row) => h(NText, { code: true }, () => row.name),
   },
-  {
-    title: 'Type',
-    key: 'type',
-    width: 140,
-    ellipsis: { tooltip: true },
-    render: (row) =>
-      row.type
-        ? h(NText, { code: true }, () => row.type)
-        : h(NText, { depth: 3 }, () => 'Opaque'),
-  },
+  // Тип есть только у секретов.
+  ...(kind.value === 'secret'
+    ? ([
+        {
+          title: 'Type',
+          key: 'type',
+          width: 140,
+          ellipsis: { tooltip: true },
+          render: (row) =>
+            row.type
+              ? h(NText, { code: true }, () => row.type)
+              : h(NText, { depth: 3 }, () => 'Opaque'),
+        },
+      ] as DataTableColumns<ClusterRow>)
+    : []),
   {
     title: 'Keys',
     key: 'keys',
@@ -177,30 +221,58 @@ const canImport = computed(
 )
 
 async function load(): Promise<void> {
+  // Запоминаем вид на момент запроса: ответ устаревшего запроса (вид
+  // переключили, пока он шёл) отбрасываем.
+  const requested = kind.value
   loading.value = true
   try {
-    const rep = await listClusterSecrets()
-    inCluster.value = rep.in_cluster
-    secrets.value = rep.secrets ?? []
+    let loaded: ClusterRow[]
+    let loadedInCluster: boolean
+    if (requested === 'secret') {
+      const rep = await listClusterSecrets()
+      loadedInCluster = rep.in_cluster
+      loaded = rep.secrets ?? []
+    } else {
+      const rep = await listClusterConfigMaps()
+      loadedInCluster = rep.in_cluster
+      loaded = (rep.configmaps ?? []).map((cm) => ({ ...cm, type: '' }))
+    }
+    if (requested !== kind.value) return
+    inCluster.value = loadedInCluster
+    rows.value = loaded
   } catch (error) {
+    if (requested !== kind.value) return
     if (error instanceof ApiError && error.code === 'no_permission') {
       inCluster.value = true
-      secrets.value = []
+      rows.value = []
     }
-    message.error(apiErrorMessage(error, 'Failed to load cluster secrets'))
+    message.error(apiErrorMessage(error, `Failed to load cluster ${text.value.many}`))
   } finally {
-    loading.value = false
+    if (requested === kind.value) loading.value = false
   }
 }
+
+/** Reset the selection and filters (on open and on kind switch). */
+function resetSelection(): void {
+  selectedKey.value = null
+  secretSlug.value = ''
+  namespaceFilter.value = ''
+  search.value = ''
+}
+
+// Переключение вида: другой список, выбор сбрасывается.
+watch(kind, () => {
+  if (!props.show) return
+  resetSelection()
+  rows.value = []
+  void load()
+})
 
 watch(
   () => props.show,
   (show) => {
     if (!show) return
-    selectedKey.value = null
-    secretSlug.value = ''
-    namespaceFilter.value = ''
-    search.value = ''
+    resetSelection()
     void appsStore.ensureLoaded()
     // Preselect the requested target, else the only app, else nothing.
     targetAppId.value =
@@ -221,16 +293,29 @@ async function submit(): Promise<void> {
 
   importing.value = true
   try {
-    const rep = await importClusterSecret(
-      targetAppId.value,
-      { namespace: secret.namespace, name: secret.name },
-      slug,
-    )
-    const verb = rep.secret_created ? 'Imported' : 'Topped up'
-    const updated = toCount(rep.updated_items)
-    const parts = [`+${toCount(rep.created_items)} items`]
+    const ref = { namespace: secret.namespace, name: secret.name }
+    let created: boolean
+    let landedSlug: string
+    let createdItems: number | string
+    let updatedItems: number | string
+    if (kind.value === 'secret') {
+      const rep = await importClusterSecret(targetAppId.value, ref, slug)
+      created = rep.secret_created
+      landedSlug = rep.secret_slug
+      createdItems = rep.created_items
+      updatedItems = rep.updated_items
+    } else {
+      const rep = await importClusterConfigMap(targetAppId.value, ref, slug)
+      created = rep.configmap_created
+      landedSlug = rep.configmap_slug
+      createdItems = rep.created_items
+      updatedItems = rep.updated_items
+    }
+    const verb = created ? 'Imported' : 'Topped up'
+    const updated = toCount(updatedItems)
+    const parts = [`+${toCount(createdItems)} items`]
     if (updated > 0) parts.push(`${updated} overridden`)
-    message.success(`${verb} "${rep.secret_slug}" · ${parts.join(' · ')}`)
+    message.success(`${verb} "${landedSlug}" · ${parts.join(' · ')}`)
     emit('imported')
     close()
   } catch (error) {
@@ -249,7 +334,7 @@ async function submit(): Promise<void> {
   <NModal
     :show="show"
     preset="card"
-    title="Import secrets from cluster"
+    title="Import from cluster"
     class="kube-import-modal"
     style="width: 820px; max-width: calc(100vw - 32px)"
     :mask-closable="!importing"
@@ -260,15 +345,25 @@ async function submit(): Promise<void> {
         v-if="!loading && !inCluster"
         status="info"
         title="Not running in a cluster"
-        description="Cluster secret import is available only when the service runs inside Kubernetes."
+        description="Cluster import is available only when the service runs inside Kubernetes."
       />
 
       <template v-else>
         <NSpace vertical :size="12">
+          <NRadioGroup
+            v-model:value="kind"
+            size="small"
+            :disabled="importing"
+            aria-label="What to import"
+          >
+            <NRadioButton value="secret">Secrets</NRadioButton>
+            <NRadioButton value="configmap">Config maps</NRadioButton>
+          </NRadioGroup>
+
           <NText depth="3" style="font-size: 12px">
-            Pick the target application and one cluster secret to import, then
-            name the landing kusec secret. If a secret with that name already
-            exists, missing keys are added and matching keys are overridden. The
+            Pick the target application and one cluster {{ text.one }} to import, then
+            name the landing kusec {{ text.one }}. If a {{ text.one }} with that name
+            already exists, missing keys are added and matching keys are overridden. The
             cluster source is left unchanged.
           </NText>
 
@@ -281,10 +376,10 @@ async function submit(): Promise<void> {
             />
           </NFormItem>
 
-          <NFormItem label="Landing secret name" :show-feedback="false">
+          <NFormItem :label="text.landing" :show-feedback="false">
             <NInput
               v-model:value="secretSlug"
-              placeholder="kusec secret slug (required)"
+              :placeholder="`kusec ${text.one} slug (required)`"
               :disabled="!selectedKey"
             />
           </NFormItem>
@@ -299,7 +394,7 @@ async function submit(): Promise<void> {
             <NInput
               v-model:value="search"
               size="small"
-              placeholder="Search secret, namespace or key"
+              :placeholder="`Search ${text.one}, namespace or key`"
               clearable
             >
               <template #prefix>
@@ -318,7 +413,7 @@ async function submit(): Promise<void> {
             <NEmpty
               v-if="!filteredSecrets.length"
               size="small"
-              description="No cluster secrets found"
+              :description="`No cluster ${text.many} found`"
               style="padding: 24px 0"
             />
             <NRadioGroup v-else v-model:value="selectedKey" class="kube-cards">
@@ -344,7 +439,7 @@ async function submit(): Promise<void> {
                     <NTag size="tiny" type="info" :bordered="false">
                       {{ row.namespace }}
                     </NTag>
-                    <NText depth="3" style="font-size: 12px">
+                    <NText v-if="kind === 'secret'" depth="3" style="font-size: 12px">
                       {{ row.type || 'Opaque' }}
                     </NText>
                   </NSpace>
@@ -375,7 +470,7 @@ async function submit(): Promise<void> {
             "
           >
             <template #empty>
-              <NEmpty size="small" description="No cluster secrets found" />
+              <NEmpty size="small" :description="`No cluster ${text.many} found`" />
             </template>
           </NDataTable>
         </NSpace>

@@ -33,11 +33,16 @@ type ItemServiceI interface {
 
 type ConfigMapServiceI interface {
 	List(ctx context.Context, pars *configmapModel.ListReq) ([]*configmapModel.Main, int64, error)
+	Get(ctx context.Context, id string, errNE bool) (*configmapModel.Main, bool, error)
+	Create(ctx context.Context, obj *configmapModel.Edit) (string, error)
 	TouchSynced(ctx context.Context, id string, at time.Time, hash string) error
 }
 
 type ConfigItemServiceI interface {
 	List(ctx context.Context, pars *configitemModel.ListReq) ([]*configitemModel.Main, int64, error)
+	Get(ctx context.Context, id string, errNE bool) (*configitemModel.Main, bool, error)
+	Create(ctx context.Context, obj *configitemModel.Edit) (string, error)
+	Update(ctx context.Context, id string, obj *configitemModel.Edit) error
 }
 
 type TransactionManagerI interface {
@@ -51,6 +56,8 @@ type AuditRecorderI interface {
 	NewBatchId() string
 	RecordSecret(ctx context.Context, old, cur *secretModel.Main, action string, batchId *string) error
 	RecordItem(ctx context.Context, old, cur *itemModel.Main, action string, batchId *string) error
+	RecordConfigMap(ctx context.Context, old, cur *configmapModel.Main, action string, batchId *string) error
+	RecordConfigItem(ctx context.Context, old, cur *configitemModel.Main, action string, batchId *string) error
 	RecordSyncRun(ctx context.Context, runId string, appId *string) error
 	NewSyncRun(ctx context.Context, appId *string) *syncrunModel.Main
 }

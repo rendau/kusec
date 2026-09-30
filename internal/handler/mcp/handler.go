@@ -53,9 +53,14 @@ const (
 4. Значения item-ов конфигмапов не секретны: видны полностью и задаются явно.
 5. Пагинация zero-based: page начинается с 0, page_size по умолчанию 100.
 6. Инструмент sync применяет секреты и конфигмапы в Kubernetes-кластер: укажи app либо all_apps=true. Вызывай его после завершения изменений, а не после каждого item-а; работает только когда kusec запущен внутри кластера.
+7. Перенос уже существующих секретов и configmap-ов кластера в kusec — import_secret / import_configmap (только админ): list_cluster_secret показывает секреты кластера с именами ключей, import_secret читает значения из k8s и пишет их сразу в базу — тебе они не показываются, в ответе только имена ключей по категориям created / filled / updated / skipped. Целевой secret_slug создаётся (kube_type копируется из источника) или дозаполняется. По умолчанию overwrite=false: создаются отсутствующие item-ы и заполняются пустые, непустые не трогаются (skipped); overwrite=true перезаписывает непустые значением из кластера. keys — подмножество и переименование (ключ в кластере → имя item-а). Несколько секретов за раз — import_secret_batch: общие namespace/overwrite и список secrets (name, при необходимости свои secret_slug/keys/overwrite); каждый секрет в своей транзакции, ошибка одного — в его error, остальные переносятся, повтор идемпотентен. Для configmap-ов те же инструменты с теми же правилами: list_cluster_configmap, import_configmap (configmap_slug вместо secret_slug), import_configmap_batch (configmaps вместо secrets). Не пытайся переносить значения вручную через literal — используй import_secret.
+8. exact_slug (только админ) в create_secret/update_secret и create_configmap/update_configmap: имя k8s-объекта = slug_name без префикса и app-slug — так kusec берёт под управление уже существующий объект с этим именем. Включить exact_slug у секрета с активными item-ами без значений нельзя: sync затёр бы живой объект пустыми значениями — сначала заполни значения (import_secret), потом флаг.
 
 Типовой сценарий:
-create_secret {"app": "billing", "slug_name": "db"} → create_item {"secret_id": "…", "key": "POSTGRES_PASSWORD", "value_source": {"kind": "generate", "name": "db_password"}} → create_item {"secret_id": "…", "key": "PG_DSN", "value_source": {"kind": "template", "template": "postgres://billing:{{db_password}}@pg:5432/billing"}} → sync {"app": "billing"}`
+create_secret {"app": "billing", "slug_name": "db"} → create_item {"secret_id": "…", "key": "POSTGRES_PASSWORD", "value_source": {"kind": "generate", "name": "db_password"}} → create_item {"secret_id": "…", "key": "PG_DSN", "value_source": {"kind": "template", "template": "postgres://billing:{{db_password}}@pg:5432/billing"}} → sync {"app": "billing"}
+
+Перенос существующего секрета кластера:
+list_cluster_secret {"namespace": "billing"} → import_secret {"app": "billing", "namespace": "billing", "name": "billing-db", "secret_slug": "db", "keys": {"POSTGRES_PASSWORD": "", "POSTGRES_USER": "DB_USER"}} → update_secret {"id": "…", "exact_slug": true} (если kusec должен взять под управление тот же k8s-объект) → sync {"app": "billing"}`
 )
 
 type Handler struct {

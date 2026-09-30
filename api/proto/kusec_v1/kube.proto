@@ -66,6 +66,28 @@ service Kube {
     };
   }
 
+  // Список configmap-ов кластера для выбора при импорте (только админ).
+  // namespace в query пуст — берутся все namespace-ы без системных kube-*;
+  // служебный kube-root-ca.crt скрыт.
+  rpc ListClusterConfigMaps(KubeListClusterConfigMapsReq) returns (KubeListClusterConfigMapsRep) {
+    option (google.api.http) = {
+      get: "/kube/cluster-configmap"
+    };
+  }
+
+  // Импорт одного configmap-а кластера в указанное приложение (только админ).
+  // Configmap кластера становится записью configmap в app_id с item-ами по
+  // ключам data (текст) и binaryData (base64). Имя посадочного configmap-а
+  // (slug) обязательно. Если configmap с таким slug в приложении уже есть —
+  // выполняется дозаполнение: недостающие ключи создаются, совпавшие —
+  // перезаписываются значением из кластера. Источник в кластере не меняется.
+  rpc ImportConfigMap(KubeImportConfigMapReq) returns (KubeImportConfigMapRep) {
+    option (google.api.http) = {
+      post: "/kube/import-configmap"
+      body: "*"
+    };
+  }
+
   // Живой k8s-secret из кластера для сверки с записью kusec. Доступ — только
   // по своим app (HasAppAccess на app секрета), не только админ. Значения
   // отдаются (текст или base64 для бинарных), namespace/имя/тип/managed — для
@@ -132,6 +154,49 @@ message KubeImportSecretRep {
   string secret_slug = 2;
   // false — секрет уже существовал, выполнено дозаполнение.
   bool secret_created = 3;
+  // Сколько item-ов создано (новые ключи).
+  int64 created_items = 4;
+  // Сколько item-ов обновлено (совпавшие ключи — значение перезаписано).
+  int64 updated_items = 5;
+}
+
+message KubeListClusterConfigMapsReq {
+  // Namespace для выборки; пусто — все namespace-ы без системных kube-*.
+  string namespace = 1;
+}
+
+message KubeClusterConfigMapSt {
+  string namespace = 1;
+  string name = 2;
+  // Ключи data и binaryData (отсортированы), значения не передаются.
+  repeated string keys = 3;
+  // true — configmap уже под управлением kusec (лейбл managed-by=kusec).
+  bool managed = 4;
+}
+
+message KubeListClusterConfigMapsRep {
+  // false — сервис запущен вне кластера (configmaps тогда пуст).
+  bool in_cluster = 1;
+  repeated KubeClusterConfigMapSt configmaps = 2;
+}
+
+message KubeImportConfigMapReq {
+  // Целевое приложение, в которое импортируется configmap.
+  string app_id = 1;
+  // Configmap-источник в кластере.
+  string namespace = 2;
+  string name = 3;
+  // Имя посадочного configmap-а kusec (slug). Обязательно.
+  string configmap_slug = 4;
+}
+
+message KubeImportConfigMapRep {
+  // Запись configmap (созданная или дозаполненная).
+  string configmap_id = 1;
+  // Фактический slug посадочного configmap-а.
+  string configmap_slug = 2;
+  // false — configmap уже существовал, выполнено дозаполнение.
+  bool configmap_created = 3;
   // Сколько item-ов создано (новые ключи).
   int64 created_items = 4;
   // Сколько item-ов обновлено (совпавшие ключи — значение перезаписано).
