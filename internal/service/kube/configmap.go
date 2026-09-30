@@ -113,11 +113,18 @@ func (s *Service) syncConfigMapsLocked(ctx context.Context, client kubernetes.In
 				continue
 			}
 			// ConfigMap уже есть, но без нашего лейбла (создан вне kusec/старой
-			// версией) — усыновляем: подтягиваем текущий и обновляем.
+			// версией) — усыновляем: подтягиваем текущий и обновляем. Чужой
+			// объект не усыновляется, если при этом потеряются его данные.
 			current, err = client.CoreV1().ConfigMaps(want.namespace).Get(ctx, want.name, metav1.GetOptions{})
 			if err != nil {
 				result.Errors = append(result.Errors, fmt.Sprintf("%s: adopt: %v", key, err))
 				journal.addError(kubeKindConfigMap, want.namespace, want.name, "adopt: "+err.Error())
+				continue
+			}
+			wantContent := configMapContent(want.data, want.binaryData)
+			if reason := adoptionRefusal(current.Labels, liveConfigMapContent(current), wantContent); reason != "" {
+				result.Errors = append(result.Errors, fmt.Sprintf("%s: adopt: %s", key, reason))
+				journal.addError(kubeKindConfigMap, want.namespace, want.name, "adopt: "+reason)
 				continue
 			}
 		}

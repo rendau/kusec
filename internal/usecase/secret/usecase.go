@@ -237,7 +237,9 @@ func (u *Usecase) Update(ctx context.Context, id string, obj *model.Edit) error 
 // активные item-ы с пустым значением. С exact_slug имя k8s-секрета совпадает
 // с slug — sync усыновит уже живущий в кластере объект с таким именем и
 // перепишет его пустыми значениями (Opaque k8s пропустит молча). Сначала
-// значения, потом флаг.
+// значения, потом флаг. Это раннее предупреждение: окончательная защита
+// стоит в самом sync (kube.adoptionRefusal) и покрывает также секреты,
+// созданные сразу с флагом, недостающие ключи и configmap-ы.
 func (u *Usecase) requireNoEmptyItems(ctx context.Context, secretId string) error {
 	items, _, err := u.itemSvc.List(ctx, &itemModel.ListReq{
 		SecretId: new(secretId),
