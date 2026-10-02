@@ -12,7 +12,11 @@ import (
 	commonRepoPg "github.com/rendau/kusec/internal/domain/common/repo/pg"
 	"github.com/rendau/kusec/internal/domain/configmap/model"
 	repoModel "github.com/rendau/kusec/internal/domain/configmap/repo/db/model"
+	"github.com/rendau/kusec/internal/errs"
 )
+
+// slugUniqueIndex — уникальный индекс configmap(app_id, slug_name), см. migrations/000004_configmap.up.sql.
+const slugUniqueIndex = "uq_configmap_app_id_slug_name"
 
 type Repo struct {
 	*commonRepoPg.Base
@@ -73,6 +77,9 @@ func (r *Repo) Get(ctx context.Context, id string) (*model.Main, bool, error) {
 func (r *Repo) Create(ctx context.Context, obj *model.Edit) (string, error) {
 	m := repoModel.DecodeUpsert(obj)
 	if err := r.ModelStore.Create(ctx, m); err != nil {
+		if commonRepoPg.IsUniqueViolation(err, slugUniqueIndex) {
+			return "", commonRepoPg.ExistsErr(errs.ConfigMapSlugExists, "configmap slug", obj.SlugName, "in the application")
+		}
 		return "", fmt.Errorf("ModelStore.Create: %w", err)
 	}
 	return m.NewId, nil
@@ -82,6 +89,9 @@ func (r *Repo) Update(ctx context.Context, id string, obj *model.Edit) error {
 	m := repoModel.DecodeUpsert(obj)
 	m.PKId = id
 	if err := r.ModelStore.Update(ctx, m); err != nil {
+		if commonRepoPg.IsUniqueViolation(err, slugUniqueIndex) {
+			return commonRepoPg.ExistsErr(errs.ConfigMapSlugExists, "configmap slug", obj.SlugName, "in the application")
+		}
 		return fmt.Errorf("ModelStore.Update: %w", err)
 	}
 	return nil

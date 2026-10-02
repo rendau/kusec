@@ -28,6 +28,14 @@ const (
 	PasswordRequiresUpper   = Err("password_requires_upper")
 	PasswordRequiresSpecial = Err("password_requires_special")
 
+	// нарушения уникальности (уникальные индексы БД)
+	UsernameExists      = Err("username_exists")
+	AppSlugExists       = Err("app_slug_exists")
+	SecretSlugExists    = Err("secret_slug_exists")
+	ItemKeyExists       = Err("item_key_exists")
+	ConfigMapSlugExists = Err("configmap_slug_exists")
+	ConfigItemKeyExists = Err("config_item_key_exists")
+
 	TotpInvalid    = Err("totp_invalid")
 	TotpAlreadyOn  = Err("totp_already_enabled")
 	TotpNotEnabled = Err("totp_not_enabled")

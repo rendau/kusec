@@ -12,7 +12,11 @@ import (
 	"github.com/rendau/kusec/internal/domain/app/model"
 	repoModel "github.com/rendau/kusec/internal/domain/app/repo/db/model"
 	commonRepoPg "github.com/rendau/kusec/internal/domain/common/repo/pg"
+	"github.com/rendau/kusec/internal/errs"
 )
+
+// slugUniqueIndex — уникальный индекс app(namespace, slug_name), см. migrations/000001_init.up.sql.
+const slugUniqueIndex = "uq_app_namespace_slug_name"
 
 type Repo struct {
 	*commonRepoPg.Base
@@ -73,6 +77,9 @@ func (r *Repo) Get(ctx context.Context, id string) (*model.Main, bool, error) {
 func (r *Repo) Create(ctx context.Context, obj *model.Edit) (string, error) {
 	m := repoModel.DecodeUpsert(obj)
 	if err := r.ModelStore.Create(ctx, m); err != nil {
+		if commonRepoPg.IsUniqueViolation(err, slugUniqueIndex) {
+			return "", commonRepoPg.ExistsErr(errs.AppSlugExists, "application slug", obj.SlugName, "in the namespace")
+		}
 		return "", fmt.Errorf("ModelStore.Create: %w", err)
 	}
 	return m.NewId, nil
@@ -82,6 +89,9 @@ func (r *Repo) Update(ctx context.Context, id string, obj *model.Edit) error {
 	m := repoModel.DecodeUpsert(obj)
 	m.PKId = id
 	if err := r.ModelStore.Update(ctx, m); err != nil {
+		if commonRepoPg.IsUniqueViolation(err, slugUniqueIndex) {
+			return commonRepoPg.ExistsErr(errs.AppSlugExists, "application slug", obj.SlugName, "in the namespace")
+		}
 		return fmt.Errorf("ModelStore.Update: %w", err)
 	}
 	return nil

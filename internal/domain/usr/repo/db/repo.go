@@ -12,7 +12,11 @@ import (
 	commonRepoPg "github.com/rendau/kusec/internal/domain/common/repo/pg"
 	"github.com/rendau/kusec/internal/domain/usr/model"
 	repoModel "github.com/rendau/kusec/internal/domain/usr/repo/db/model"
+	"github.com/rendau/kusec/internal/errs"
 )
+
+// usernameUniqueIndex — уникальный индекс usr(username), см. migrations/000001_init.up.sql.
+const usernameUniqueIndex = "uq_usr_username"
 
 type Repo struct {
 	*commonRepoPg.Base
@@ -73,6 +77,9 @@ func (r *Repo) Get(ctx context.Context, id int64) (*model.Main, bool, error) {
 func (r *Repo) Create(ctx context.Context, obj *model.Edit) (int64, error) {
 	m := repoModel.DecodeUpsert(obj)
 	if err := r.ModelStore.Create(ctx, m); err != nil {
+		if commonRepoPg.IsUniqueViolation(err, usernameUniqueIndex) {
+			return 0, usernameExistsErr(obj)
+		}
 		return 0, fmt.Errorf("ModelStore.Create: %w", err)
 	}
 	return m.NewId, nil
@@ -82,9 +89,20 @@ func (r *Repo) Update(ctx context.Context, id int64, obj *model.Edit) error {
 	m := repoModel.DecodeUpsert(obj)
 	m.PKId = id
 	if err := r.ModelStore.Update(ctx, m); err != nil {
+		if commonRepoPg.IsUniqueViolation(err, usernameUniqueIndex) {
+			return usernameExistsErr(obj)
+		}
 		return fmt.Errorf("ModelStore.Update: %w", err)
 	}
 	return nil
+}
+
+// usernameExistsErr — семантическая ошибка вместо нарушения usernameUniqueIndex.
+func usernameExistsErr(obj *model.Edit) error {
+	return errs.ErrFull{
+		Err:  errs.UsernameExists,
+		Desc: fmt.Sprintf("username %q is already taken", lo.FromPtr(obj.Username)),
+	}
 }
 
 func (r *Repo) Delete(ctx context.Context, id int64) error {

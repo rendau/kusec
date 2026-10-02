@@ -44,11 +44,14 @@ import (
 	secretService "github.com/rendau/kusec/internal/domain/secret/service"
 	sessionModel "github.com/rendau/kusec/internal/domain/session/model"
 	sessionService "github.com/rendau/kusec/internal/domain/session/service"
+	usrModel "github.com/rendau/kusec/internal/domain/usr/model"
 	usrDb "github.com/rendau/kusec/internal/domain/usr/repo/db"
 	usrService "github.com/rendau/kusec/internal/domain/usr/service"
+	"github.com/rendau/kusec/internal/errs"
 	auditRecorder "github.com/rendau/kusec/internal/service/audit"
 	appUsc "github.com/rendau/kusec/internal/usecase/app"
 	itemUsc "github.com/rendau/kusec/internal/usecase/item"
+	usrUsc "github.com/rendau/kusec/internal/usecase/usr"
 	"github.com/rendau/kusec/internal/util"
 )
 
@@ -72,6 +75,7 @@ type stack struct {
 
 	itemUsecase *itemUsc.Usecase
 	appUsecase  *appUsc.Usecase
+	usrUsecase  *usrUsc.Usecase
 }
 
 func newStack(t *testing.T) *stack {
@@ -120,6 +124,7 @@ func newStack(t *testing.T) *stack {
 		s.appSvc, s.secretSvc, s.itemSvc, s.configMapSvc, s.configItemSvc,
 		s.sessionSvc, s.txm, s.auditRec,
 	)
+	s.usrUsecase = usrUsc.New(usrSvc, s.sessionSvc, s.txm, s.auditRec)
 
 	return s
 }
@@ -395,4 +400,147 @@ func TestReadOnlySessionValueMasking(t *testing.T) {
 	full, err := s.itemUsecase.Get(ctx, itemId)
 	require.NoError(t, err)
 	assert.Equal(t, secretValue, full.Value)
+}
+
+// Занятый логин — семантическая ошибка username_exists с понятным текстом, а
+// не сырая ошибка Postgres про уникальный индекс: и при создании, и при
+// переименовании в чужой логин. Проходит сквозь обёртки usecase и TxFn.
+func TestUsrDuplicateUsernameIsSemanticError(t *testing.T) {
+	s := newStack(t)
+	ctx := s.adminCtx()
+
+	const password = "Dup-Passw0rd!"
+
+	requireUsernameExists := func(err error) {
+		t.Helper()
+		require.Error(t, err)
+		fullErr, ok := errors.AsType[errs.ErrFull](err)
+		require.True(t, ok, "expected errs.ErrFull, got: %v", err)
+		assert.Equal(t, errs.UsernameExists, fullErr.Err)
+		assert.Equal(t, `username "dup-user" is already taken`, fullErr.Desc)
+		assert.NotContains(t, fullErr.Desc, "SQLSTATE")
+	}
+
+	_, err := s.usrUsecase.Create(ctx, &usrModel.Edit{
+		Name:     new("First"),
+		Username: new("dup-user"),
+		Password: new(password),
+	})
+	require.NoError(t, err)
+
+	_, err = s.usrUsecase.Create(ctx, &usrModel.Edit{
+		Name:     new("Second"),
+		Username: new("dup-user"),
+		Password: new(password),
+	})
+	requireUsernameExists(err)
+
+	otherId, err := s.usrUsecase.Create(ctx, &usrModel.Edit{
+		Name:     new("Other"),
+		Username: new("dup-user-other"),
+		Password: new(password),
+	})
+	require.NoError(t, err)
+
+	err = s.usrUsecase.Update(ctx, otherId, &usrModel.Edit{Username: new("dup-user")})
+	requireUsernameExists(err)
+
+	// неудачное переименование откатилось целиком: логин прежний
+	other, err := s.usrUsecase.Get(ctx, otherId)
+	require.NoError(t, err)
+	assert.Equal(t, "dup-user-other", other.Username)
+}
+
+// Дубли по остальным уникальным индексам (app, secret, item, configmap,
+// config_item) — тоже семантические ошибки: и при создании, и при
+// переименовании в занятое значение.
+func TestDuplicateSlugAndKeyAreSemanticErrors(t *testing.T) {
+	s := newStack(t)
+	ctx := context.Background()
+
+	requireExists := func(err error, code errs.Err, desc string) {
+		t.Helper()
+		require.Error(t, err)
+		fullErr, ok := errors.AsType[errs.ErrFull](err)
+		require.True(t, ok, "expected errs.ErrFull, got: %v", err)
+		assert.Equal(t, code, fullErr.Err)
+		assert.Equal(t, desc, fullErr.Desc)
+	}
+
+	appId, secretId := s.newApp(t, "dup-app")
+
+	// app: уникален slug в пределах namespace
+	appEdit := func(slug string) *appModel.Edit {
+		return &appModel.Edit{Active: new(true), Namespace: new("itest"), Name: new("App"), SlugName: new(slug)}
+	}
+	const appDesc = `application slug "dup-app" already exists in the namespace`
+	_, err := s.appSvc.Create(ctx, appEdit("dup-app"))
+	requireExists(err, errs.AppSlugExists, appDesc)
+	otherAppId, err := s.appSvc.Create(ctx, appEdit("dup-app-other"))
+	require.NoError(t, err)
+	err = s.appSvc.Update(ctx, otherAppId, &appModel.Edit{SlugName: new("dup-app")})
+	requireExists(err, errs.AppSlugExists, appDesc)
+
+	// secret: уникален slug в пределах app
+	secretEdit := func(slug string) *secretModel.Edit {
+		return &secretModel.Edit{AppId: &appId, Active: new(true), SlugName: new(slug)}
+	}
+	const secretDesc = `secret slug "main" already exists in the application`
+	_, err = s.secretSvc.Create(ctx, secretEdit("main"))
+	requireExists(err, errs.SecretSlugExists, secretDesc)
+	otherSecretId, err := s.secretSvc.Create(ctx, secretEdit("other"))
+	require.NoError(t, err)
+	err = s.secretSvc.Update(ctx, otherSecretId, &secretModel.Edit{SlugName: new("main")})
+	requireExists(err, errs.SecretSlugExists, secretDesc)
+
+	// item: уникален key в пределах secret
+	itemEdit := func(key string) *itemModel.Edit {
+		return &itemModel.Edit{SecretId: &secretId, Active: new(true), Key: new(key), Value: new("v")}
+	}
+	const itemDesc = `item key "DUP_KEY" already exists in the secret`
+	_, err = s.itemSvc.Create(ctx, itemEdit("DUP_KEY"))
+	require.NoError(t, err)
+	_, err = s.itemSvc.Create(ctx, itemEdit("DUP_KEY"))
+	requireExists(err, errs.ItemKeyExists, itemDesc)
+	otherItemId, err := s.itemSvc.Create(ctx, itemEdit("OTHER_KEY"))
+	require.NoError(t, err)
+	err = s.itemSvc.Update(ctx, otherItemId, &itemModel.Edit{Key: new("DUP_KEY")})
+	requireExists(err, errs.ItemKeyExists, itemDesc)
+
+	// перенос item в secret, где такой key уже есть: key в запросе нет —
+	// текст без значения
+	_, err = s.itemSvc.Create(ctx, &itemModel.Edit{
+		SecretId: &otherSecretId, Active: new(true), Key: new("OTHER_KEY"), Value: new("v"),
+	})
+	require.NoError(t, err)
+	err = s.itemSvc.Update(ctx, otherItemId, &itemModel.Edit{SecretId: &otherSecretId})
+	requireExists(err, errs.ItemKeyExists, "item key already exists in the secret")
+
+	// configmap: уникален slug в пределах app
+	configMapEdit := func(slug string) *configmapModel.Edit {
+		return &configmapModel.Edit{AppId: &appId, Active: new(true), SlugName: new(slug)}
+	}
+	const configMapDesc = `configmap slug "config" already exists in the application`
+	configMapId, err := s.configMapSvc.Create(ctx, configMapEdit("config"))
+	require.NoError(t, err)
+	_, err = s.configMapSvc.Create(ctx, configMapEdit("config"))
+	requireExists(err, errs.ConfigMapSlugExists, configMapDesc)
+	otherConfigMapId, err := s.configMapSvc.Create(ctx, configMapEdit("config-other"))
+	require.NoError(t, err)
+	err = s.configMapSvc.Update(ctx, otherConfigMapId, &configmapModel.Edit{SlugName: new("config")})
+	requireExists(err, errs.ConfigMapSlugExists, configMapDesc)
+
+	// config_item: уникален key в пределах configmap
+	configItemEdit := func(key string) *configitemModel.Edit {
+		return &configitemModel.Edit{ConfigMapId: &configMapId, Active: new(true), Key: new(key), Value: new("v")}
+	}
+	const configItemDesc = `item key "HTTP_PORT" already exists in the configmap`
+	_, err = s.configItemSvc.Create(ctx, configItemEdit("HTTP_PORT"))
+	require.NoError(t, err)
+	_, err = s.configItemSvc.Create(ctx, configItemEdit("HTTP_PORT"))
+	requireExists(err, errs.ConfigItemKeyExists, configItemDesc)
+	otherConfigItemId, err := s.configItemSvc.Create(ctx, configItemEdit("GRPC_PORT"))
+	require.NoError(t, err)
+	err = s.configItemSvc.Update(ctx, otherConfigItemId, &configitemModel.Edit{Key: new("HTTP_PORT")})
+	requireExists(err, errs.ConfigItemKeyExists, configItemDesc)
 }
