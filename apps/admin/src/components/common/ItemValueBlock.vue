@@ -4,6 +4,7 @@ import { NButton, NIcon, NSpace } from 'naive-ui'
 import { Pencil } from '@vicons/tabler'
 
 import ValueFormatChip from '@/components/common/ValueFormatChip.vue'
+import { useValuePrettify } from '@/composables/useValuePrettify'
 import { normalizeValueFormat } from '@/utils/format'
 
 // CodeMirror is heavy — an instance per visible item froze the tab on
@@ -22,6 +23,7 @@ const props = defineProps<{
 }>()
 
 const editorFormat = computed(() => normalizeValueFormat(props.format))
+const { prettify } = useValuePrettify()
 
 const editing = ref(false)
 const saving = ref(false)
@@ -35,6 +37,11 @@ function startEdit(): void {
 function cancelEdit(): void {
   if (saving.value) return
   editing.value = false
+}
+
+function onPrettify(): void {
+  const formatted = prettify(draft.value, editorFormat.value)
+  if (formatted !== null) draft.value = formatted
 }
 
 async function submit(): Promise<void> {
@@ -83,6 +90,16 @@ async function submit(): Promise<void> {
         autofocus
       />
       <NSpace :size="8" justify="end" style="margin-top: 6px">
+        <NButton
+          v-if="editorFormat !== 'text'"
+          size="tiny"
+          tertiary
+          :disabled="saving || !draft.trim()"
+          :title="`Re-indent the value as ${editorFormat.toUpperCase()}`"
+          @click="onPrettify"
+        >
+          Prettify
+        </NButton>
         <NButton size="tiny" :disabled="saving" title="Esc" @click="cancelEdit">
           Cancel
         </NButton>

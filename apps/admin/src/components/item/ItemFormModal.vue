@@ -23,6 +23,7 @@ import type { ItemMain, ItemUpdateReq, ValueEncoding, ValueFormat } from '@/api/
 import { useClipboard } from '@/composables/useClipboard'
 import { useEntityForm } from '@/composables/useEntityForm'
 import { useSecretOptions } from '@/composables/useSecretOptions'
+import { useValuePrettify } from '@/composables/useValuePrettify'
 import {
   base64ByteSize,
   base64ToText,
@@ -59,6 +60,7 @@ const emit = defineEmits<{
 
 const message = useMessage()
 const { copy } = useClipboard()
+const { prettify } = useValuePrettify()
 const {
   options: secretOptions,
   loading: secretsLoading,
@@ -220,6 +222,16 @@ function onGenerateSelect(key: string | number): void {
   message.success(`Random value generated (${chars} chars)`)
 }
 
+// Pretty-printing follows the active format tab; plain text has nothing to format.
+const canPrettify = computed(
+  () => valueFormat.value !== 'text' && model.value.trim() !== '',
+)
+
+function onPrettify(): void {
+  const formatted = prettify(model.value, valueFormat.value)
+  if (formatted !== null) model.value = formatted
+}
+
 const base64Options = [
   { label: 'Encode → base64', key: 'encode' },
   { label: 'Decode ← base64', key: 'decode' },
@@ -353,6 +365,19 @@ function downloadFile(): void {
                 <NRadioButton value="json">JSON</NRadioButton>
               </NRadioGroup>
               <NSpace :size="8">
+                <NButton
+                  size="small"
+                  tertiary
+                  :disabled="!canPrettify"
+                  :title="
+                    valueFormat === 'text'
+                      ? 'Switch to YAML or JSON to prettify'
+                      : `Re-indent the value as ${valueFormat.toUpperCase()}`
+                  "
+                  @click="onPrettify"
+                >
+                  Prettify
+                </NButton>
                 <NDropdown
                   trigger="click"
                   :options="generateOptions"
