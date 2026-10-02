@@ -1,23 +1,28 @@
 <script setup lang="ts">
-import { computed, onMounted, reactive } from 'vue'
+import { computed, onMounted, reactive, ref } from 'vue'
 import {
   NButton,
   NForm,
   NFormItem,
+  NIcon,
   NInput,
+  NInputGroup,
   NModal,
   NSelect,
   NSpace,
   NSwitch,
   NText,
+  useMessage,
 } from 'naive-ui'
-import type { FormItemRule, FormRules } from 'naive-ui'
+import type { FormItemInst, FormItemRule, FormRules } from 'naive-ui'
+import { Copy } from '@vicons/tabler'
 
 import { createUser, updateUser } from '@/api/usr'
 import type { UsrMain, UsrUpdateReq } from '@/api/types'
 import { useAppOptions } from '@/composables/useAppOptions'
+import { useClipboard } from '@/composables/useClipboard'
 import { useEntityForm } from '@/composables/useEntityForm'
-import { passwordComplexityError } from '@/utils/password'
+import { generatePassword, passwordComplexityError } from '@/utils/password'
 
 const props = defineProps<{
   show: boolean
@@ -56,6 +61,14 @@ const model = reactive<FormModel>({
   app_ids: [],
 })
 
+const message = useMessage()
+const { write } = useClipboard()
+
+const passwordItemRef = ref<FormItemInst | null>(null)
+// A generated password is shown in clear text: the admin has to see what is
+// being handed over, and it is a throwaway value copied into a message anyway.
+const passwordRevealed = ref(false)
+
 const { formRef, submitting, isEdit, submit } = useEntityForm<UsrMain>({
   show: () => props.show,
   entity: () => props.user,
@@ -63,6 +76,7 @@ const { formRef, submitting, isEdit, submit } = useEntityForm<UsrMain>({
     model.name = user?.name ?? ''
     model.username = user?.username ?? ''
     model.password = ''
+    passwordRevealed.value = false
     model.is_admin = user?.is_admin ?? false
     model.active = user?.active ?? true
     model.app_ids = [...(user?.app_ids ?? [])]
@@ -123,6 +137,60 @@ const rules = computed<FormRules>(() => ({
   ],
 }))
 
+function fillGeneratedPassword(): void {
+  model.password = generatePassword()
+  passwordRevealed.value = true
+  // A programmatic change does not fire the field's `input` trigger, so a stale
+  // error from the previous value would otherwise stay on screen.
+  passwordItemRef.value?.restoreValidation()
+}
+
+function onPasswordInput(value: string): void {
+  // Typing from scratch goes back to a masked field.
+  if (!value) passwordRevealed.value = false
+}
+
+const saveLabel = computed(() => (isEdit.value ? 'Save' : 'Create'))
+
+/** Site URL + username + password as one message, ready to paste into a chat. */
+function credentialsMessage(): string {
+  const siteUrl = new URL(import.meta.env.BASE_URL, window.location.origin).href
+  return [
+    `Kusec: ${siteUrl}`,
+    `Username: ${model.username.trim()}`,
+    `Password: ${model.password}`,
+  ].join('\n')
+}
+
+// Whether the running save was started by "… & copy" — picks the button that spins.
+const savingWithCopy = ref(false)
+
+/**
+ * Save and put the sign-in details on the clipboard in one click. The clipboard
+ * is written before the request: once the modal closes the password is gone,
+ * so a user is never saved with a password that could not be copied.
+ */
+async function submitAndCopy(): Promise<void> {
+  try {
+    await formRef.value?.validate()
+  } catch {
+    return
+  }
+  if (!(await write(credentialsMessage()))) {
+    message.error(
+      `Clipboard unavailable, nothing saved. Use "${saveLabel.value}" and copy the password manually.`,
+    )
+    return
+  }
+
+  savingWithCopy.value = true
+  try {
+    if (await submit()) message.success('Sign-in details copied')
+  } finally {
+    savingWithCopy.value = false
+  }
+}
+
 function close(): void {
   emit('update:show', false)
 }
@@ -148,18 +216,35 @@ function close(): void {
         <NInput v-model:value="model.name" placeholder="Full name" clearable />
       </NFormItem>
       <NFormItem label="Username" path="username">
-        <NInput v-model:value="model.username" placeholder="Login username" clearable />
+        <NInput
+          v-model:value="model.username"
+          placeholder="Login username"
+          clearable
+          :input-props="{ autocomplete: 'off' }"
+        />
       </NFormItem>
       <NFormItem
+        ref="passwordItemRef"
         :label="isEdit ? 'New password (leave blank to keep)' : 'Password'"
         path="password"
       >
-        <NInput
-          v-model:value="model.password"
-          type="password"
-          show-password-on="click"
-          :placeholder="isEdit ? 'Unchanged' : 'Password'"
-        />
+        <NSpace vertical :size="8" style="width: 100%">
+          <NInputGroup>
+            <NInput
+              v-model:value="model.password"
+              :type="passwordRevealed ? 'text' : 'password'"
+              show-password-on="click"
+              :placeholder="isEdit ? 'Unchanged' : 'Password'"
+              :input-props="{ autocomplete: 'new-password' }"
+              @update:value="onPasswordInput"
+            />
+            <NButton @click="fillGeneratedPassword">Generate</NButton>
+          </NInputGroup>
+          <NText depth="3" style="font-size: 12px">
+            Once a password is set, “{{ saveLabel }} &amp; copy” also copies the site
+            URL, username and password as one message.
+          </NText>
+        </NSpace>
       </NFormItem>
       <NFormItem label="Administrator" path="is_admin">
         <NSwitch v-model:value="model.is_admin" />
@@ -195,8 +280,25 @@ function close(): void {
     <template #footer>
       <NSpace justify="end">
         <NButton :disabled="submitting" @click="close">Cancel</NButton>
-        <NButton type="primary" :loading="submitting" @click="submit">
-          {{ isEdit ? 'Save' : 'Create' }}
+        <NButton
+          :type="model.password ? 'default' : 'primary'"
+          :loading="submitting && !savingWithCopy"
+          :disabled="savingWithCopy"
+          @click="submit"
+        >
+          {{ saveLabel }}
+        </NButton>
+        <NButton
+          v-if="model.password"
+          type="primary"
+          :loading="savingWithCopy"
+          :disabled="submitting && !savingWithCopy"
+          @click="submitAndCopy"
+        >
+          <template #icon>
+            <NIcon :component="Copy" />
+          </template>
+          {{ saveLabel }} &amp; copy
         </NButton>
       </NSpace>
     </template>

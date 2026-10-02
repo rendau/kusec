@@ -13,3 +13,19 @@ export function randomHex(bytes = 16): string {
   }
   return hex
 }
+
+/**
+ * Случайное целое в диапазоне `[0, max)` без смещения: значения, попавшие в
+ * неполный «хвост» диапазона uint32, отбрасываются (rejection sampling), а не
+ * сворачиваются через `%`.
+ */
+export function randomInt(max: number): number {
+  const range = 0x1_0000_0000
+  const limit = range - (range % max)
+  const buf = new Uint32Array(1)
+  for (;;) {
+    crypto.getRandomValues(buf)
+    const value = buf[0]!
+    if (value < limit) return value % max
+  }
+}

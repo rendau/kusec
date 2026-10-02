@@ -2,6 +2,8 @@
 // internal/usecase/usr/usecase.go (validatePassword) so the user gets instant
 // feedback before the request is sent. Keep both sides in sync.
 
+import { randomInt } from './random'
+
 export const PASSWORD_MIN_LEN = 8
 // bcrypt silently truncates anything past 72 bytes, so the backend caps length there.
 export const PASSWORD_MAX_LEN = 72
@@ -26,4 +28,37 @@ export function passwordComplexityError(password: string): string | null {
     return 'Password must contain a special character'
   }
   return null
+}
+
+export const GENERATED_PASSWORD_LEN = 16
+
+// Alphabets for generated passwords. Look-alike characters (0/O, 1/l/I) are
+// left out because the password is retyped by a human, and the specials avoid
+// the ones messengers treat as markup or links (* _ ~ ` @) — the password is
+// sent in a chat message and must survive it verbatim.
+const PASSWORD_CHAR_CLASSES = [
+  'abcdefghijkmnpqrstuvwxyz',
+  'ABCDEFGHJKLMNPQRSTUVWXYZ',
+  '23456789',
+  '!#$%&+=?',
+]
+
+/**
+ * Generates a random password that satisfies `passwordComplexityError`:
+ * at least one character of every class, the rest drawn from the whole
+ * alphabet, then shuffled so the guaranteed characters are not positional.
+ */
+export function generatePassword(length = GENERATED_PASSWORD_LEN): string {
+  const alphabet = PASSWORD_CHAR_CLASSES.join('')
+  const pick = (chars: string): string => chars[randomInt(chars.length)]!
+
+  const chars = PASSWORD_CHAR_CLASSES.map(pick)
+  while (chars.length < length) chars.push(pick(alphabet))
+
+  // Fisher–Yates shuffle.
+  for (let i = chars.length - 1; i > 0; i--) {
+    const j = randomInt(i + 1)
+    ;[chars[i], chars[j]] = [chars[j]!, chars[i]!]
+  }
+  return chars.join('')
 }

@@ -7,14 +7,20 @@ import { useMessage } from 'naive-ui'
 export function useClipboard() {
   const message = useMessage()
 
-  /** Copy `value`, reporting success/failure via toast. */
-  async function copy(value: string, successText = 'Value copied'): Promise<void> {
+  /** Write `value` without any toast; resolves to whether it succeeded. */
+  async function write(value: string): Promise<boolean> {
     try {
       await navigator.clipboard.writeText(value)
-      message.success(successText)
+      return true
     } catch {
-      message.error('Clipboard unavailable')
+      return false
     }
+  }
+
+  /** Copy `value`, reporting success/failure via toast. */
+  async function copy(value: string, successText = 'Value copied'): Promise<void> {
+    if (await write(value)) message.success(successText)
+    else message.error('Clipboard unavailable')
   }
 
   /** Read clipboard text; returns '' when unavailable (no toast). */
@@ -26,5 +32,5 @@ export function useClipboard() {
     }
   }
 
-  return { copy, readSilently }
+  return { copy, write, readSilently }
 }

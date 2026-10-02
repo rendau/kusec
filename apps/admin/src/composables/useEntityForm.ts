@@ -43,11 +43,12 @@ export function useEntityForm<E, CreateRep = unknown>(
     formRef.value?.restoreValidation()
   })
 
-  async function submit(): Promise<void> {
+  /** Resolves to whether the entity was actually saved. */
+  async function submit(): Promise<boolean> {
     try {
       await formRef.value?.validate()
     } catch {
-      return
+      return false
     }
 
     submitting.value = true
@@ -62,8 +63,10 @@ export function useEntityForm<E, CreateRep = unknown>(
         message.success(options.messages.created)
         options.onSaved(created)
       }
+      return true
     } catch (error) {
       message.error(apiErrorMessage(error, 'Unexpected error, please try again'))
+      return false
     } finally {
       submitting.value = false
     }
