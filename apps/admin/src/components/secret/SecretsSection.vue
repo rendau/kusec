@@ -8,6 +8,8 @@ import {
   NEmpty,
   NIcon,
   NPopconfirm,
+  NRadioButton,
+  NRadioGroup,
   NSpace,
   NTag,
   NText,
@@ -16,14 +18,7 @@ import {
   useThemeVars,
 } from 'naive-ui'
 import type { DataTableColumns } from 'naive-ui'
-import {
-  ChevronDown,
-  ChevronUp,
-  InfoCircle,
-  Pencil,
-  Plus,
-  Trash,
-} from '@vicons/tabler'
+import { ChevronDown, ChevronUp, InfoCircle, Pencil, Plus, Trash } from '@vicons/tabler'
 
 import { apiErrorMessage } from '@/api/http'
 import { deleteSecret, listSecrets } from '@/api/secret'
@@ -51,6 +46,24 @@ const { isMobile } = useBreakpoint()
 const AUTO_EXPAND_MAX = 5
 
 const rows = ref<SecretMain[]>([])
+
+// Status filter, applied client-side: the app's secrets are loaded all at
+// once, so narrowing to inactive ones needs no extra request.
+type StatusFilter = 'all' | 'active' | 'inactive'
+const statusFilter = ref<StatusFilter>('all')
+const statusOptions: { label: string; value: StatusFilter }[] = [
+  { label: 'All', value: 'all' },
+  { label: 'Active', value: 'active' },
+  { label: 'Inactive', value: 'inactive' },
+]
+const visibleRows = computed(() =>
+  statusFilter.value === 'all'
+    ? rows.value
+    : rows.value.filter((r) => r.active === (statusFilter.value === 'active')),
+)
+const emptyText = computed(() =>
+  rows.value.length ? `No ${statusFilter.value} secrets` : 'No secrets yet',
+)
 const loading = ref(false)
 const expandedKeys = ref<string[]>([])
 
@@ -68,7 +81,9 @@ const itemsStore = createSecretItemsStore()
 provide(secretItemsKey, itemsStore)
 
 const allExpanded = computed(
-  () => rows.value.length > 0 && expandedKeys.value.length === rows.value.length,
+  () =>
+    visibleRows.value.length > 0 &&
+    visibleRows.value.every((r) => expandedKeys.value.includes(r.id)),
 )
 
 function toggleExpandAll(): void {
@@ -78,8 +93,11 @@ function toggleExpandAll(): void {
   } else {
     // Items are already cached by the app-wide prefetch — this is a no-op
     // safety net (e.g. after a failed load).
-    void itemsStore.prefetchApp(props.appId, rows.value.map((r) => r.id))
-    void expandAllChunked(rows.value.map((r) => r.id))
+    void itemsStore.prefetchApp(
+      props.appId,
+      rows.value.map((r) => r.id),
+    )
+    void expandAllChunked(visibleRows.value.map((r) => r.id))
   }
 }
 
@@ -138,11 +156,7 @@ async function removeSecret(row: SecretMain): Promise<void> {
   }
 }
 
-function iconButton(
-  icon: typeof Pencil,
-  tooltip: string,
-  onClick: () => void,
-) {
+function iconButton(icon: typeof Pencil, tooltip: string, onClick: () => void) {
   return h(
     NTooltip,
     {},
@@ -210,8 +224,7 @@ const columns = computed<DataTableColumns<SecretMain>>(() => [
                   {
                     code: true,
                     style: 'cursor: pointer',
-                    onClick: () =>
-                      copy(row.kube_secret_name, 'K8s secret name copied'),
+                    onClick: () => copy(row.kube_secret_name, 'K8s secret name copied'),
                   },
                   { default: () => row.kube_secret_name },
                 ),
@@ -294,7 +307,10 @@ watch(
     if (rows.value.length) {
       // Load every item of the app in one request up front, so expanding
       // (individually or via "Expand all") never hits the network again.
-      void itemsStore.prefetchApp(props.appId, rows.value.map((r) => r.id))
+      void itemsStore.prefetchApp(
+        props.appId,
+        rows.value.map((r) => r.id),
+      )
       // Few secrets → expand them all by default for quicker overview.
       if (rows.value.length <= AUTO_EXPAND_MAX) {
         expandedKeys.value = rows.value.map((r) => r.id)
@@ -309,30 +325,54 @@ defineExpose({ refresh: fetchSecrets, count: computed(() => rows.value.length) }
 
 <template>
   <div class="secrets-section">
-    <NSpace :size="8" align="center" justify="end" class="secrets-section__actions">
-      <NButton v-if="rows.length" size="small" tertiary @click="toggleExpandAll">
-        <template #icon>
-          <NIcon :component="allExpanded ? ChevronUp : ChevronDown" />
-        </template>
-        {{ allExpanded ? 'Collapse all' : 'Expand all' }}
-      </NButton>
-      <NButton type="primary" @click="openCreate">
-        <template #icon>
-          <NIcon :component="Plus" />
-        </template>
-        New secret
-      </NButton>
+    <NSpace
+      :size="8"
+      align="center"
+      justify="space-between"
+      class="secrets-section__actions"
+    >
+      <NRadioGroup
+        v-model:value="statusFilter"
+        size="small"
+        aria-label="Filter secrets by status"
+      >
+        <NRadioButton
+          v-for="opt in statusOptions"
+          :key="opt.value"
+          :value="opt.value"
+          :label="opt.label"
+        />
+      </NRadioGroup>
+      <NSpace :size="8" align="center" :wrap-item="false">
+        <NButton
+          v-if="visibleRows.length"
+          size="small"
+          tertiary
+          @click="toggleExpandAll"
+        >
+          <template #icon>
+            <NIcon :component="allExpanded ? ChevronUp : ChevronDown" />
+          </template>
+          {{ allExpanded ? 'Collapse all' : 'Expand all' }}
+        </NButton>
+        <NButton type="primary" @click="openCreate">
+          <template #icon>
+            <NIcon :component="Plus" />
+          </template>
+          New secret
+        </NButton>
+      </NSpace>
     </NSpace>
 
     <!-- Mobile: stacked cards instead of a horizontally scrolling table. -->
     <div v-if="isMobile" class="secret-cards">
       <NEmpty
-        v-if="!rows.length && !loading"
-        description="No secrets yet"
+        v-if="!visibleRows.length && !loading"
+        :description="emptyText"
         style="padding: 24px 0"
       />
       <NCard
-        v-for="row in rows"
+        v-for="row in visibleRows"
         :key="row.id"
         size="small"
         class="secret-card stack-header"
@@ -437,7 +477,7 @@ defineExpose({ refresh: fetchSecrets, count: computed(() => rows.value.length) }
     <NDataTable
       v-else
       :columns="columns"
-      :data="rows"
+      :data="visibleRows"
       :loading="loading"
       :row-class-name="rowClassName"
       :row-key="(row: SecretMain) => row.id"
@@ -447,7 +487,11 @@ defineExpose({ refresh: fetchSecrets, count: computed(() => rows.value.length) }
       @update:expanded-row-keys="
         (keys: (string | number)[]) => (expandedKeys = keys.map(String))
       "
-    />
+    >
+      <template #empty>
+        <NEmpty :description="emptyText" style="padding: 24px 0" />
+      </template>
+    </NDataTable>
 
     <SecretDetailDrawer v-model:show="showDetail" :secret-id="detailId" />
     <SecretFormModal

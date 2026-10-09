@@ -153,7 +153,7 @@ onMounted(async () => {
   <main class="login-page">
     <NCard class="login-card">
       <div class="login-brand">
-        <img src="/favicon.svg" alt="" class="login-brand__logo" />
+        <img src="/mark.svg" alt="" class="login-brand__logo" />
         <div>
           <div class="login-brand__name">Kusec</div>
           <div class="login-brand__sub">

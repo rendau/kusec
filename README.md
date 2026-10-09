@@ -1,3 +1,10 @@
+<p align="center">
+  <picture>
+    <source media="(prefers-color-scheme: dark)" srcset="brand/logo-dark.svg">
+    <img src="brand/logo-light.svg" alt="kusec" height="72">
+  </picture>
+</p>
+
 # kusec
 
 ### DB dump:
