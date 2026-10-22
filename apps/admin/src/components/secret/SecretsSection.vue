@@ -47,8 +47,11 @@ const AUTO_EXPAND_MAX = 5
 
 const rows = ref<SecretMain[]>([])
 
-// Status filter, applied client-side: the app's secrets are loaded all at
-// once, so narrowing to inactive ones needs no extra request.
+// Status filter, applied client-side: the app's secrets and their items are
+// loaded all at once, so narrowing needs no extra request. The filter reaches
+// into items too: "Inactive" also lists active secrets that hold at least one
+// inactive item (the panel then shows only those items), and "Active" shows
+// only active items inside active secrets — i.e. what actually gets synced.
 type StatusFilter = 'all' | 'active' | 'inactive'
 const statusFilter = ref<StatusFilter>('all')
 const statusOptions: { label: string; value: StatusFilter }[] = [
@@ -56,11 +59,21 @@ const statusOptions: { label: string; value: StatusFilter }[] = [
   { label: 'Active', value: 'active' },
   { label: 'Inactive', value: 'inactive' },
 ]
-const visibleRows = computed(() =>
-  statusFilter.value === 'all'
-    ? rows.value
-    : rows.value.filter((r) => r.active === (statusFilter.value === 'active')),
-)
+
+function hasInactiveItem(secretId: string): boolean {
+  return (itemsStore.itemsBySecret.value[secretId] ?? []).some((i) => !i.active)
+}
+
+const visibleRows = computed(() => {
+  switch (statusFilter.value) {
+    case 'active':
+      return rows.value.filter((r) => r.active)
+    case 'inactive':
+      return rows.value.filter((r) => !r.active || hasInactiveItem(r.id))
+    default:
+      return rows.value
+  }
+})
 const emptyText = computed(() =>
   rows.value.length ? `No ${statusFilter.value} secrets` : 'No secrets yet',
 )
@@ -79,6 +92,16 @@ function isExpanded(id: string): boolean {
 // single request instead of one request per expanded panel.
 const itemsStore = createSecretItemsStore()
 provide(secretItemsKey, itemsStore)
+
+// Switching to "Inactive" reveals active secrets only because of their items,
+// so expand those: a collapsed row would not show why it made the list.
+watch(statusFilter, (filter) => {
+  if (filter !== 'inactive') return
+  const revealed = visibleRows.value
+    .filter((r) => r.active && !isExpanded(r.id))
+    .map((r) => r.id)
+  if (revealed.length) expandedKeys.value = [...expandedKeys.value, ...revealed]
+})
 
 const allExpanded = computed(
   () =>
@@ -188,7 +211,11 @@ const columns = computed<DataTableColumns<SecretMain>>(() => [
   {
     type: 'expand',
     renderExpand: (row) =>
-      h(SecretItemsPanel, { secretId: row.id, parentInactive: !row.active }),
+      h(SecretItemsPanel, {
+        secretId: row.id,
+        parentInactive: !row.active,
+        statusFilter: statusFilter.value,
+      }),
   },
   {
     title: 'Slug',
@@ -469,6 +496,7 @@ defineExpose({ refresh: fetchSecrets, count: computed(() => rows.value.length) }
             v-if="isExpanded(row.id)"
             :secret-id="row.id"
             :parent-inactive="!row.active"
+            :status-filter="statusFilter"
           />
         </template>
       </NCard>

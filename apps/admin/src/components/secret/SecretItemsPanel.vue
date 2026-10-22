@@ -36,6 +36,12 @@ const props = defineProps<{
   secretId: string
   /** Dim the whole panel when the parent secret is inactive. */
   parentInactive?: boolean
+  /**
+   * Section's status filter. Narrows the items of an active secret to the
+   * matching status; an inactive secret keeps all its items (none of them is
+   * synced anyway, so they all count as inactive).
+   */
+  statusFilter?: 'all' | 'active' | 'inactive'
 }>()
 
 const message = useMessage()
@@ -47,7 +53,17 @@ const { isMobile } = useBreakpoint()
 // falls back to a private store when the panel is used standalone.
 const store = inject(secretItemsKey, null) ?? createSecretItemsStore()
 
-const rows = computed<ItemMain[]>(() => store.itemsBySecret.value[props.secretId] ?? [])
+const allRows = computed<ItemMain[]>(
+  () => store.itemsBySecret.value[props.secretId] ?? [],
+)
+const rows = computed<ItemMain[]>(() => {
+  const filter = props.statusFilter ?? 'all'
+  if (filter === 'all' || props.parentInactive) return allRows.value
+  return allRows.value.filter((r) => r.active === (filter === 'active'))
+})
+const emptyText = computed(() =>
+  allRows.value.length ? `No ${props.statusFilter} items` : 'No items',
+)
 const loading = computed(
   () =>
     store.itemsBySecret.value[props.secretId] === undefined &&
@@ -173,7 +189,7 @@ onMounted(() => {
 
     <NSpin :show="loading">
       <div v-if="!rows.length" class="items-empty">
-        <NText depth="3">No items</NText>
+        <NText depth="3">{{ emptyText }}</NText>
       </div>
 
       <div v-else-if="!isMobile" class="items">
@@ -189,7 +205,12 @@ onMounted(() => {
             class="items__cell items__key"
             :class="{ 'items__cell--dim': !row.active }"
           >
-            <NButton text type="primary" class="items__key-btn" @click="openDetail(row)">
+            <NButton
+              text
+              type="primary"
+              class="items__key-btn"
+              @click="openDetail(row)"
+            >
               {{ row.key }}
             </NButton>
           </div>

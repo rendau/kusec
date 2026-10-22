@@ -36,6 +36,12 @@ const props = defineProps<{
   configmapId: string
   /** Dim the whole panel when the parent config map is inactive. */
   parentInactive?: boolean
+  /**
+   * Section's status filter. Narrows the items of an active config map to the
+   * matching status; an inactive config map keeps all its items (none of them
+   * is synced anyway, so they all count as inactive).
+   */
+  statusFilter?: 'all' | 'active' | 'inactive'
 }>()
 
 const message = useMessage()
@@ -47,8 +53,16 @@ const { isMobile } = useBreakpoint()
 // falls back to a private store when the panel is used standalone.
 const store = inject(configItemsKey, null) ?? createConfigItemsStore()
 
-const rows = computed<ConfigItemMain[]>(
+const allRows = computed<ConfigItemMain[]>(
   () => store.itemsByConfigMap.value[props.configmapId] ?? [],
+)
+const rows = computed<ConfigItemMain[]>(() => {
+  const filter = props.statusFilter ?? 'all'
+  if (filter === 'all' || props.parentInactive) return allRows.value
+  return allRows.value.filter((r) => r.active === (filter === 'active'))
+})
+const emptyText = computed(() =>
+  allRows.value.length ? `No ${props.statusFilter} items` : 'No items',
 )
 const loading = computed(
   () =>
@@ -175,7 +189,7 @@ onMounted(() => {
 
     <NSpin :show="loading">
       <div v-if="!rows.length" class="items-empty">
-        <NText depth="3">No items</NText>
+        <NText depth="3">{{ emptyText }}</NText>
       </div>
 
       <div v-else-if="!isMobile" class="items">
