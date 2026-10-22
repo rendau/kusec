@@ -10,30 +10,27 @@ import (
 	mcpsdk "github.com/modelcontextprotocol/go-sdk/mcp"
 	"github.com/samber/lo"
 
-	apikeyService "github.com/rendau/kusec/internal/domain/apikey/service"
 	appModel "github.com/rendau/kusec/internal/domain/app/model"
 	commonModel "github.com/rendau/kusec/internal/domain/common/model"
 	sessionModel "github.com/rendau/kusec/internal/domain/session/model"
 	"github.com/rendau/kusec/internal/util"
 )
 
-func hashKey(key string) string {
-	return apikeyService.HashKey(key)
-}
-
-// sessionServer — состояние одной MCP-сессии: пользователь (по api-ключу)
-// и реестр значений. Живёт в памяти до закрытия сессии.
+// sessionServer — состояние одной MCP-сессии: api-ключ или OAuth-подключение,
+// которым она открыта, и реестр значений. Живёт в памяти до закрытия сессии.
+// Привязка — к подключению, а не к токену: access-токен меняется при
+// обновлении, а сессия продолжается.
 type sessionServer struct {
-	h       *Handler
-	keyHash string
-	vault   *vault
+	h         *Handler
+	principal string
+	vault     *vault
 }
 
-func (h *Handler) newSessionServer(_ *sessionModel.Session, keyHash string) *mcpsdk.Server {
+func (h *Handler) newSessionServer(_ *sessionModel.Session, principal string) *mcpsdk.Server {
 	s := &sessionServer{
-		h:       h,
-		keyHash: keyHash,
-		vault:   newVault(),
+		h:         h,
+		principal: principal,
+		vault:     newVault(),
 	}
 
 	srv := mcpsdk.NewServer(&mcpsdk.Implementation{
@@ -52,21 +49,25 @@ func (h *Handler) newSessionServer(_ *sessionModel.Session, keyHash string) *mcp
 	return srv
 }
 
-// toolCtx — вход каждого инструмента: сверяет ключ запроса с ключом сессии
-// (защита от подмены Mcp-Session-Id) и кладёт свежую сессию пользователя в
-// контекст для проверок usecase-слоя.
+// toolCtx — вход каждого инструмента: заново проверяет учётные данные
+// запроса, сверяет их с ключом или подключением сессии (защита от подмены
+// Mcp-Session-Id) и кладёт свежую сессию пользователя в контекст для проверок
+// usecase-слоя.
 func (s *sessionServer) toolCtx(ctx context.Context, req *mcpsdk.CallToolRequest) (context.Context, error) {
-	key := ""
+	credential := ""
 	if req != nil && req.Extra != nil && req.Extra.Header != nil {
-		key = bearerToken(req.Extra.Header.Get("Authorization"))
+		credential = bearerToken(req.Extra.Header.Get("Authorization"))
 	}
-	if key == "" || hashKey(key) != s.keyHash {
-		return nil, errors.New("api-ключ запроса не совпадает с ключом MCP-сессии")
+	if credential == "" {
+		return nil, errPrincipalMismatch
 	}
 
-	session, err := s.h.apikeyUsecase.McpSessionFromKey(ctx, key)
+	session, err := s.h.authenticate(ctx, credential)
 	if err != nil {
-		return nil, fmt.Errorf("api-ключ недействителен: %w", err)
+		return nil, fmt.Errorf("api-ключ или токен недействителен: %w", err)
+	}
+	if session.ApiKeyId != s.principal {
+		return nil, errPrincipalMismatch
 	}
 
 	// request id на каждый вызов инструмента — для записей аудита
@@ -74,6 +75,8 @@ func (s *sessionServer) toolCtx(ctx context.Context, req *mcpsdk.CallToolRequest
 
 	return s.h.sessionSvc.WithContext(ctx, session), nil
 }
+
+var errPrincipalMismatch = errors.New("api-ключ или токен запроса не совпадает с тем, которым открыта MCP-сессия")
 
 // toolErr готовит ошибку к выдаче агенту: вычищает известные значения секретов.
 func (s *sessionServer) toolErr(err error) error {

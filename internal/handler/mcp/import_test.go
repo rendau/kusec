@@ -158,7 +158,7 @@ func newImportEnv(t *testing.T) *importEnv {
 	kubeUsecase := kubeUsc.New(kubeMock, nil, nil, nil, sessionSvc)
 
 	return &importEnv{
-		h:         New(sessionSvc, apikeyUsecase, appUsecase, secretUsecase, itemUsecase, nil, nil, kubeUsecase, nil, nil),
+		h:         New(sessionSvc, apikeyUsecase, nil, appUsecase, secretUsecase, itemUsecase, nil, nil, kubeUsecase, nil, nil),
 		adminKey:  adminKey,
 		memberKey: memberKey,
 		kubeMock:  kubeMock,

@@ -123,7 +123,7 @@ func TestMaskingE2E(t *testing.T) {
 		auditRecStub{},
 	)
 
-	h := New(sessionSvc, apikeyUsecase, nil, nil, itemUsecase, nil, nil, nil, nil, nil)
+	h := New(sessionSvc, apikeyUsecase, nil, nil, nil, itemUsecase, nil, nil, nil, nil, nil)
 
 	httpSrv := httptest.NewServer(h.HTTPHandler())
 	defer httpSrv.Close()

@@ -10,6 +10,7 @@ import (
 	configitemModel "github.com/rendau/kusec/internal/domain/configitem/model"
 	configmapModel "github.com/rendau/kusec/internal/domain/configmap/model"
 	itemModel "github.com/rendau/kusec/internal/domain/item/model"
+	oauthModel "github.com/rendau/kusec/internal/domain/oauth/model"
 	secretModel "github.com/rendau/kusec/internal/domain/secret/model"
 	syncrunModel "github.com/rendau/kusec/internal/domain/syncrun/model"
 	usrModel "github.com/rendau/kusec/internal/domain/usr/model"
@@ -150,6 +151,23 @@ func (s *Service) RecordUsr(ctx context.Context, old, cur *usrModel.Main, batchI
 	return s.record(ctx, entry)
 }
 
+// RecordOAuthGrant — подключение OAuth-клиента к MCP: создаётся согласием
+// пользователя, удаляется им же, отзывом клиента или чисткой. Токены не
+// пишутся никогда.
+func (s *Service) RecordOAuthGrant(ctx context.Context, old, cur *oauthModel.Grant, batchId *string) error {
+	side := pick(old, cur)
+	changes := oauthGrantChanges(old, cur)
+
+	entry := &auditModel.Main{
+		EntityType: auditModel.EntityOAuthGrant,
+		EntityId:   side.Id,
+		Action:     deriveAction(old != nil, cur != nil, changes),
+		Changes:    changes,
+		BatchId:    batchId,
+	}
+	return s.record(ctx, entry)
+}
+
 // NewSyncRun готовит запись запуска sync с актором из сессии (для журнала
 // sync_run; сам запуск создаёт kube-сервис через syncrun domain service).
 func (s *Service) NewSyncRun(ctx context.Context, appId *string) *syncrunModel.Main {
@@ -203,6 +221,21 @@ func apiKeyChanges(old, cur *apikeyModel.Main) []auditModel.Change {
 	c.str("name", o.Name, n.Name)
 	c.int64F("usr_id", o.UsrId, n.UsrId)
 	c.str("key_prefix", o.KeyPrefix, n.KeyPrefix)
+	return c.changes
+}
+
+func oauthGrantChanges(old, cur *oauthModel.Grant) []auditModel.Change {
+	c := newChangeSet(old != nil, cur != nil)
+	var o, n oauthModel.Grant
+	if old != nil {
+		o = *old
+	}
+	if cur != nil {
+		n = *cur
+	}
+	c.int64F("usr_id", o.UsrId, n.UsrId)
+	c.str("client_name", o.ClientName, n.ClientName)
+	c.str("redirect_uri", o.RedirectUri, n.RedirectUri)
 	return c.changes
 }
 

@@ -34,6 +34,8 @@ import (
 	configmapService "github.com/rendau/kusec/internal/domain/configmap/service"
 	itemDb "github.com/rendau/kusec/internal/domain/item/repo/db"
 	itemService "github.com/rendau/kusec/internal/domain/item/service"
+	oauthDb "github.com/rendau/kusec/internal/domain/oauth/repo/db"
+	oauthService "github.com/rendau/kusec/internal/domain/oauth/service"
 	secretDb "github.com/rendau/kusec/internal/domain/secret/repo/db"
 	secretService "github.com/rendau/kusec/internal/domain/secret/service"
 	sessionService "github.com/rendau/kusec/internal/domain/session/service"
@@ -47,6 +49,7 @@ import (
 
 	auditRecorder "github.com/rendau/kusec/internal/service/audit"
 	kubeService "github.com/rendau/kusec/internal/service/kube"
+	oauthcleanupService "github.com/rendau/kusec/internal/service/oauthcleanup"
 	retentionService "github.com/rendau/kusec/internal/service/retention"
 	syncmetricsService "github.com/rendau/kusec/internal/service/syncmetrics"
 
@@ -59,6 +62,7 @@ import (
 	itemUsc "github.com/rendau/kusec/internal/usecase/item"
 	kubeUsc "github.com/rendau/kusec/internal/usecase/kube"
 	monitoringUsc "github.com/rendau/kusec/internal/usecase/monitoring"
+	oauthUsc "github.com/rendau/kusec/internal/usecase/oauth"
 	secretUsc "github.com/rendau/kusec/internal/usecase/secret"
 	syncrunUsc "github.com/rendau/kusec/internal/usecase/syncrun"
 	transferUsc "github.com/rendau/kusec/internal/usecase/transfer"
@@ -83,8 +87,9 @@ type App struct {
 	usrSvc *usrService.Service
 
 	// фоновые сервисы (запускаются в Start, ждутся в WaitJobs)
-	retentionSvc   *retentionService.Service
-	syncMetricsSvc *syncmetricsService.Service
+	retentionSvc    *retentionService.Service
+	syncMetricsSvc  *syncmetricsService.Service
+	oauthCleanupSvc *oauthcleanupService.Service
 
 	exitCode int
 }
@@ -101,6 +106,15 @@ func (a *App) Init() {
 	// журнале sync и read-only ответах.
 	if strings.TrimSpace(config.Conf.AuditHashKey) == "" {
 		errCheck(errors.New("AUDIT_HASH_KEY is required"), "config")
+	}
+
+	if config.Conf.McpOAuthEnabled {
+		if !config.Conf.McpEnabled {
+			errCheck(errors.New("MCP_OAUTH_ENABLED requires MCP_ENABLED"), "config")
+		}
+		if config.Conf.McpPublicUrl == "" || config.Conf.McpOAuthAdminUrl == "" {
+			errCheck(errors.New("MCP_OAUTH_ENABLED requires MCP_PUBLIC_URL and MCP_OAUTH_ADMIN_URL"), "config")
+		}
 	}
 
 	// globalTracer
@@ -147,6 +161,26 @@ func (a *App) Init() {
 	// api-key usecase используется и хендлером, и session-интерсептором
 	apikeyUsecase := apikeyUsc.New(apikeySvc, usrSvc, sessionSvc, txm, auditRec)
 
+	// OAuth-вход MCP-клиентов по адресу (коннекторы Claude): страница согласия
+	// в админке (gRPC), OAuth-адреса — на MCP-порту
+	oauthSvc := oauthService.New(oauthDb.New(a.pgpool))
+	oauthUsecase := oauthUsc.New(
+		oauthUsc.Config{
+			Enabled:      config.Conf.McpOAuthEnabled,
+			Issuer:       config.Conf.McpPublicUrl,
+			AdminURL:     config.Conf.McpOAuthAdminUrl,
+			RedirectUris: config.Conf.McpOAuthRedirectUris,
+			AccessTTL:    config.Conf.McpOAuthAccessTTL,
+			RefreshTTL:   config.Conf.McpOAuthRefreshTTL,
+		},
+		oauthSvc,
+		oauthService.NewClientCodec(config.Conf.JWTSecret),
+		usrSvc,
+		sessionSvc,
+		txm,
+		auditRec,
+	)
+
 	kubeSvc := kubeService.New(appSvc, secretSvc, itemSvc, configMapSvc, configItemSvc, txm, auditRec, syncRunSvc)
 
 	// read-only ручки мониторинга (resolve/keys/drift) — для pulse и админки
@@ -184,6 +218,7 @@ func (a *App) Init() {
 	apikeyHandler := grpcHandler.NewApiKey(apikeyUsecase)
 	auditHandler := grpcHandler.NewAudit(auditUsc.New(auditSvc, sessionSvc))
 	syncRunHandler := grpcHandler.NewSyncRun(syncrunUsc.New(syncRunSvc, appSvc, sessionSvc))
+	oauthHandler := grpcHandler.NewOAuth(oauthUsecase)
 
 	// grpc server
 	{
@@ -200,6 +235,7 @@ func (a *App) Init() {
 			proto.RegisterApiKeyServer(server, apikeyHandler)
 			proto.RegisterAuditServer(server, auditHandler)
 			proto.RegisterSyncRunServer(server, syncRunHandler)
+			proto.RegisterOAuthServer(server, oauthHandler)
 		})
 	}
 
@@ -228,6 +264,7 @@ func (a *App) Init() {
 				proto.RegisterApiKeyHandler,
 				proto.RegisterAuditHandler,
 				proto.RegisterSyncRunHandler,
+				proto.RegisterOAuthHandler,
 			}
 			for _, h := range handlers {
 				err = h(context.Background(), mux, conn)
@@ -275,11 +312,12 @@ func (a *App) Init() {
 		}
 	}
 
-	// встроенный MCP-сервер для AI-агентов (отдельный порт, api-key auth)
+	// встроенный MCP-сервер для AI-агентов (отдельный порт, api-key или OAuth)
 	if config.Conf.McpEnabled {
 		mcpH := mcpHandler.New(
 			sessionSvc,
 			apikeyUsecase,
+			oauthUsecase,
 			appUsc.New(appSvc, secretSvc, itemSvc, configMapSvc, configItemSvc, sessionSvc, txm, auditRec),
 			secretUsc.New(secretSvc, appSvc, itemSvc, sessionSvc, txm, auditRec),
 			itemUsc.New(itemSvc, secretSvc, sessionSvc, txm, auditRec),
@@ -298,9 +336,11 @@ func (a *App) Init() {
 		}
 	}
 
-	// фоновые сервисы: ретеншн аудита/журнала и гейджи состояния sync
+	// фоновые сервисы: ретеншн аудита/журнала, гейджи состояния sync, чистка
+	// OAuth-токенов
 	a.retentionSvc = retentionService.New(auditSvc, syncRunSvc, config.Conf.AuditRetentionDays)
 	a.syncMetricsSvc = syncmetricsService.New(syncRunSvc)
+	a.oauthCleanupSvc = oauthcleanupService.New(oauthSvc, txm, auditRec)
 
 	// system http server (healthcheck, docs, metrics)
 	{
@@ -357,6 +397,7 @@ func (a *App) Start() {
 	// background jobs
 	a.retentionSvc.Start(a.ctx)
 	a.syncMetricsSvc.Start(a.ctx)
+	a.oauthCleanupSvc.Start(a.ctx)
 }
 
 func (a *App) Listen() {
@@ -415,6 +456,7 @@ func (a *App) WaitJobs() {
 
 	a.retentionSvc.Wait()
 	a.syncMetricsSvc.Wait()
+	a.oauthCleanupSvc.Wait()
 }
 
 func (a *App) Exit() {

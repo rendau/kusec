@@ -30,6 +30,9 @@
       "name": "Kube"
     },
     {
+      "name": "OAuth"
+    },
+    {
       "name": "Secret"
     },
     {
@@ -1736,6 +1739,127 @@
         ],
         "tags": [
           "Kube"
+        ]
+      }
+    },
+    "/oauth/authorize": {
+      "post": {
+        "summary": "Authorize записывает решение и возвращает, куда отправить браузер.",
+        "operationId": "OAuth_Authorize",
+        "responses": {
+          "200": {
+            "description": "A successful response.",
+            "schema": {
+              "$ref": "#/definitions/kusec_v1OAuthAuthorizeRep"
+            }
+          },
+          "default": {
+            "description": "An unexpected error response.",
+            "schema": {
+              "$ref": "#/definitions/rpcStatus"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "body",
+            "description": "OAuthAuthorizeReq — query запроса авторизации как есть.",
+            "in": "body",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/kusec_v1OAuthAuthorizeReq"
+            }
+          }
+        ],
+        "tags": [
+          "OAuth"
+        ]
+      }
+    },
+    "/oauth/authorize/describe": {
+      "post": {
+        "summary": "DescribeAuthorization проверяет запрос авторизации и описывает клиента\nдля страницы согласия.",
+        "operationId": "OAuth_DescribeAuthorization",
+        "responses": {
+          "200": {
+            "description": "A successful response.",
+            "schema": {
+              "$ref": "#/definitions/kusec_v1OAuthAuthorizeInfoRep"
+            }
+          },
+          "default": {
+            "description": "An unexpected error response.",
+            "schema": {
+              "$ref": "#/definitions/rpcStatus"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "body",
+            "description": "OAuthAuthorizeReq — query запроса авторизации как есть.",
+            "in": "body",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/kusec_v1OAuthAuthorizeReq"
+            }
+          }
+        ],
+        "tags": [
+          "OAuth"
+        ]
+      }
+    },
+    "/oauth/grant": {
+      "get": {
+        "operationId": "OAuth_ListGrants",
+        "responses": {
+          "200": {
+            "description": "A successful response.",
+            "schema": {
+              "$ref": "#/definitions/kusec_v1OAuthGrantListRep"
+            }
+          },
+          "default": {
+            "description": "An unexpected error response.",
+            "schema": {
+              "$ref": "#/definitions/rpcStatus"
+            }
+          }
+        },
+        "tags": [
+          "OAuth"
+        ]
+      }
+    },
+    "/oauth/grant/{id}": {
+      "delete": {
+        "operationId": "OAuth_DeleteGrant",
+        "responses": {
+          "200": {
+            "description": "A successful response.",
+            "schema": {
+              "type": "object",
+              "properties": {}
+            }
+          },
+          "default": {
+            "description": "An unexpected error response.",
+            "schema": {
+              "$ref": "#/definitions/rpcStatus"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "type": "string"
+          }
+        ],
+        "tags": [
+          "OAuth"
         ]
       }
     },
@@ -3899,6 +4023,101 @@
           "items": {
             "type": "string"
           }
+        }
+      }
+    },
+    "kusec_v1OAuthAuthorizeInfoRep": {
+      "type": "object",
+      "properties": {
+        "client_name": {
+          "type": "string"
+        },
+        "redirect_uri": {
+          "type": "string"
+        },
+        "redirect_host": {
+          "type": "string"
+        }
+      }
+    },
+    "kusec_v1OAuthAuthorizeRep": {
+      "type": "object",
+      "properties": {
+        "redirect_url": {
+          "type": "string"
+        }
+      }
+    },
+    "kusec_v1OAuthAuthorizeReq": {
+      "type": "object",
+      "properties": {
+        "response_type": {
+          "type": "string"
+        },
+        "client_id": {
+          "type": "string"
+        },
+        "redirect_uri": {
+          "type": "string"
+        },
+        "state": {
+          "type": "string"
+        },
+        "code_challenge": {
+          "type": "string"
+        },
+        "code_challenge_method": {
+          "type": "string"
+        },
+        "scope": {
+          "type": "string"
+        },
+        "resource": {
+          "type": "string"
+        },
+        "approve": {
+          "type": "boolean",
+          "title": "только Authorize"
+        }
+      },
+      "description": "OAuthAuthorizeReq — query запроса авторизации как есть."
+    },
+    "kusec_v1OAuthGrantListRep": {
+      "type": "object",
+      "properties": {
+        "results": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "$ref": "#/definitions/kusec_v1OAuthGrantMain"
+          }
+        }
+      }
+    },
+    "kusec_v1OAuthGrantMain": {
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string"
+        },
+        "client_name": {
+          "type": "string"
+        },
+        "redirect_host": {
+          "type": "string"
+        },
+        "created_at_unix": {
+          "type": "string",
+          "format": "int64"
+        },
+        "connected_at_unix": {
+          "type": "string",
+          "format": "int64"
+        },
+        "last_used_at_unix": {
+          "type": "string",
+          "format": "int64",
+          "title": "0 — не использовалось"
         }
       }
     },

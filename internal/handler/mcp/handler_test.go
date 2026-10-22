@@ -99,7 +99,7 @@ func TestAuthMiddleware(t *testing.T) {
 		auditRecStub{},
 	)
 
-	h := New(sessionSvc, apikeyUsecase, nil, nil, nil, nil, nil, nil, nil, nil)
+	h := New(sessionSvc, apikeyUsecase, nil, nil, nil, nil, nil, nil, nil, nil, nil)
 
 	nextCalled := false
 	next := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -110,11 +110,11 @@ func TestAuthMiddleware(t *testing.T) {
 		assert.Equal(t, int64(10), session.Id)
 		assert.Equal(t, []string{"app1"}, session.AppIds)
 
-		gotHash, _ := r.Context().Value(ctxKeyHash).(string)
-		assert.Equal(t, keyHash, gotHash)
+		principal, _ := r.Context().Value(ctxKeyPrincipal).(string)
+		assert.Equal(t, "k1", principal)
 	})
 
-	mw := h.authMiddleware(next)
+	mw := h.authMiddleware(next, nil)
 
 	// без ключа — 401
 	rec := httptest.NewRecorder()
@@ -144,8 +144,8 @@ func TestAuthMiddleware(t *testing.T) {
 func TestServerInstructions(t *testing.T) {
 	t.Parallel()
 
-	h := New(nil, nil, nil, nil, nil, nil, nil, nil, nil, nil)
-	srv := h.newSessionServer(&sessionModel.Session{Id: 10}, "hash")
+	h := New(nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil)
+	srv := h.newSessionServer(&sessionModel.Session{Id: 10}, "k1")
 
 	clientTr, serverTr := mcpsdk.NewInMemoryTransports()
 	srvSession, err := srv.Connect(t.Context(), serverTr, nil)

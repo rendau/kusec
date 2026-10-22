@@ -1,6 +1,8 @@
 // Package mcp — встроенный MCP-сервер (Model Context Protocol) поверх
 // usecase-слоя kusec для AI-агентов. Streamable HTTP transport на отдельном
-// порту (config MCP_ENABLED / MCP_PORT), аутентификация по api-key.
+// порту (config MCP_ENABLED / MCP_PORT), аутентификация по api-key или, с
+// MCP_OAUTH_ENABLED, по OAuth access-токену (клиенты, подключающиеся по адресу,
+// например коннекторы Claude).
 //
 // Модель безопасности: агент видит всё, кроме значений секретов. Значения
 // item-ов маскируются (длина + усечённый hash), новые значения агент задаёт
@@ -11,12 +13,15 @@ package mcp
 
 import (
 	"context"
+	"fmt"
+	"log/slog"
 	"net/http"
 	"strings"
 	"time"
 
 	mcpsdk "github.com/modelcontextprotocol/go-sdk/mcp"
 
+	oauthService "github.com/rendau/kusec/internal/domain/oauth/service"
 	sessionModel "github.com/rendau/kusec/internal/domain/session/model"
 	sessionService "github.com/rendau/kusec/internal/domain/session/service"
 	apikeyUsc "github.com/rendau/kusec/internal/usecase/apikey"
@@ -26,6 +31,7 @@ import (
 	configmapUsc "github.com/rendau/kusec/internal/usecase/configmap"
 	itemUsc "github.com/rendau/kusec/internal/usecase/item"
 	kubeUsc "github.com/rendau/kusec/internal/usecase/kube"
+	oauthUsc "github.com/rendau/kusec/internal/usecase/oauth"
 	secretUsc "github.com/rendau/kusec/internal/usecase/secret"
 	syncrunUsc "github.com/rendau/kusec/internal/usecase/syncrun"
 )
@@ -67,6 +73,7 @@ type Handler struct {
 	sessionSvc *sessionService.Service
 
 	apikeyUsecase     *apikeyUsc.Usecase
+	oauthUsecase      *oauthUsc.Usecase
 	appUsecase        *appUsc.Usecase
 	secretUsecase     *secretUsc.Usecase
 	itemUsecase       *itemUsc.Usecase
@@ -80,6 +87,7 @@ type Handler struct {
 func New(
 	sessionSvc *sessionService.Service,
 	apikeyUsecase *apikeyUsc.Usecase,
+	oauthUsecase *oauthUsc.Usecase,
 	appUsecase *appUsc.Usecase,
 	secretUsecase *secretUsc.Usecase,
 	itemUsecase *itemUsc.Usecase,
@@ -92,6 +100,7 @@ func New(
 	return &Handler{
 		sessionSvc:        sessionSvc,
 		apikeyUsecase:     apikeyUsecase,
+		oauthUsecase:      oauthUsecase,
 		appUsecase:        appUsecase,
 		secretUsecase:     secretUsecase,
 		itemUsecase:       itemUsecase,
@@ -107,45 +116,83 @@ type ctxKeyT int
 
 const (
 	ctxKeySession ctxKeyT = iota
-	ctxKeyHash
+	// ctxKeyPrincipal — id api-ключа или OAuth-подключения запроса.
+	ctxKeyPrincipal
 )
 
-// HTTPHandler — streamable HTTP endpoint MCP c аутентификацией по api-key.
+// HTTPHandler — streamable HTTP endpoint MCP с аутентификацией каждого
+// запроса, а при включённом OAuth — и OAuth-адреса рядом с ним.
 func (h *Handler) HTTPHandler() http.Handler {
 	streamable := mcpsdk.NewStreamableHTTPHandler(func(r *http.Request) *mcpsdk.Server {
 		session, _ := r.Context().Value(ctxKeySession).(*sessionModel.Session)
-		keyHash, _ := r.Context().Value(ctxKeyHash).(string)
-		if session == nil || keyHash == "" {
+		principal, _ := r.Context().Value(ctxKeyPrincipal).(string)
+		if session == nil || principal == "" {
 			return nil
 		}
-		return h.newSessionServer(session, keyHash)
+		return h.newSessionServer(session, principal)
 	}, &mcpsdk.StreamableHTTPOptions{
 		SessionTimeout: sessionIdleTimeout,
 	})
 
-	return h.authMiddleware(streamable)
+	var oauth *oauthEndpoints
+	if h.oauthUsecase != nil && h.oauthUsecase.Config().Enabled {
+		oauth = newOAuthEndpoints(h.oauthUsecase)
+	}
+
+	mcpHandler := h.authMiddleware(streamable, oauth)
+	if oauth == nil {
+		return withAccessLog(mcpHandler)
+	}
+
+	mux := http.NewServeMux()
+	oauth.register(mux)
+	mux.Handle("/", mcpHandler)
+
+	return withAccessLog(mux)
 }
 
-// authMiddleware проверяет api-ключ на каждом HTTP-запросе.
-func (h *Handler) authMiddleware(next http.Handler) http.Handler {
+// authMiddleware проверяет api-ключ или OAuth-токен на каждом HTTP-запросе.
+func (h *Handler) authMiddleware(next http.Handler, oauth *oauthEndpoints) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		key := bearerToken(r.Header.Get("Authorization"))
-		if key == "" {
-			http.Error(w, "kusec mcp: требуется api-ключ (Authorization: Bearer ksk_...)", http.StatusUnauthorized)
+		credential := bearerToken(r.Header.Get("Authorization"))
+		if credential == "" {
+			unauthorized(w, oauth, "", "kusec mcp: требуется api-ключ или OAuth-токен (Authorization: Bearer ...)")
 			return
 		}
 
-		session, err := h.apikeyUsecase.McpSessionFromKey(r.Context(), key)
+		session, err := h.authenticate(r.Context(), credential)
 		if err != nil {
-			http.Error(w, "kusec mcp: недействительный api-ключ", http.StatusUnauthorized)
+			slog.Warn("mcp: credential rejected", "credential", credentialKind(r), "client_ip", clientIP(r), "error", err)
+			unauthorized(w, oauth, "invalid_token", "kusec mcp: недействительный api-ключ или токен")
 			return
 		}
 
 		ctx := context.WithValue(r.Context(), ctxKeySession, session)
-		ctx = context.WithValue(ctx, ctxKeyHash, hashKey(key))
+		ctx = context.WithValue(ctx, ctxKeyPrincipal, session.ApiKeyId)
 
 		next.ServeHTTP(w, r.WithContext(ctx))
 	})
+}
+
+// authenticate — api-ключ (ksk_) или OAuth access-токен (kso_).
+func (h *Handler) authenticate(ctx context.Context, credential string) (*sessionModel.Session, error) {
+	if h.oauthUsecase != nil && strings.HasPrefix(credential, oauthService.AccessTokenPrefix) {
+		return h.oauthUsecase.McpSessionFromToken(ctx, credential)
+	}
+	return h.apikeyUsecase.McpSessionFromKey(ctx, credential)
+}
+
+// unauthorized отвечает 401; при включённом OAuth указывает клиенту на
+// метаданные защищаемого ресурса (RFC 9728) — с них клиент начинает вход.
+func unauthorized(w http.ResponseWriter, oauth *oauthEndpoints, oauthErr, msg string) {
+	if oauth != nil {
+		value := fmt.Sprintf(`Bearer resource_metadata=%q, scope=%q`, oauth.resourceMetadataURL(), oauthUsc.Scope)
+		if oauthErr != "" {
+			value += fmt.Sprintf(`, error=%q`, oauthErr)
+		}
+		w.Header().Set("WWW-Authenticate", value)
+	}
+	http.Error(w, msg, http.StatusUnauthorized)
 }
 
 func bearerToken(headerValue string) string {

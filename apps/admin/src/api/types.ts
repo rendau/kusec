@@ -806,7 +806,7 @@ export interface AuditMain {
   /** ui | api | mcp | system */
   source: string
   request_id: string
-  /** app | secret | item | configmap | config_item | api_key | usr | sync_run */
+  /** app | secret | item | configmap | config_item | api_key | oauth_grant | usr | sync_run */
   entity_type: string
   entity_id: string
   app_id: string | null
@@ -889,4 +889,42 @@ export interface SyncRunListReq {
 export interface SyncRunListRep {
   pagination_info?: PaginationInfo
   results: SyncRunMain[]
+}
+
+// ---- OAuth (clients that connect to the MCP server by URL) -----------------
+
+/** The query of an OAuth authorization request, passed through as is. */
+export interface OAuthAuthorizeReq {
+  response_type: string
+  client_id: string
+  redirect_uri: string
+  state: string
+  code_challenge: string
+  code_challenge_method: string
+  scope: string
+  resource: string
+}
+
+export interface OAuthAuthorizeInfoRep {
+  client_name: string
+  redirect_uri: string
+  redirect_host: string
+}
+
+export interface OAuthAuthorizeRep {
+  redirect_url: string
+}
+
+export interface OAuthGrantMain {
+  id: string
+  client_name: string
+  redirect_host: string
+  created_at_unix: number
+  connected_at_unix: number
+  /** 0 = never used */
+  last_used_at_unix: number
+}
+
+export interface OAuthGrantListRep {
+  results: OAuthGrantMain[]
 }

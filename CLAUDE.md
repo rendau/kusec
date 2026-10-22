@@ -41,7 +41,10 @@
   - `grpc/dto/` — преобразование protobuf ↔ domain models.
   - `mcp/` — встроенный MCP-сервер для AI-агентов (streamable HTTP, отдельный порт,
     `MCP_ENABLED`/`MCP_PORT`): маскирование значений секретов + декларативный
-    `value_source`. Подробности — `docs/mcp-server.md`.
+    `value_source`; вход по api-ключу или OAuth (`MCP_OAUTH_ENABLED`, коннекторы Claude:
+    OAuth-адреса — на MCP-порту, страница согласия — `/oauth/authorize` админки, подключение
+    = mcp_only-ключ разрешившего пользователя; `internal/usecase/oauth`, `internal/domain/oauth`,
+    чистка — `internal/service/oauthcleanup`). Подробности — `docs/mcp-server.md`.
   - могут быть и другие транспортные каналы.
 - `internal/usecase/` — usecase-слой (валидация, оркестрация сервисов и доменных сервисов).
 - `internal/domain/` — доменная модель, сервисы и репозитории.
@@ -246,6 +249,12 @@ docker stop kusec-dev-pg              # стенд сносится вместе
 
 - контейнер `kusec-dev-pg`, порт `55433`, БД `kusec_dev` (`postgres`/`postgres`);
   бэкенд — HTTP `18080` (API под `/api`), gRPC `15050`; админка — `http://127.0.0.1:5199`.
+- MCP с OAuth на стенде: добавить к бэкенду `MCP_ENABLED=true MCP_PORT=15060
+  MCP_OAUTH_ENABLED=true MCP_PUBLIC_URL=http://localhost:15060
+  MCP_OAUTH_ADMIN_URL=http://127.0.0.1:5199`. Клиента регистрировать с адресом возврата
+  `http://localhost:18099/callback` (loopback разрешён по умолчанию; там никто не слушает —
+  код берётся из адресной строки после «Allow»), страница согласия —
+  `http://127.0.0.1:5199/oauth/authorize?...`.
 - вход в админку: `admin` / `admin12345`, без 2FA. Проверить 2FA: включить её в
   профиле и брать код через `python3 scripts/devstand/totp.py <ключ из профиля>`.
 - креды только для этого одноразового стенда, нигде больше не использовать.

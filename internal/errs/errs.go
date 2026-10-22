@@ -40,6 +40,9 @@ const (
 	TotpAlreadyOn  = Err("totp_already_enabled")
 	TotpNotEnabled = Err("totp_not_enabled")
 
+	OAuthNotEnabled     = Err("oauth_not_enabled")
+	OAuthInvalidRequest = Err("oauth_invalid_request")
+
 	NotInCluster   = Err("not_in_cluster")
 	SyncInProgress = Err("sync_in_progress")
 )

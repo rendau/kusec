@@ -55,6 +55,7 @@ const entityTypeOptions: SelectOption[] = [
   { label: 'Config maps', value: 'configmap' },
   { label: 'Config items', value: 'config_item' },
   { label: 'API keys', value: 'api_key' },
+  { label: 'OAuth connections', value: 'oauth_grant' },
   { label: 'Users', value: 'usr' },
   { label: 'Sync runs', value: 'sync_run' },
 ]
@@ -161,7 +162,7 @@ function actionTag(row: AuditMain) {
 function objectLabel(row: AuditMain): string {
   const parts: string[] = [row.entity_type]
   if (row.key) parts.push(row.key)
-  else if (row.entity_type === 'usr' || row.entity_type === 'api_key') parts.push(row.entity_id)
+  else if (['usr', 'api_key', 'oauth_grant'].includes(row.entity_type)) parts.push(row.entity_id)
   const target = parts.join(' ')
   return row.kube_name ? `${target} @ ${row.kube_name}` : target
 }

@@ -21,6 +21,7 @@ import type { UsrUpdateProfileReq } from '@/api/types'
 import { useAuthStore } from '@/stores/auth'
 import { passwordComplexityError } from '@/utils/password'
 
+import OAuthGrantCard from '@/components/oauth/OAuthGrantCard.vue'
 import TotpSetupCard from '@/components/usr/TotpSetupCard.vue'
 
 const message = useMessage()
@@ -229,5 +230,7 @@ async function submit(): Promise<void> {
         <NButton v-else type="primary" @click="enrolling = true"> Enable 2FA </NButton>
       </template>
     </NCard>
+
+    <OAuthGrantCard />
   </NSpace>
 </template>

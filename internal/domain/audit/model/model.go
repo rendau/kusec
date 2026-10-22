@@ -15,6 +15,7 @@ const (
 	EntityConfigItem = "config_item"
 	EntityApiKey     = "api_key"
 	EntityUsr        = "usr"
+	EntityOAuthGrant = "oauth_grant"
 	EntitySyncRun    = "sync_run"
 )
 

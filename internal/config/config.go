@@ -1,6 +1,8 @@
 package config
 
 import (
+	"time"
+
 	"github.com/caarlos0/env/v9"
 	_ "github.com/joho/godotenv/autoload"
 )
@@ -19,7 +21,18 @@ var Conf = struct {
 	// отдельный HTTP-порт, аутентификация по api-key.
 	McpEnabled bool   `env:"MCP_ENABLED" envDefault:"false"`
 	McpPort    string `env:"MCP_PORT" envDefault:"5060"`
-	HttpCors   bool   `env:"HTTP_CORS" envDefault:"false"`
+
+	// OAuth-вход MCP-клиентов, подключающихся по адресу (коннекторы Claude);
+	// api-ключи работают рядом. McpPublicUrl — адрес MCP-сервера, как его
+	// видят клиенты; McpOAuthAdminUrl — адрес админки (страница согласия).
+	McpOAuthEnabled      bool          `env:"MCP_OAUTH_ENABLED" envDefault:"false"`
+	McpPublicUrl         string        `env:"MCP_PUBLIC_URL"`
+	McpOAuthAdminUrl     string        `env:"MCP_OAUTH_ADMIN_URL"`
+	McpOAuthRedirectUris []string      `env:"MCP_OAUTH_REDIRECT_URIS" envSeparator:"," envDefault:"https://claude.ai/api/mcp/auth_callback,https://claude.com/api/mcp/auth_callback,http://localhost,http://127.0.0.1"`
+	McpOAuthAccessTTL    time.Duration `env:"MCP_OAUTH_ACCESS_TTL" envDefault:"1h"`
+	McpOAuthRefreshTTL   time.Duration `env:"MCP_OAUTH_REFRESH_TTL" envDefault:"720h"`
+
+	HttpCors bool `env:"HTTP_CORS" envDefault:"false"`
 	// HttpCorsAllowedOrigins — белый список Origin для CORS (через запятую).
 	// Поддерживаются wildcard-шаблоны вида https://*.example.com. Действует
 	// только при HTTP_CORS=true. Если список пуст или содержит "*" —

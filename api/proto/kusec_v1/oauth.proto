@@ -1,0 +1,81 @@
+syntax = "proto3";
+
+package kusec_v1;
+
+import "google/api/annotations.proto";
+import "google/protobuf/empty.proto";
+
+option go_package = "/kusec_v1";
+
+// OAuth — страница согласия OAuth-входа встроенного MCP-сервера и список
+// подключённых клиентов. Только из входа в админку (JWT), не по api-ключу.
+service OAuth {
+  // DescribeAuthorization проверяет запрос авторизации и описывает клиента
+  // для страницы согласия.
+  rpc DescribeAuthorization(OAuthAuthorizeReq) returns (OAuthAuthorizeInfoRep) {
+    option (google.api.http) = {
+      post: "/oauth/authorize/describe"
+      body: "*"
+    };
+  }
+
+  // Authorize записывает решение и возвращает, куда отправить браузер.
+  rpc Authorize(OAuthAuthorizeReq) returns (OAuthAuthorizeRep) {
+    option (google.api.http) = {
+      post: "/oauth/authorize"
+      body: "*"
+    };
+  }
+
+  rpc ListGrants(google.protobuf.Empty) returns (OAuthGrantListRep) {
+    option (google.api.http) = {
+      get: "/oauth/grant"
+    };
+  }
+
+  rpc DeleteGrant(OAuthGrantDeleteReq) returns (google.protobuf.Empty) {
+    option (google.api.http) = {
+      delete: "/oauth/grant/{id}"
+    };
+  }
+}
+
+// OAuthAuthorizeReq — query запроса авторизации как есть.
+message OAuthAuthorizeReq {
+  string response_type = 1;
+  string client_id = 2;
+  string redirect_uri = 3;
+  string state = 4;
+  string code_challenge = 5;
+  string code_challenge_method = 6;
+  string scope = 7;
+  string resource = 8;
+  bool approve = 9; // только Authorize
+}
+
+message OAuthAuthorizeInfoRep {
+  string client_name = 1;
+  string redirect_uri = 2;
+  string redirect_host = 3;
+}
+
+message OAuthAuthorizeRep {
+  string redirect_url = 1;
+}
+
+message OAuthGrantMain {
+  string id = 1;
+  string client_name = 2;
+  string redirect_host = 3;
+  int64 created_at_unix = 4;
+  int64 connected_at_unix = 5;
+  int64 last_used_at_unix = 6; // 0 — не использовалось
+}
+
+message OAuthGrantListRep {
+  repeated OAuthGrantMain results = 1;
+}
+
+message OAuthGrantDeleteReq {
+  string id = 1;
+}
