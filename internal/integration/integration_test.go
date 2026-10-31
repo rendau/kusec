@@ -402,6 +402,51 @@ func TestReadOnlySessionValueMasking(t *testing.T) {
 	assert.Equal(t, secretValue, full.Value)
 }
 
+// Поиск по значению item-а доступен только сессии, которая значения видит.
+// Для read_only и MCP фильтр search ищет лишь по ключу/описанию — иначе он
+// работал бы оракулом для посимвольного перебора секрета.
+func TestItemSearchByValueOnlyForFullSession(t *testing.T) {
+	s := newStack(t)
+	ctx := s.adminCtx()
+
+	_, secretId := s.newApp(t, "search-oracle")
+
+	const secretValue = "Oracle-Secret-Value-99"
+	_, err := s.itemUsecase.Create(ctx, &itemModel.Edit{
+		SecretId: &secretId, Active: new(true), Key: new("API_TOKEN"), Value: new(secretValue),
+	})
+	require.NoError(t, err)
+
+	hiddenCtxs := map[string]context.Context{
+		"read_only": s.sessionSvc.WithContext(context.Background(), &sessionModel.Session{
+			Id: 1, Admin: true, Name: "RO", Scope: "read_only", Source: "api",
+		}),
+		"mcp": s.sessionSvc.WithContext(context.Background(), &sessionModel.Session{
+			Id: 1, Admin: true, Name: "MCP", Scope: "mcp_only", Source: "mcp",
+		}),
+	}
+
+	for _, needle := range []string{secretValue, secretValue[:6], "oracle"} {
+		// полная сессия находит по значению
+		items, _, err := s.itemUsecase.List(ctx, &itemModel.ListReq{SecretId: &secretId, Search: &needle})
+		require.NoError(t, err)
+		assert.Len(t, items, 1, "full: search=%q", needle)
+
+		for name, hiddenCtx := range hiddenCtxs {
+			items, _, err = s.itemUsecase.List(hiddenCtx, &itemModel.ListReq{SecretId: &secretId, Search: &needle})
+			require.NoError(t, err)
+			assert.Empty(t, items, "%s: search=%q нашёл item по значению", name, needle)
+		}
+	}
+
+	// по ключу находят все
+	for name, c := range map[string]context.Context{"full": ctx, "read_only": hiddenCtxs["read_only"], "mcp": hiddenCtxs["mcp"]} {
+		items, _, err := s.itemUsecase.List(c, &itemModel.ListReq{SecretId: &secretId, Search: new("api_tok")})
+		require.NoError(t, err)
+		assert.Len(t, items, 1, "%s: поиск по ключу", name)
+	}
+}
+
 // Занятый логин — семантическая ошибка username_exists с понятным текстом, а
 // не сырая ошибка Postgres про уникальный индекс: и при создании, и при
 // переименовании в чужой логин. Проходит сквозь обёртки usecase и TxFn.

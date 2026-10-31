@@ -129,6 +129,9 @@ func (u *Usecase) List(ctx context.Context, pars *model.ListReq) ([]*model.Main,
 		}
 	}
 
+	// поиск по значению — только тем, кто значения видит
+	pars.SearchValue = !session.ConfigValuesHidden()
+
 	items, tCount, err := u.svc.List(ctx, pars)
 	if err != nil {
 		return nil, 0, fmt.Errorf("svc.List: %w", err)

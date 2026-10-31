@@ -46,11 +46,16 @@ type Edit struct {
 type ListReq struct {
 	commonModel.ListParams
 
-	SecretId     *string
-	SecretIds    []string
-	AppId        *string
-	Active       *bool
-	Search       *string
+	SecretId  *string
+	SecretIds []string
+	AppId     *string
+	Active    *bool
+	Search    *string
+	// SearchValue — искать Search и в значении (не только в ключе/описании).
+	// Выставляет только usecase, и только когда вызывающему значения видны:
+	// по умолчанию выключено, чтобы маскированная сессия не могла перебирать
+	// значение подстроками.
+	SearchValue  bool
 	UpdatedAtGte *time.Time
 	UpdatedAtLt  *time.Time
 }

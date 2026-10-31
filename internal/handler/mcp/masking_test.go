@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"net/http"
 	"net/http/httptest"
+	"strings"
 	"testing"
 
 	mcpsdk "github.com/modelcontextprotocol/go-sdk/mcp"
@@ -37,6 +38,15 @@ func (m *itemSvcMock) List(_ context.Context, pars *itemModel.ListReq) ([]*itemM
 		}
 		if pars.Active != nil && item.Active != *pars.Active {
 			continue
+		}
+		if pars.Search != nil {
+			needle := strings.ToLower(*pars.Search)
+			hit := strings.Contains(strings.ToLower(item.Key), needle) ||
+				strings.Contains(strings.ToLower(item.Description), needle) ||
+				(pars.SearchValue && strings.Contains(strings.ToLower(item.Value), needle))
+			if !hit {
+				continue
+			}
 		}
 		result = append(result, item)
 	}
@@ -154,4 +164,32 @@ func TestMaskingE2E(t *testing.T) {
 		assert.Contains(t, string(raw), expectedMask.Hash, "%s: нет отпечатка значения", name)
 		assert.Contains(t, string(raw), `"value_chars"`, name)
 	}
+
+	// Фильтр search не должен работать как оракул значения: по подстроке
+	// секрета агент не находит ничего, по ключу — находит.
+	for name, tc := range map[string]struct {
+		search string
+		found  int
+	}{
+		"по значению целиком":   {search: secretValue, found: 0},
+		"по подстроке значения": {search: secretValue[:5], found: 0},
+		"по ключу":              {search: "db_pass", found: 1},
+	} {
+		res, err := clSession.CallTool(t.Context(), &mcpsdk.CallToolParams{
+			Name: "list_item", Arguments: map[string]any{"secret_id": "sec1", "search": tc.search},
+		})
+		require.NoError(t, err, name)
+		require.False(t, res.IsError, name)
+
+		var out ListItemOut
+		require.NoError(t, json.Unmarshal(mustJSON(t, res.StructuredContent), &out), name)
+		assert.Len(t, out.Results, tc.found, "%s: search по значению не должен находить item-ы", name)
+	}
+}
+
+func mustJSON(t *testing.T, v any) []byte {
+	t.Helper()
+	raw, err := json.Marshal(v)
+	require.NoError(t, err)
+	return raw
 }

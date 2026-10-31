@@ -46,6 +46,20 @@ func (s *Session) IsReadOnly() bool {
 	return s != nil && s.Scope == constant.ApiKeyScopeReadOnly
 }
 
+// SecretValuesHidden — вызывающему значения item-ов секретов не показываются:
+// read_only-скоуп (usecase обнуляет Value) или MCP-канал (handler отдаёт
+// только маску). Таким сессиям нельзя давать и поиск по значению — иначе
+// фильтр «значение содержит …» становится оракулом для посимвольного перебора.
+func (s *Session) SecretValuesHidden() bool {
+	return s != nil && (s.IsReadOnly() || s.Source == constant.SourceMcp)
+}
+
+// ConfigValuesHidden — значения config_item-ов не показываются (только
+// read_only-скоуп: MCP значения конфигмапов видит целиком).
+func (s *Session) ConfigValuesHidden() bool {
+	return s != nil && s.IsReadOnly()
+}
+
 func (s *Session) AccessibleAppIds() ([]string, bool) {
 	if s == nil {
 		return nil, false

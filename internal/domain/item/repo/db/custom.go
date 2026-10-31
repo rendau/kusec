@@ -32,10 +32,11 @@ func (r *Repo) getConditions(pars *model.ListReq) (map[string]any, map[string][]
 		conditions["active"] = *pars.Active
 	}
 	if pars.Search != nil {
-		conditionExps["(key ILIKE ? OR value ILIKE ? OR description ILIKE ?)"] = []any{
-			"%" + *pars.Search + "%",
-			"%" + *pars.Search + "%",
-			"%" + *pars.Search + "%",
+		pattern := "%" + *pars.Search + "%"
+		if pars.SearchValue {
+			conditionExps["(key ILIKE ? OR value ILIKE ? OR description ILIKE ?)"] = []any{pattern, pattern, pattern}
+		} else {
+			conditionExps["(key ILIKE ? OR description ILIKE ?)"] = []any{pattern, pattern}
 		}
 	}
 
