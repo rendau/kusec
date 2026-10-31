@@ -35,6 +35,10 @@ func (r *Repo) getConditions(pars *model.ListReq) (map[string]any, map[string][]
 	if pars.Search != nil {
 		conditionExps["(name ILIKE ? OR username ILIKE ?)"] = []any{"%" + *pars.Search + "%", "%" + *pars.Search + "%"}
 	}
+	if pars.AppId != nil {
+		// та же логика, что в session.AccessibleAppIds: админ и пустой app_ids — доступ ко всем
+		conditionExps["(is_admin OR app_ids = '[]'::jsonb OR app_ids @> to_jsonb(?::text))"] = []any{*pars.AppId}
+	}
 
 	return conditions, conditionExps
 }

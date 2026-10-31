@@ -45,6 +45,7 @@ func DecodeUsrListReq(v *proto.UsrListReq) *domainModel.ListReq {
 		Active:     v.Active,
 		IsAdmin:    v.IsAdmin,
 		Search:     v.Search,
+		AppId:      v.AppId,
 	}
 }
 

@@ -2317,6 +2317,13 @@
             "in": "query",
             "required": false,
             "type": "string"
+          },
+          {
+            "name": "app_id",
+            "description": "app_id — только пользователи с доступом к этому приложению: админы,\nпользователи с ним в app_ids и пользователи с пустым app_ids (доступ ко всем).",
+            "in": "query",
+            "required": false,
+            "type": "string"
           }
         ],
         "tags": [

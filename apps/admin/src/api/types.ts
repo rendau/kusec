@@ -88,6 +88,8 @@ export interface UsrListReq {
   active?: boolean
   is_admin?: boolean
   search?: string
+  /** Only users with access to this app (admins and empty `app_ids` included). */
+  app_id?: string
 }
 
 /** `UsrListRep`. */

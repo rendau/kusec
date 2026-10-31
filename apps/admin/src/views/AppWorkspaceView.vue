@@ -24,6 +24,7 @@ import { useKubeSync } from '@/composables/useKubeSync'
 import { useAppsStore } from '@/stores/apps'
 import { useAuthStore } from '@/stores/auth'
 
+import AppAccessSection from '@/components/app/AppAccessSection.vue'
 import AppDeleteModal from '@/components/app/AppDeleteModal.vue'
 import AppFormModal from '@/components/app/AppFormModal.vue'
 import AuditSection from '@/components/audit/AuditSection.vue'
@@ -55,7 +56,7 @@ const app = computed<AppMain | null>(
 )
 
 // Active tab: secrets / config maps plus the app-scoped audit & sync feeds.
-const activeTab = ref<'secrets' | 'configmaps' | 'audit' | 'sync'>('configmaps')
+const activeTab = ref<'secrets' | 'configmaps' | 'audit' | 'sync' | 'access'>('configmaps')
 
 // Live counts are read from each section so the tab labels and delete modal
 // stay in sync as secrets/config maps are created or removed.
@@ -255,6 +256,10 @@ watch(
 
         <NTabPane name="sync" tab="Sync">
           <SyncRunSection v-if="appId" :key="appId" :app-id="appId" />
+        </NTabPane>
+
+        <NTabPane v-if="isAdmin" name="access" tab="Access">
+          <AppAccessSection v-if="appId" :key="appId" :app-id="appId" />
         </NTabPane>
       </NTabs>
     </NCard>

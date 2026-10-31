@@ -130,6 +130,7 @@ export function listUsers(req: UsrListReq = {}): Promise<UsrListRep> {
     active: req.active,
     is_admin: req.is_admin,
     search: req.search,
+    app_id: req.app_id,
   })
   return apiFetch<UsrListRep>(`/usr${query}`)
 }

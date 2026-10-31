@@ -40,4 +40,5 @@ type ListReq struct {
 	Active  *bool
 	IsAdmin *bool
 	Search  *string
+	AppId   *string // только с доступом к этому app (см. session.AccessibleAppIds)
 }

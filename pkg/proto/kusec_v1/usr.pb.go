@@ -116,11 +116,14 @@ func (x *UsrMain) GetTotpEnabled() bool {
 }
 
 type UsrListReq struct {
-	state         protoimpl.MessageState `protogen:"open.v1"`
-	ListParams    *ListParamsSt          `protobuf:"bytes,1,opt,name=list_params,json=listParams,proto3" json:"list_params,omitempty"`
-	Active        *bool                  `protobuf:"varint,2,opt,name=active,proto3,oneof" json:"active,omitempty"`
-	IsAdmin       *bool                  `protobuf:"varint,3,opt,name=is_admin,json=isAdmin,proto3,oneof" json:"is_admin,omitempty"`
-	Search        *string                `protobuf:"bytes,4,opt,name=search,proto3,oneof" json:"search,omitempty"`
+	state      protoimpl.MessageState `protogen:"open.v1"`
+	ListParams *ListParamsSt          `protobuf:"bytes,1,opt,name=list_params,json=listParams,proto3" json:"list_params,omitempty"`
+	Active     *bool                  `protobuf:"varint,2,opt,name=active,proto3,oneof" json:"active,omitempty"`
+	IsAdmin    *bool                  `protobuf:"varint,3,opt,name=is_admin,json=isAdmin,proto3,oneof" json:"is_admin,omitempty"`
+	Search     *string                `protobuf:"bytes,4,opt,name=search,proto3,oneof" json:"search,omitempty"`
+	// app_id — только пользователи с доступом к этому приложению: админы,
+	// пользователи с ним в app_ids и пользователи с пустым app_ids (доступ ко всем).
+	AppId         *string `protobuf:"bytes,5,opt,name=app_id,json=appId,proto3,oneof" json:"app_id,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -179,6 +182,13 @@ func (x *UsrListReq) GetIsAdmin() bool {
 func (x *UsrListReq) GetSearch() string {
 	if x != nil && x.Search != nil {
 		return *x.Search
+	}
+	return ""
+}
+
+func (x *UsrListReq) GetAppId() string {
+	if x != nil && x.AppId != nil {
+		return *x.AppId
 	}
 	return ""
 }
@@ -956,17 +966,19 @@ const file_kusec_v1_usr_proto_rawDesc = "" +
 	"\x04name\x18\x04 \x01(\tR\x04name\x12\x1a\n" +
 	"\busername\x18\x05 \x01(\tR\busername\x12\x17\n" +
 	"\aapp_ids\x18\x06 \x03(\tR\x06appIds\x12!\n" +
-	"\ftotp_enabled\x18\a \x01(\bR\vtotpEnabled\"\xc2\x01\n" +
+	"\ftotp_enabled\x18\a \x01(\bR\vtotpEnabled\"\xe9\x01\n" +
 	"\n" +
 	"UsrListReq\x127\n" +
 	"\vlist_params\x18\x01 \x01(\v2\x16.kusec_v1.ListParamsStR\n" +
 	"listParams\x12\x1b\n" +
 	"\x06active\x18\x02 \x01(\bH\x00R\x06active\x88\x01\x01\x12\x1e\n" +
 	"\bis_admin\x18\x03 \x01(\bH\x01R\aisAdmin\x88\x01\x01\x12\x1b\n" +
-	"\x06search\x18\x04 \x01(\tH\x02R\x06search\x88\x01\x01B\t\n" +
+	"\x06search\x18\x04 \x01(\tH\x02R\x06search\x88\x01\x01\x12\x1a\n" +
+	"\x06app_id\x18\x05 \x01(\tH\x03R\x05appId\x88\x01\x01B\t\n" +
 	"\a_activeB\v\n" +
 	"\t_is_adminB\t\n" +
-	"\a_search\"~\n" +
+	"\a_searchB\t\n" +
+	"\a_app_id\"~\n" +
 	"\n" +
 	"UsrListRep\x12C\n" +
 	"\x0fpagination_info\x18\x01 \x01(\v2\x1a.kusec_v1.PaginationInfoStR\x0epaginationInfo\x12+\n" +
