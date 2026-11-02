@@ -16,7 +16,7 @@ import {
   NText,
 } from 'naive-ui'
 import { storeToRefs } from 'pinia'
-import { CloudUpload, Pencil, Plus, Trash } from '@vicons/tabler'
+import { CloudUpload, EyeOff, Pencil, Plus, Trash } from '@vicons/tabler'
 
 import { getApp } from '@/api/app'
 import type { AppMain } from '@/api/types'
@@ -165,6 +165,15 @@ watch(
               Sync to Kubernetes
             </NButton>
             <template v-if="isAdmin">
+              <NButton
+                size="small"
+                @click="router.push({ name: 'inactive', query: { app: app.id } })"
+              >
+                <template #icon>
+                  <NIcon :component="EyeOff" />
+                </template>
+                Inactive
+              </NButton>
               <NButton size="small" @click="openAppEdit">
                 <template #icon>
                   <NIcon :component="Pencil" />

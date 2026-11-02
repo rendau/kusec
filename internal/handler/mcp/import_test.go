@@ -152,8 +152,8 @@ func newImportEnv(t *testing.T) *importEnv {
 	}}
 	kubeMock := &kubeSvcMock{}
 
-	appUsecase := appUsc.New(appSvc, nil, nil, nil, nil, sessionSvc, txmStub{}, auditRecStub{})
-	secretUsecase := secretUsc.New(secretSvc, appSvc, itemSvc, sessionSvc, txmStub{}, auditRecStub{})
+	appUsecase := appUsc.New(appSvc, nil, sessionSvc, txmStub{}, auditRecStub{})
+	secretUsecase := secretUsc.New(secretSvc, appSvc, itemSvc, nil, sessionSvc, txmStub{}, auditRecStub{})
 	itemUsecase := itemUsc.New(itemSvc, secretSvc, sessionSvc, txmStub{}, auditRecStub{})
 	kubeUsecase := kubeUsc.New(kubeMock, nil, nil, nil, sessionSvc)
 

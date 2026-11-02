@@ -7,7 +7,6 @@ import (
 	"github.com/samber/lo"
 
 	appModel "github.com/rendau/kusec/internal/domain/app/model"
-	configitemModel "github.com/rendau/kusec/internal/domain/configitem/model"
 	"github.com/rendau/kusec/internal/domain/configmap/model"
 	"github.com/rendau/kusec/internal/errs"
 	"github.com/rendau/kusec/internal/service/kube"
@@ -15,29 +14,29 @@ import (
 )
 
 type Usecase struct {
-	svc           ServiceI
-	appSvc        AppServiceI
-	configItemSvc ConfigItemServiceI
-	sessionSvc    SessionServiceI
-	txm           TransactionManagerI
-	auditRec      AuditRecorderI
+	svc        ServiceI
+	appSvc     AppServiceI
+	cascadeSvc CascadeServiceI
+	sessionSvc SessionServiceI
+	txm        TransactionManagerI
+	auditRec   AuditRecorderI
 }
 
 func New(
 	svc ServiceI,
 	appSvc AppServiceI,
-	configItemSvc ConfigItemServiceI,
+	cascadeSvc CascadeServiceI,
 	sessionSvc SessionServiceI,
 	txm TransactionManagerI,
 	auditRec AuditRecorderI,
 ) *Usecase {
 	return &Usecase{
-		svc:           svc,
-		appSvc:        appSvc,
-		configItemSvc: configItemSvc,
-		sessionSvc:    sessionSvc,
-		txm:           txm,
-		auditRec:      auditRec,
+		svc:        svc,
+		appSvc:     appSvc,
+		cascadeSvc: cascadeSvc,
+		sessionSvc: sessionSvc,
+		txm:        txm,
+		auditRec:   auditRec,
 	}
 }
 
@@ -245,24 +244,6 @@ func (u *Usecase) Delete(ctx context.Context, id string) error {
 	}
 
 	return u.txm.TxFn(ctx, func(ctx context.Context) error {
-		batchId := new(u.auditRec.NewBatchId())
-
-		configItems, _, err := u.configItemSvc.List(ctx, &configitemModel.ListReq{ConfigMapId: new(id)})
-		if err != nil {
-			return fmt.Errorf("configItemSvc.List: %w", err)
-		}
-		for _, configItem := range configItems {
-			if err = u.auditRec.RecordConfigItem(ctx, configItem, nil, "", batchId); err != nil {
-				return fmt.Errorf("auditRec.RecordConfigItem: %w", err)
-			}
-		}
-
-		if err = u.svc.Delete(ctx, id); err != nil {
-			return fmt.Errorf("svc.Delete: %w", err)
-		}
-		if err = u.auditRec.RecordConfigMap(ctx, current, nil, "", batchId); err != nil {
-			return fmt.Errorf("auditRec.RecordConfigMap: %w", err)
-		}
-		return nil
+		return u.cascadeSvc.DeleteConfigMap(ctx, current, new(u.auditRec.NewBatchId()))
 	})
 }

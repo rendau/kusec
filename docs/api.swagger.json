@@ -24,6 +24,9 @@
       "name": "Dashboard"
     },
     {
+      "name": "Inactive"
+    },
+    {
       "name": "Item"
     },
     {
@@ -1184,6 +1187,70 @@
         },
         "tags": [
           "Dashboard"
+        ]
+      }
+    },
+    "/inactive": {
+      "get": {
+        "operationId": "Inactive_List",
+        "responses": {
+          "200": {
+            "description": "A successful response.",
+            "schema": {
+              "$ref": "#/definitions/kusec_v1InactiveListRep"
+            }
+          },
+          "default": {
+            "description": "An unexpected error response.",
+            "schema": {
+              "$ref": "#/definitions/rpcStatus"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "app_id",
+            "description": "Только элементы этого приложения (пусто — все приложения).",
+            "in": "query",
+            "required": false,
+            "type": "string"
+          }
+        ],
+        "tags": [
+          "Inactive"
+        ]
+      }
+    },
+    "/inactive/delete": {
+      "post": {
+        "operationId": "Inactive_Delete",
+        "responses": {
+          "200": {
+            "description": "A successful response.",
+            "schema": {
+              "type": "object",
+              "properties": {}
+            }
+          },
+          "default": {
+            "description": "An unexpected error response.",
+            "schema": {
+              "$ref": "#/definitions/rpcStatus"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "body",
+            "in": "body",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/kusec_v1InactiveDeleteReq"
+            }
+          }
+        ],
+        "tags": [
+          "Inactive"
         ]
       }
     },
@@ -3516,6 +3583,81 @@
         },
         "config_item": {
           "$ref": "#/definitions/kusec_v1DashboardCountSt"
+        }
+      }
+    },
+    "kusec_v1InactiveDeleteReq": {
+      "type": "object",
+      "properties": {
+        "elements": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "$ref": "#/definitions/kusec_v1InactiveRefSt"
+          }
+        }
+      }
+    },
+    "kusec_v1InactiveElementSt": {
+      "type": "object",
+      "properties": {
+        "kind": {
+          "type": "string",
+          "description": "Вид элемента: app | secret | item | configmap | config_item."
+        },
+        "id": {
+          "type": "string"
+        },
+        "app_id": {
+          "type": "string"
+        },
+        "app_name": {
+          "type": "string"
+        },
+        "parent_id": {
+          "type": "string",
+          "description": "Родитель item-а: secret или configmap (у остальных пусто)."
+        },
+        "parent_name": {
+          "type": "string"
+        },
+        "name": {
+          "type": "string"
+        },
+        "description": {
+          "type": "string"
+        },
+        "updated_at": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "child_count": {
+          "type": "string",
+          "format": "int64",
+          "description": "Сколько элементов удалится вместе с этим: item-ы секрета или конфигмапа,\nу приложения — его секреты, конфигмапы и все их item-ы."
+        }
+      }
+    },
+    "kusec_v1InactiveListRep": {
+      "type": "object",
+      "properties": {
+        "results": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "$ref": "#/definitions/kusec_v1InactiveElementSt"
+          }
+        }
+      }
+    },
+    "kusec_v1InactiveRefSt": {
+      "type": "object",
+      "properties": {
+        "kind": {
+          "type": "string"
+        },
+        "id": {
+          "type": "string"
         }
       }
     },

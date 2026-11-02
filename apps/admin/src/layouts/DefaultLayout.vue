@@ -109,6 +109,7 @@ const navActiveKey = computed(() => {
   if (name === 'usr-list') return 'users'
   if (name === 'api-key-list') return 'api-keys'
   if (name === 'audit') return 'audit'
+  if (name === 'inactive') return 'inactive'
   if (name === 'home') return 'home'
   return null
 })
@@ -124,6 +125,9 @@ const navOptions = computed<MenuOption[]>(() => [
     : []),
   { label: renderRouterLink('/api-key', 'API keys'), key: 'api-keys' },
   { label: renderRouterLink('/audit', 'Audit'), key: 'audit' },
+  ...(authStore.isAdmin
+    ? [{ label: renderRouterLink('/inactive', 'Inactive'), key: 'inactive' }]
+    : []),
 ])
 
 const profileName = computed(
@@ -139,6 +143,7 @@ const userMenuOptions = computed<DropdownOption[]>(() => [
         ...(authStore.isAdmin ? [{ label: 'Users', key: 'users' }] : []),
         { label: 'API keys', key: 'api-keys' },
         { label: 'Audit', key: 'audit' },
+        ...(authStore.isAdmin ? [{ label: 'Inactive', key: 'inactive' }] : []),
         { type: 'divider', key: 'd0' } as DropdownOption,
       ]
     : []),
@@ -156,6 +161,8 @@ function onUserMenuSelect(key: string | number): void {
     void router.push({ name: 'api-key-list' })
   } else if (key === 'audit') {
     void router.push({ name: 'audit' })
+  } else if (key === 'inactive') {
+    void router.push({ name: 'inactive' })
   } else if (key === 'profile') {
     void router.push({ name: 'profile' })
   } else if (key === 'logout') {

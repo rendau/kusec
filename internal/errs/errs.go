@@ -43,6 +43,9 @@ const (
 	OAuthNotEnabled     = Err("oauth_not_enabled")
 	OAuthInvalidRequest = Err("oauth_invalid_request")
 
+	// элемент включили после того, как админ загрузил список неактивных
+	ElementActive = Err("element_active")
+
 	NotInCluster   = Err("not_in_cluster")
 	SyncInProgress = Err("sync_in_progress")
 )

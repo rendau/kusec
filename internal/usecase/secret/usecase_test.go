@@ -81,7 +81,7 @@ func (auditRecStub) RecordItem(context.Context, *itemModel.Main, *itemModel.Main
 func newExactSlugFixture(items []*itemModel.Main, exactSlug bool) (*Usecase, *svcMock, *sessionService.Service) {
 	svc := &svcMock{secret: &model.Main{Id: "sec1", AppId: "app1", Active: true, SlugName: "db", ExactSlug: exactSlug}}
 	sessionSvc := sessionService.New("test-secret")
-	uc := New(svc, nil, &itemSvcMock{items: items}, sessionSvc, txmStub{}, auditRecStub{})
+	uc := New(svc, nil, &itemSvcMock{items: items}, nil, sessionSvc, txmStub{}, auditRecStub{})
 	return uc, svc, sessionSvc
 }
 

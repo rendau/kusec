@@ -63,6 +63,8 @@ func TestGrpcInterceptorReadOnlyScope(t *testing.T) {
 		"/kusec_v1.ApiKey/Create",
 		"/kusec_v1.Usr/List",
 		"/kusec_v1.Dashboard/Get",
+		"/kusec_v1.Inactive/List",
+		"/kusec_v1.Inactive/Delete",
 		"/kusec_v1.Future/NewMethod", // новый метод по умолчанию закрыт
 	} {
 		called, err := call(roCtx, method)

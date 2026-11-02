@@ -893,6 +893,33 @@ export interface SyncRunListRep {
   results: SyncRunMain[]
 }
 
+// ---- Inactive elements (admin) ---------------------------------------------
+
+export type InactiveKind = 'app' | 'secret' | 'item' | 'configmap' | 'config_item'
+
+export interface InactiveElement {
+  kind: InactiveKind
+  id: string
+  app_id: string
+  app_name: string
+  /** Owning secret / config map of an item, empty for other kinds. */
+  parent_id: string
+  parent_name: string
+  name: string
+  description: string
+  updated_at: string
+  /** Everything deleted along with the element. */
+  child_count: number | string
+}
+
+export interface InactiveListRep {
+  results: InactiveElement[]
+}
+
+export interface InactiveDeleteReq {
+  elements: { kind: InactiveKind; id: string }[]
+}
+
 // ---- OAuth (clients that connect to the MCP server by URL) -----------------
 
 /** The query of an OAuth authorization request, passed through as is. */

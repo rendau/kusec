@@ -1,0 +1,68 @@
+syntax = "proto3";
+
+package kusec_v1;
+
+import "google/api/annotations.proto";
+import "google/protobuf/empty.proto";
+import "google/protobuf/timestamp.proto";
+
+option go_package = "/kusec_v1";
+
+// Обзор деактивированных элементов для админа: app, secret, configmap и их
+// item-ы одним списком и удаление выбранного одной транзакцией. Значения
+// item-ов здесь не отдаются — за ними карточка самого элемента.
+service Inactive {
+  rpc List(InactiveListReq) returns (InactiveListRep) {
+    option (google.api.http) = {
+      get: "/inactive"
+    };
+  }
+
+  rpc Delete(InactiveDeleteReq) returns (google.protobuf.Empty) {
+    option (google.api.http) = {
+      post: "/inactive/delete"
+      body: "*"
+    };
+  }
+}
+
+// ── Messages ────────────────────────────────────────────
+
+message InactiveElementSt {
+  // Вид элемента: app | secret | item | configmap | config_item.
+  string kind = 1;
+  string id = 2;
+  string app_id = 3;
+  string app_name = 4;
+  // Родитель item-а: secret или configmap (у остальных пусто).
+  string parent_id = 5;
+  string parent_name = 6;
+  string name = 7;
+  string description = 8;
+  google.protobuf.Timestamp updated_at = 9;
+  // Сколько элементов удалится вместе с этим: item-ы секрета или конфигмапа,
+  // у приложения — его секреты, конфигмапы и все их item-ы.
+  int64 child_count = 10;
+}
+
+// List
+
+message InactiveListReq {
+  // Только элементы этого приложения (пусто — все приложения).
+  optional string app_id = 1;
+}
+
+message InactiveListRep {
+  repeated InactiveElementSt results = 1;
+}
+
+// Delete
+
+message InactiveRefSt {
+  string kind = 1;
+  string id = 2;
+}
+
+message InactiveDeleteReq {
+  repeated InactiveRefSt elements = 1;
+}

@@ -20,6 +20,7 @@ type Usecase struct {
 	svc        ServiceI
 	appSvc     AppServiceI
 	itemSvc    ItemServiceI
+	cascadeSvc CascadeServiceI
 	sessionSvc SessionServiceI
 	txm        TransactionManagerI
 	auditRec   AuditRecorderI
@@ -29,6 +30,7 @@ func New(
 	svc ServiceI,
 	appSvc AppServiceI,
 	itemSvc ItemServiceI,
+	cascadeSvc CascadeServiceI,
 	sessionSvc SessionServiceI,
 	txm TransactionManagerI,
 	auditRec AuditRecorderI,
@@ -37,6 +39,7 @@ func New(
 		svc:        svc,
 		appSvc:     appSvc,
 		itemSvc:    itemSvc,
+		cascadeSvc: cascadeSvc,
 		sessionSvc: sessionSvc,
 		txm:        txm,
 		auditRec:   auditRec,
@@ -285,24 +288,6 @@ func (u *Usecase) Delete(ctx context.Context, id string) error {
 	}
 
 	return u.txm.TxFn(ctx, func(ctx context.Context) error {
-		batchId := new(u.auditRec.NewBatchId())
-
-		items, _, err := u.itemSvc.List(ctx, &itemModel.ListReq{SecretId: new(id)})
-		if err != nil {
-			return fmt.Errorf("itemSvc.List: %w", err)
-		}
-		for _, item := range items {
-			if err = u.auditRec.RecordItem(ctx, item, nil, "", batchId); err != nil {
-				return fmt.Errorf("auditRec.RecordItem: %w", err)
-			}
-		}
-
-		if err = u.svc.Delete(ctx, id); err != nil {
-			return fmt.Errorf("svc.Delete: %w", err)
-		}
-		if err = u.auditRec.RecordSecret(ctx, current, nil, "", batchId); err != nil {
-			return fmt.Errorf("auditRec.RecordSecret: %w", err)
-		}
-		return nil
+		return u.cascadeSvc.DeleteSecret(ctx, current, new(u.auditRec.NewBatchId()))
 	})
 }

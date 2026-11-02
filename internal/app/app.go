@@ -48,6 +48,7 @@ import (
 	mcpHandler "github.com/rendau/kusec/internal/handler/mcp"
 
 	auditRecorder "github.com/rendau/kusec/internal/service/audit"
+	cascadeService "github.com/rendau/kusec/internal/service/cascade"
 	kubeService "github.com/rendau/kusec/internal/service/kube"
 	oauthcleanupService "github.com/rendau/kusec/internal/service/oauthcleanup"
 	retentionService "github.com/rendau/kusec/internal/service/retention"
@@ -59,6 +60,7 @@ import (
 	configitemUsc "github.com/rendau/kusec/internal/usecase/configitem"
 	configmapUsc "github.com/rendau/kusec/internal/usecase/configmap"
 	dashboardUsc "github.com/rendau/kusec/internal/usecase/dashboard"
+	inactiveUsc "github.com/rendau/kusec/internal/usecase/inactive"
 	itemUsc "github.com/rendau/kusec/internal/usecase/item"
 	kubeUsc "github.com/rendau/kusec/internal/usecase/kube"
 	monitoringUsc "github.com/rendau/kusec/internal/usecase/monitoring"
@@ -158,6 +160,9 @@ func (a *App) Init() {
 	// регистратор аудита: пишется usecase-ами внутри транзакции мутации
 	auditRec := auditRecorder.New(auditSvc, usrSvc, appSvc, secretSvc, configMapSvc, sessionSvc, config.Conf.AuditHashKey)
 
+	// удаление с потомками и аудитом: общее для usecase-ов сущностей и inactive
+	cascadeSvc := cascadeService.New(appSvc, secretSvc, itemSvc, configMapSvc, configItemSvc, auditRec)
+
 	// api-key usecase используется и хендлером, и session-интерсептором
 	apikeyUsecase := apikeyUsc.New(apikeySvc, usrSvc, sessionSvc, txm, auditRec)
 
@@ -190,17 +195,20 @@ func (a *App) Init() {
 
 	usrHandler := grpcHandler.NewUsr(usrUsc.New(usrSvc, sessionSvc, txm, auditRec))
 	appHandler := grpcHandler.NewApp(
-		appUsc.New(appSvc, secretSvc, itemSvc, configMapSvc, configItemSvc, sessionSvc, txm, auditRec),
+		appUsc.New(appSvc, cascadeSvc, sessionSvc, txm, auditRec),
 		monitoringUsecase,
 	)
-	secretHandler := grpcHandler.NewSecret(secretUsc.New(secretSvc, appSvc, itemSvc, sessionSvc, txm, auditRec))
+	secretHandler := grpcHandler.NewSecret(secretUsc.New(secretSvc, appSvc, itemSvc, cascadeSvc, sessionSvc, txm, auditRec))
 	itemHandler := grpcHandler.NewItem(itemUsc.New(itemSvc, secretSvc, sessionSvc, txm, auditRec))
 	configMapHandler := grpcHandler.NewConfigMap(
-		configmapUsc.New(configMapSvc, appSvc, configItemSvc, sessionSvc, txm, auditRec),
+		configmapUsc.New(configMapSvc, appSvc, cascadeSvc, sessionSvc, txm, auditRec),
 	)
 	configItemHandler := grpcHandler.NewConfigItem(configitemUsc.New(configItemSvc, configMapSvc, sessionSvc, txm, auditRec))
 	dashboardHandler := grpcHandler.NewDashboard(
 		dashboardUsc.New(appSvc, secretSvc, itemSvc, configMapSvc, configItemSvc, usrSvc, sessionSvc),
+	)
+	inactiveHandler := grpcHandler.NewInactive(
+		inactiveUsc.New(appSvc, secretSvc, itemSvc, configMapSvc, configItemSvc, cascadeSvc, sessionSvc, txm, auditRec),
 	)
 	// kube usecase общий для gRPC и MCP: лок «один sync одновременно» живёт
 	// в kube-сервисе и должен быть один на процесс
@@ -230,6 +238,7 @@ func (a *App) Init() {
 			proto.RegisterConfigMapServer(server, configMapHandler)
 			proto.RegisterConfigItemServer(server, configItemHandler)
 			proto.RegisterDashboardServer(server, dashboardHandler)
+			proto.RegisterInactiveServer(server, inactiveHandler)
 			proto.RegisterKubeServer(server, kubeHandler)
 			proto.RegisterTransferServer(server, transferHandler)
 			proto.RegisterApiKeyServer(server, apikeyHandler)
@@ -259,6 +268,7 @@ func (a *App) Init() {
 				proto.RegisterConfigMapHandler,
 				proto.RegisterConfigItemHandler,
 				proto.RegisterDashboardHandler,
+				proto.RegisterInactiveHandler,
 				proto.RegisterKubeHandler,
 				proto.RegisterTransferHandler,
 				proto.RegisterApiKeyHandler,
@@ -318,10 +328,10 @@ func (a *App) Init() {
 			sessionSvc,
 			apikeyUsecase,
 			oauthUsecase,
-			appUsc.New(appSvc, secretSvc, itemSvc, configMapSvc, configItemSvc, sessionSvc, txm, auditRec),
-			secretUsc.New(secretSvc, appSvc, itemSvc, sessionSvc, txm, auditRec),
+			appUsc.New(appSvc, cascadeSvc, sessionSvc, txm, auditRec),
+			secretUsc.New(secretSvc, appSvc, itemSvc, cascadeSvc, sessionSvc, txm, auditRec),
 			itemUsc.New(itemSvc, secretSvc, sessionSvc, txm, auditRec),
-			configmapUsc.New(configMapSvc, appSvc, configItemSvc, sessionSvc, txm, auditRec),
+			configmapUsc.New(configMapSvc, appSvc, cascadeSvc, sessionSvc, txm, auditRec),
 			configitemUsc.New(configItemSvc, configMapSvc, sessionSvc, txm, auditRec),
 			kubeUsecase,
 			auditUsc.New(auditSvc, sessionSvc),

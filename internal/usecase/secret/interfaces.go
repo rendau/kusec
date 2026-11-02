@@ -21,9 +21,12 @@ type AppServiceI interface {
 	List(ctx context.Context, pars *appModel.ListReq) ([]*appModel.Main, int64, error)
 }
 
-// ItemServiceI нужен только для записей аудита при каскадном удалении secret.
 type ItemServiceI interface {
 	List(ctx context.Context, pars *itemModel.ListReq) ([]*itemModel.Main, int64, error)
+}
+
+type CascadeServiceI interface {
+	DeleteSecret(ctx context.Context, cur *model.Main, batchId *string) error
 }
 
 type SessionServiceI interface {
@@ -39,5 +42,4 @@ type TransactionManagerI interface {
 type AuditRecorderI interface {
 	NewBatchId() string
 	RecordSecret(ctx context.Context, old, cur *model.Main, action string, batchId *string) error
-	RecordItem(ctx context.Context, old, cur *itemModel.Main, action string, batchId *string) error
 }

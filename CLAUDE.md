@@ -115,6 +115,10 @@ domain service → repo
   Первая страница — `page=0`. Относится к `common.ListParamsSt.page` и всем
   клиентам API. UI с 1-based пагинацией (напр. naive-ui) обязан конвертировать:
   `apiPage = uiPage - 1`.
+- Неактивные элементы (только админ): `GET /inactive[?app_id=]` — app/secret/configmap/item-ы
+  с `active=false` одним списком, `POST /inactive/delete` — удаление выбранного одной
+  транзакцией с общим `batch_id`. Каскад с аудитом — `internal/service/cascade`; он не
+  открывает транзакцию сам: вложенный `TxFn` закоммитил бы внешнюю.
 - API-ключи для машинных клиентов: `/api-key` (значение `ksk_…` выдаётся один раз,
   хранится sha256-хэш; аутентификация — тем же заголовком `Authorization: Bearer`,
   интерсептор различает ключ и JWT по префиксу). Ключи с `mcp_only=true` принимает

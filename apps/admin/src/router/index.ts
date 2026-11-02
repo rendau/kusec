@@ -70,6 +70,12 @@ const routes: RouteRecordRaw[] = [
         meta: { title: 'API keys' },
       },
       {
+        path: 'inactive',
+        name: 'inactive',
+        component: () => import('@/views/InactiveView.vue'),
+        meta: { title: 'Inactive elements', requiresAdmin: true },
+      },
+      {
         path: 'audit',
         name: 'audit',
         component: () => import('@/views/AuditView.vue'),

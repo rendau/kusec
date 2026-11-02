@@ -49,7 +49,9 @@ import (
 	usrService "github.com/rendau/kusec/internal/domain/usr/service"
 	"github.com/rendau/kusec/internal/errs"
 	auditRecorder "github.com/rendau/kusec/internal/service/audit"
+	cascadeService "github.com/rendau/kusec/internal/service/cascade"
 	appUsc "github.com/rendau/kusec/internal/usecase/app"
+	inactiveUsc "github.com/rendau/kusec/internal/usecase/inactive"
 	itemUsc "github.com/rendau/kusec/internal/usecase/item"
 	usrUsc "github.com/rendau/kusec/internal/usecase/usr"
 	"github.com/rendau/kusec/internal/util"
@@ -73,9 +75,10 @@ type stack struct {
 
 	auditRec *auditRecorder.Service
 
-	itemUsecase *itemUsc.Usecase
-	appUsecase  *appUsc.Usecase
-	usrUsecase  *usrUsc.Usecase
+	itemUsecase     *itemUsc.Usecase
+	appUsecase      *appUsc.Usecase
+	usrUsecase      *usrUsc.Usecase
+	inactiveUsecase *inactiveUsc.Usecase
 }
 
 func newStack(t *testing.T) *stack {
@@ -120,9 +123,11 @@ func newStack(t *testing.T) *stack {
 	)
 
 	s.itemUsecase = itemUsc.New(s.itemSvc, s.secretSvc, s.sessionSvc, s.txm, s.auditRec)
-	s.appUsecase = appUsc.New(
+	cascadeSvc := cascadeService.New(s.appSvc, s.secretSvc, s.itemSvc, s.configMapSvc, s.configItemSvc, s.auditRec)
+	s.appUsecase = appUsc.New(s.appSvc, cascadeSvc, s.sessionSvc, s.txm, s.auditRec)
+	s.inactiveUsecase = inactiveUsc.New(
 		s.appSvc, s.secretSvc, s.itemSvc, s.configMapSvc, s.configItemSvc,
-		s.sessionSvc, s.txm, s.auditRec,
+		cascadeSvc, s.sessionSvc, s.txm, s.auditRec,
 	)
 	s.usrUsecase = usrUsc.New(usrSvc, s.sessionSvc, s.txm, s.auditRec)
 
