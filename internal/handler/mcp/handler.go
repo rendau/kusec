@@ -162,7 +162,14 @@ func (h *Handler) authMiddleware(next http.Handler, oauth *oauthEndpoints) http.
 
 		session, err := h.authenticate(r.Context(), credential)
 		if err != nil {
-			slog.Warn("mcp: credential rejected", "credential", credentialKind(r), "client_ip", clientIP(r), "error", err)
+			// строка не нашего формата — фон сканеров, она отсекается до базы;
+			// warn только для ksk_/kso_, не нашедшихся в базе (утёкший или отозванный ключ)
+			kind := credentialKind(r)
+			level := slog.LevelWarn
+			if kind == "unknown" {
+				level = slog.LevelInfo
+			}
+			slog.Log(r.Context(), level, "mcp: credential rejected", "credential", kind, "client_ip", clientIP(r), "error", err)
 			unauthorized(w, oauth, "invalid_token", "kusec mcp: недействительный api-ключ или токен")
 			return
 		}
