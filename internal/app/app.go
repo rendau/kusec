@@ -342,7 +342,10 @@ func (a *App) Init() {
 			Addr:              ":" + config.Conf.McpPort,
 			Handler:           mcpH.HTTPHandler(),
 			ReadHeaderTimeout: 2 * time.Second,
-			MaxHeaderBytes:    300 * 1024,
+			// ReadTimeout не ставим: он отменяет контекст потоковых (SSE) ответов;
+			// размер и время чтения тела ограничивает сам MCP-handler
+			IdleTimeout:    2 * time.Minute,
+			MaxHeaderBytes: 300 * 1024,
 		}
 	}
 

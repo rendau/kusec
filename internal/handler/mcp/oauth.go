@@ -7,6 +7,7 @@ import (
 	"net/http"
 	"net/url"
 	"strings"
+	"time"
 
 	oauthUsc "github.com/rendau/kusec/internal/usecase/oauth"
 )
@@ -88,9 +89,10 @@ type oauthEndpoints struct {
 	issuer   string
 	basePath string
 	adminURL string
+	guard    *authGuard
 }
 
-func newOAuthEndpoints(uc *oauthUsc.Usecase) *oauthEndpoints {
+func newOAuthEndpoints(uc *oauthUsc.Usecase, guard *authGuard) *oauthEndpoints {
 	conf := uc.Config()
 	issuer := strings.TrimSuffix(conf.Issuer, "/")
 
@@ -104,6 +106,7 @@ func newOAuthEndpoints(uc *oauthUsc.Usecase) *oauthEndpoints {
 		issuer:   issuer,
 		basePath: basePath,
 		adminURL: strings.TrimSuffix(conf.AdminURL, "/"),
+		guard:    guard,
 	}
 }
 
@@ -225,9 +228,11 @@ func (e *oauthEndpoints) handleToken(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
 		return
 	}
+	started := time.Now()
+
 	r.Body = http.MaxBytesReader(w, r.Body, oauthFormMaxBytes)
 	if err := r.ParseForm(); err != nil {
-		writeOAuthError(w, r, &oauthUsc.Error{Code: oauthUsc.ErrInvalidRequest, Description: "body must be a form"})
+		e.writeGuardedError(w, r, started, &oauthUsc.Error{Code: oauthUsc.ErrInvalidRequest, Description: "body must be a form"})
 		return
 	}
 
@@ -244,7 +249,7 @@ func (e *oauthEndpoints) handleToken(w http.ResponseWriter, r *http.Request) {
 		ClientSecret: clientSecret,
 	})
 	if err != nil {
-		writeOAuthError(w, r, err)
+		e.writeGuardedError(w, r, started, err)
 		return
 	}
 
@@ -263,20 +268,29 @@ func (e *oauthEndpoints) handleRevoke(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
 		return
 	}
+	started := time.Now()
+
 	r.Body = http.MaxBytesReader(w, r.Body, oauthFormMaxBytes)
 	if err := r.ParseForm(); err != nil {
-		writeOAuthError(w, r, &oauthUsc.Error{Code: oauthUsc.ErrInvalidRequest, Description: "body must be a form"})
+		e.writeGuardedError(w, r, started, &oauthUsc.Error{Code: oauthUsc.ErrInvalidRequest, Description: "body must be a form"})
 		return
 	}
 
 	clientId, clientSecret := clientCredentials(r)
 
 	if err := e.uc.Revoke(r.Context(), r.PostForm.Get("token"), clientId, clientSecret); err != nil {
-		writeOAuthError(w, r, err)
+		e.writeGuardedError(w, r, started, err)
 		return
 	}
 
 	w.WriteHeader(http.StatusOK)
+}
+
+// writeGuardedError — отказ /token и /revoke (неверный код, refresh-токен,
+// секрет клиента) уходит не раньше authFailMinDuration от начала обработки.
+func (e *oauthEndpoints) writeGuardedError(w http.ResponseWriter, r *http.Request, started time.Time, err error) {
+	e.guard.slowDown(r.Context(), started)
+	writeOAuthError(w, r, err)
 }
 
 // clientCredentials берёт клиента из HTTP basic auth (client_secret_basic) или

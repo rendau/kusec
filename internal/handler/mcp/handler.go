@@ -13,6 +13,7 @@ package mcp
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"log/slog"
 	"net/http"
@@ -24,6 +25,7 @@ import (
 	oauthService "github.com/rendau/kusec/internal/domain/oauth/service"
 	sessionModel "github.com/rendau/kusec/internal/domain/session/model"
 	sessionService "github.com/rendau/kusec/internal/domain/session/service"
+	"github.com/rendau/kusec/internal/errs"
 	apikeyUsc "github.com/rendau/kusec/internal/usecase/apikey"
 	appUsc "github.com/rendau/kusec/internal/usecase/app"
 	auditUsc "github.com/rendau/kusec/internal/usecase/audit"
@@ -82,6 +84,8 @@ type Handler struct {
 	kubeUsecase       *kubeUsc.Usecase
 	auditUsecase      *auditUsc.Usecase
 	syncrunUsecase    *syncrunUsc.Usecase
+
+	guard *authGuard
 }
 
 func New(
@@ -109,6 +113,7 @@ func New(
 		kubeUsecase:       kubeUsecase,
 		auditUsecase:      auditUsecase,
 		syncrunUsecase:    syncrunUsecase,
+		guard:             newAuthGuard(),
 	}
 }
 
@@ -136,32 +141,43 @@ func (h *Handler) HTTPHandler() http.Handler {
 
 	var oauth *oauthEndpoints
 	if h.oauthUsecase != nil && h.oauthUsecase.Config().Enabled {
-		oauth = newOAuthEndpoints(h.oauthUsecase)
+		oauth = newOAuthEndpoints(h.oauthUsecase, h.guard)
 	}
 
-	mcpHandler := h.authMiddleware(streamable, oauth)
-	if oauth == nil {
-		return withAccessLog(mcpHandler)
+	var handler http.Handler = h.authMiddleware(streamable, oauth)
+	if oauth != nil {
+		mux := http.NewServeMux()
+		oauth.register(mux)
+		mux.Handle("/", handler)
+		handler = mux
 	}
 
-	mux := http.NewServeMux()
-	oauth.register(mux)
-	mux.Handle("/", mcpHandler)
-
-	return withAccessLog(mux)
+	return withRequestLimits(withAccessLog(handler), requestMaxBytes, requestReadTimeout)
 }
 
 // authMiddleware проверяет api-ключ или OAuth-токен на каждом HTTP-запросе.
+// Любой отказ отдаётся за одно и то же время (authGuard).
 func (h *Handler) authMiddleware(next http.Handler, oauth *oauthEndpoints) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		credential := bearerToken(r.Header.Get("Authorization"))
 		if credential == "" {
+			// первый шаг OAuth-входа: клиент узнаёт из 401, куда идти; проверять нечего
 			unauthorized(w, oauth, "", "kusec mcp: требуется api-ключ или OAuth-токен (Authorization: Bearer ...)")
 			return
 		}
 
+		started := time.Now()
 		session, err := h.authenticate(r.Context(), credential)
 		if err != nil {
+			h.guard.slowDown(r.Context(), started)
+
+			if !errors.Is(err, errs.NotAuthorized) {
+				// сбой проверки (база), а не плохой ключ: клиент не должен выбрасывать токен
+				slog.Error("mcp: credential check failed", "client_ip", clientIP(r), "error", err)
+				http.Error(w, "kusec mcp: проверка ключа временно недоступна", http.StatusServiceUnavailable)
+				return
+			}
+
 			// строка не нашего формата — фон сканеров, она отсекается до базы;
 			// warn только для ksk_/kso_, не нашедшихся в базе (утёкший или отозванный ключ)
 			kind := credentialKind(r)
