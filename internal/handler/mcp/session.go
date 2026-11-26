@@ -2,7 +2,6 @@ package mcp
 
 import (
 	"context"
-	"errors"
 	"fmt"
 	"regexp"
 	"strings"
@@ -64,7 +63,7 @@ func (s *sessionServer) toolCtx(ctx context.Context, req *mcpsdk.CallToolRequest
 
 	session, err := s.h.authenticate(ctx, credential)
 	if err != nil {
-		return nil, fmt.Errorf("api-ключ или токен недействителен: %w", err)
+		return nil, agentWrap("api-ключ или токен недействителен", err)
 	}
 	if session.ApiKeyId != s.principal {
 		return nil, errPrincipalMismatch
@@ -76,12 +75,7 @@ func (s *sessionServer) toolCtx(ctx context.Context, req *mcpsdk.CallToolRequest
 	return s.h.sessionSvc.WithContext(ctx, session), nil
 }
 
-var errPrincipalMismatch = errors.New("api-ключ или токен запроса не совпадает с тем, которым открыта MCP-сессия")
-
-// toolErr готовит ошибку к выдаче агенту: вычищает известные значения секретов.
-func (s *sessionServer) toolErr(err error) error {
-	return errors.New(s.vault.scrub(err.Error()))
-}
+var errPrincipalMismatch = agentErr("api-ключ или токен запроса не совпадает с тем, которым открыта MCP-сессия")
 
 // resolveApp находит app по id, slug_name или точному имени.
 func (s *sessionServer) resolveApp(ctx context.Context, ref string) (*appModel.Main, error) {
@@ -95,7 +89,7 @@ func (s *sessionServer) resolveApp(ctx context.Context, ref string) (*appModel.M
 		Search:     &ref,
 	})
 	if err != nil {
-		return nil, fmt.Errorf("поиск app %q: %w", ref, err)
+		return nil, agentWrap("поиск app", err)
 	}
 
 	exact := lo.Filter(candidates, func(a *appModel.Main, _ int) bool {
@@ -107,12 +101,12 @@ func (s *sessionServer) resolveApp(ctx context.Context, ref string) (*appModel.M
 
 	switch len(candidates) {
 	case 0:
-		return nil, fmt.Errorf("app %q не найден: %w", ref, getErr)
+		return nil, agentWrap("app не найден ни по id, ни по slug_name, ни по имени", getErr)
 	case 1:
 		return candidates[0], nil
 	default:
 		slugs := lo.Map(candidates, func(a *appModel.Main, _ int) string { return a.SlugName })
-		return nil, fmt.Errorf("app %q неоднозначен, кандидаты: %s", ref, strings.Join(slugs, ", "))
+		return nil, agentErr("app неоднозначен, кандидаты (slug_name): " + strings.Join(slugs, ", "))
 	}
 }
 
@@ -148,7 +142,7 @@ func (s *sessionServer) resolveValueSource(ctx context.Context, src ValueSourceI
 	case "generate":
 		value, err := generateValue(src.Format, src.Length)
 		if err != nil {
-			return "", fmt.Errorf("generate: %w", err)
+			return "", agentWrap("generate", err)
 		}
 		s.vault.markSeen(value)
 		if src.Name != "" {
@@ -158,21 +152,21 @@ func (s *sessionServer) resolveValueSource(ctx context.Context, src ValueSourceI
 
 	case "reuse":
 		if src.Name == "" {
-			return "", errors.New("reuse: требуется name")
+			return "", agentErr("reuse: требуется name")
 		}
 		value, ok := s.vault.lookup(src.Name)
 		if !ok {
-			return "", fmt.Errorf("reuse: значение %q не найдено в реестре сессии (реестр живёт в памяти сессии; доступные имена: [%s]); для существующих значений используй copy_item", src.Name, strings.Join(s.vault.names(), ", "))
+			return "", agentErr("reuse: значения с таким name нет в реестре сессии (реестр живёт в памяти сессии; имена показывает list_value_name); для существующих значений используй copy_item")
 		}
 		return value, nil
 
 	case "copy_item":
 		if src.ItemId == "" {
-			return "", errors.New("copy_item: требуется item_id")
+			return "", agentErr("copy_item: требуется item_id")
 		}
 		item, err := s.h.itemUsecase.Get(ctx, src.ItemId)
 		if err != nil {
-			return "", fmt.Errorf("copy_item: %w", err)
+			return "", agentWrap("copy_item", err)
 		}
 		s.vault.markSeen(item.Value)
 		if src.Name != "" {
@@ -187,7 +181,7 @@ func (s *sessionServer) resolveValueSource(ctx context.Context, src ValueSourceI
 		return src.Value, nil
 
 	default:
-		return "", fmt.Errorf("неизвестный kind %q (доступны: generate, reuse, copy_item, template, literal)", src.Kind)
+		return "", agentErr("неизвестный kind (доступны: generate, reuse, copy_item, template, literal)")
 	}
 }
 
@@ -199,26 +193,26 @@ var templatePlaceholderRe = regexp.MustCompile(`\{\{\s*([A-Za-z0-9_][A-Za-z0-9_.
 // раскрывается (помечается для скраба ошибок).
 func (s *sessionServer) resolveTemplate(ctx context.Context, src ValueSourceIn) (string, error) {
 	if src.Template == "" {
-		return "", errors.New("template: требуется template")
+		return "", agentErr("template: требуется template")
 	}
 
 	matches := templatePlaceholderRe.FindAllStringSubmatchIndex(src.Template, -1)
 	if len(matches) == 0 {
-		return "", errors.New("template: в шаблоне нет ни одного плейсхолдера {{имя}}; для значения без переменных используй literal")
+		return "", agentErr("template: в шаблоне нет ни одного плейсхолдера {{имя}}; для значения без переменных используй literal")
 	}
 
 	resolved := map[string]string{}
 
 	var b strings.Builder
 	prev := 0
-	for _, m := range matches {
+	for i, m := range matches {
 		b.WriteString(src.Template[prev:m[0]])
 
 		name := src.Template[m[2]:m[3]]
 		value, ok := resolved[name]
 		if !ok {
 			var err error
-			if value, err = s.resolveTemplateVar(ctx, name, src.Vars); err != nil {
+			if value, err = s.resolveTemplateVar(ctx, i+1, name, src.Vars); err != nil {
 				return "", err
 			}
 			resolved[name] = value
@@ -239,8 +233,10 @@ func (s *sessionServer) resolveTemplate(ctx context.Context, src ValueSourceIn) 
 }
 
 // resolveTemplateVar — значение одной переменной шаблона: явное описание в
-// vars либо реестр значений сессии по имени.
-func (s *sessionServer) resolveTemplateVar(ctx context.Context, name string, vars map[string]TemplateVarIn) (string, error) {
+// vars либо реестр значений сессии по имени. pos — номер плейсхолдера в
+// шаблоне (с 1): в ошибке называется он, а не имя — имя задаёт агент, и его
+// нельзя возвращать в тексте ошибки (см. errors.go).
+func (s *sessionServer) resolveTemplateVar(ctx context.Context, pos int, name string, vars map[string]TemplateVarIn) (string, error) {
 	if v, ok := vars[name]; ok {
 		value, err := s.resolveValueSource(ctx, ValueSourceIn{
 			Kind:   v.Kind,
@@ -251,7 +247,7 @@ func (s *sessionServer) resolveTemplateVar(ctx context.Context, name string, var
 			Value:  v.Value,
 		})
 		if err != nil {
-			return "", fmt.Errorf("template: переменная %q: %w", name, err)
+			return "", agentWrap(fmt.Sprintf("template: плейсхолдер №%d", pos), err)
 		}
 		return value, nil
 	}
@@ -260,5 +256,5 @@ func (s *sessionServer) resolveTemplateVar(ctx context.Context, name string, var
 		return value, nil
 	}
 
-	return "", fmt.Errorf("template: переменная %q не описана в vars и не найдена в реестре сессии (доступные имена: [%s])", name, strings.Join(s.vault.names(), ", "))
+	return "", agentErr(fmt.Sprintf("template: плейсхолдер №%d не описан в vars и не найден в реестре сессии (имена реестра показывает list_value_name)", pos))
 }

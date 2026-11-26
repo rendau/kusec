@@ -2,7 +2,6 @@ package mcp
 
 import (
 	"context"
-	"fmt"
 	"time"
 
 	mcpsdk "github.com/modelcontextprotocol/go-sdk/mcp"
@@ -33,7 +32,8 @@ func parseTimePtr(field, value string) (*time.Time, error) {
 	}
 	parsed, err := time.Parse(time.RFC3339, value)
 	if err != nil {
-		return nil, fmt.Errorf("%s: ожидается RFC3339 (например 2026-09-17T10:00:00Z): %w", field, err)
+		// текст ошибки time.Parse повторяет ввод агента — не пробрасываем его
+		return nil, agentErr(field + ": ожидается RFC3339 (например 2026-09-17T10:00:00Z)")
 	}
 	return &parsed, nil
 }
@@ -217,7 +217,9 @@ type SyncRunListOut struct {
 	Results        []SyncRunOut  `json:"results"`
 }
 
-func syncRunObjectToOut(v *syncrunModel.Object, _ int) SyncRunObjectOut {
+// syncRunObjectToOut — ошибки объектов в журнале sync проходят ту же
+// проверку, что и ответ инструмента sync (см. errors.go).
+func (s *sessionServer) syncRunObjectToOut(v *syncrunModel.Object, _ int) SyncRunObjectOut {
 	changedKeys := v.ChangedKeys
 	if changedKeys == nil {
 		changedKeys = []string{}
@@ -227,26 +229,26 @@ func syncRunObjectToOut(v *syncrunModel.Object, _ int) SyncRunObjectOut {
 		KubeKind:    v.KubeKind,
 		KubeName:    v.KubeName,
 		Op:          v.Op,
-		Error:       v.Error,
+		Error:       s.safeText(v.Error),
 		ContentHash: v.ContentHash,
 		ChangedKeys: changedKeys,
 	}
 }
 
-func syncRunToOut(v *syncrunModel.Main, _ int) SyncRunOut {
+func (s *sessionServer) syncRunToOut(v *syncrunModel.Main, _ int) SyncRunOut {
 	return SyncRunOut{
 		Id:            v.Id,
 		StartedAt:     timeOut(v.StartedAt),
 		FinishedAt:    optTimeOut(v.FinishedAt),
 		Status:        v.Status,
-		Error:         v.Error,
+		Error:         s.safeText(v.Error),
 		ActorUsrId:    v.ActorUsrId,
 		ActorApiKeyId: v.ActorApiKeyId,
 		ActorName:     v.ActorName,
 		Source:        v.Source,
 		AppId:         v.AppId,
 		DurationMs:    v.DurationMs,
-		Objects:       lo.Map(v.Objects, syncRunObjectToOut),
+		Objects:       lo.Map(v.Objects, s.syncRunObjectToOut),
 	}
 }
 
@@ -264,7 +266,7 @@ func (s *sessionServer) syncRunList(ctx context.Context, req *mcpsdk.CallToolReq
 		}
 		return nil, SyncRunListOut{
 			PaginationInfo: PaginationOut{PageSize: 1, TotalCount: 1},
-			Results:        []SyncRunOut{syncRunToOut(run, 0)},
+			Results:        []SyncRunOut{s.syncRunToOut(run, 0)},
 		}, nil
 	}
 
@@ -292,6 +294,6 @@ func (s *sessionServer) syncRunList(ctx context.Context, req *mcpsdk.CallToolReq
 
 	return nil, SyncRunListOut{
 		PaginationInfo: paginationOut(lp, tCount),
-		Results:        lo.Map(items, syncRunToOut),
+		Results:        lo.Map(items, s.syncRunToOut),
 	}, nil
 }

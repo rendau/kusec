@@ -1,7 +1,11 @@
 package kube
 
 import (
+	"strings"
 	"testing"
+	"unicode/utf8"
+
+	"github.com/stretchr/testify/assert"
 
 	"github.com/rendau/kusec/internal/config"
 )
@@ -29,4 +33,15 @@ func TestSecretName_ExactSlugDropsPrefix(t *testing.T) {
 	if got != "db" {
 		t.Fatalf("SecretName() = %q, want %q", got, "db")
 	}
+}
+
+func TestClipName(t *testing.T) {
+	t.Parallel()
+
+	assert.Equal(t, "billing-db", clipName("billing-db"))
+
+	long := strings.Repeat("482913.", 40)
+	clipped := clipName(long)
+	assert.Equal(t, maxEchoName+1, utf8.RuneCountInString(clipped))
+	assert.True(t, strings.HasSuffix(clipped, "…"))
 }

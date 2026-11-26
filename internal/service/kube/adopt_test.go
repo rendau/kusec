@@ -176,6 +176,84 @@ func TestSyncSecrets_AdoptOwnObjectFromAnotherAppIsNotGuarded(t *testing.T) {
 	assert.Equal(t, "app-1", live.Annotations[appIdAnnotation])
 }
 
+// withOwnerApp добавляет в выборку app существующий app-владелец ownerId
+// (для запросов по Ids — как реальный репозиторий).
+func withOwnerApp(svc *Service, ownerId string) *Service {
+	svc.appSvc = appSvcStub{
+		listFn: func(_ context.Context, req *appModel.ListReq) ([]*appModel.Main, int64, error) {
+			if len(req.Ids) == 1 && req.Ids[0] == ownerId {
+				return []*appModel.Main{{Id: ownerId, Namespace: "team-a", SlugName: "web-billing"}}, 1, nil
+			}
+			return []*appModel.Main{{Id: "app-1", Namespace: "team-a", SlugName: "web"}}, 1, nil
+		},
+	}
+	return svc
+}
+
+func TestSyncSecrets_RefusesObjectOfAnotherExistingApp(t *testing.T) {
+	t.Parallel()
+
+	// объект kusec другого живого app с тем же именем (коллизия имён в общем
+	// namespace): sync по app-1 не должен его перезаписать
+	client := k8sfake.NewSimpleClientset(
+		&corev1.Secret{
+			ObjectMeta: metav1.ObjectMeta{
+				Name:      "billing-db",
+				Namespace: "team-a",
+				Labels:    map[string]string{managedByLabelKey: managedByLabelValue},
+				Annotations: map[string]string{
+					appIdAnnotation:    "app-0",
+					secretIdAnnotation: "sec-0",
+				},
+			},
+			Type: corev1.SecretTypeOpaque,
+			Data: map[string][]byte{"A": []byte("victim")},
+		},
+	)
+	svc := withOwnerApp(adoptSecretSvc(client, []*itemModel.Main{{Key: "A", Value: "attacker"}}), "app-0")
+
+	for _, appIds := range [][]string{{"app-1"}, nil} {
+		result, err := svc.SyncSecrets(context.Background(), appIds)
+		require.NoError(t, err)
+		require.Len(t, result.Errors, 1)
+		assert.Contains(t, result.Errors[0], "another app (app-0)")
+		assert.Empty(t, result.Updated)
+		assert.Empty(t, result.Deleted)
+	}
+
+	live, err := client.CoreV1().Secrets("team-a").Get(context.Background(), "billing-db", metav1.GetOptions{})
+	require.NoError(t, err)
+	assert.Equal(t, map[string][]byte{"A": []byte("victim")}, live.Data)
+	assert.Equal(t, "app-0", live.Annotations[appIdAnnotation])
+}
+
+func TestSyncSecrets_SameRecordMovedToAnotherAppIsAllowed(t *testing.T) {
+	t.Parallel()
+
+	// та же запись (sec-1) перенесена из живого app-0 в app-1 — объект её
+	client := k8sfake.NewSimpleClientset(
+		&corev1.Secret{
+			ObjectMeta: metav1.ObjectMeta{
+				Name:      "billing-db",
+				Namespace: "team-a",
+				Labels:    map[string]string{managedByLabelKey: managedByLabelValue},
+				Annotations: map[string]string{
+					appIdAnnotation:    "app-0",
+					secretIdAnnotation: "sec-1",
+				},
+			},
+			Type: corev1.SecretTypeOpaque,
+			Data: map[string][]byte{"A": []byte("old")},
+		},
+	)
+	svc := withOwnerApp(adoptSecretSvc(client, []*itemModel.Main{{Key: "A", Value: "new"}}), "app-0")
+
+	result, err := svc.SyncSecrets(context.Background(), []string{"app-1"})
+	require.NoError(t, err)
+	assert.Empty(t, result.Errors)
+	assert.Equal(t, []string{"team-a/billing-db"}, result.Updated)
+}
+
 // adoptConfigMapSvc — сервис с одним приложением и одним configmap-ом
 // billing-config с exact_slug.
 func adoptConfigMapSvc(client kubernetes.Interface, items []*configitemModel.Main) *Service {

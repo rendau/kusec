@@ -32,7 +32,7 @@ func generateValue(format string, length int) (string, error) {
 		length = defaultGenLength
 	}
 	if length > maxGenLength {
-		return "", fmt.Errorf("length %d превышает максимум %d", length, maxGenLength)
+		return "", agentErr(fmt.Sprintf("length превышает максимум %d", maxGenLength))
 	}
 
 	switch format {
@@ -63,7 +63,7 @@ func generateValue(format string, length int) (string, error) {
 		raw[8] = (raw[8] & 0x3f) | 0x80 // вариант RFC 4122
 		return fmt.Sprintf("%x-%x-%x-%x-%x", raw[0:4], raw[4:6], raw[6:8], raw[8:10], raw[10:16]), nil
 	default:
-		return "", fmt.Errorf("неизвестный формат генерации %q (доступны: alnum, ascii, digits, hex, base64url, uuid)", format)
+		return "", agentErr("неизвестный формат генерации (доступны: alnum, ascii, digits, hex, base64url, uuid)")
 	}
 }
 
@@ -167,7 +167,23 @@ func (v *vault) markSeen(value string) {
 	v.seen[value] = struct{}{}
 }
 
-// scrub вычищает из текста все известные значения секретов.
+// containsSeen сообщает, есть ли в тексте значение секрета, увиденное сессией.
+func (v *vault) containsSeen(s string) bool {
+	v.mu.Lock()
+	defer v.mu.Unlock()
+
+	for value := range v.seen {
+		if strings.Contains(s, value) {
+			return true
+		}
+	}
+
+	return false
+}
+
+// scrub вычищает из текста все известные значения секретов. Только для
+// логов сервера: агенту такой текст отдавать нельзя — место вычистки
+// показывает совпадение (см. errors.go, safeText).
 func (v *vault) scrub(s string) string {
 	v.mu.Lock()
 	defer v.mu.Unlock()

@@ -214,6 +214,18 @@ func (u *Usecase) Update(ctx context.Context, id string, obj *model.Edit) error 
 	if obj.ExactSlug != nil && *obj.ExactSlug != current.ExactSlug && !u.sessionSvc.CtxIsAdmin(ctx) {
 		return errs.NoPermission
 	}
+	// При exact_slug имя объекта в кластере — slug как есть, без префикса и
+	// app-slug. Смена slug или app такой записи нацеливает её на любой объект
+	// namespace (helm-релиз, TLS-секрет, токен ServiceAccount), поэтому тоже
+	// только для админов.
+	if current.ExactSlug && !u.sessionSvc.CtxIsAdmin(ctx) {
+		if obj.SlugName != nil && *obj.SlugName != current.SlugName {
+			return errs.NoPermission
+		}
+		if obj.AppId != nil && *obj.AppId != current.AppId {
+			return errs.NoPermission
+		}
+	}
 	if obj.ExactSlug != nil && *obj.ExactSlug && !current.ExactSlug {
 		if err = u.requireNoEmptyItems(ctx, id); err != nil {
 			return err

@@ -53,6 +53,9 @@ func (s *Service) GetClusterSecret(ctx context.Context, namespace, name string) 
 		Name:      sec.Name,
 		Type:      displaySecretType(sec.Type),
 		Managed:   sec.Labels[managedByLabelKey] == managedByLabelValue,
+
+		OwnerAppId:    sec.Annotations[appIdAnnotation],
+		OwnerRecordId: sec.Annotations[secretIdAnnotation],
 	}
 	for _, key := range sortedDataKeys(sec.Data) {
 		value, encoding := encodeImportValue(sec.Data[key])
@@ -86,6 +89,9 @@ func (s *Service) GetClusterConfigMap(ctx context.Context, namespace, name strin
 		Namespace: cm.Namespace,
 		Name:      cm.Name,
 		Managed:   cm.Labels[managedByLabelKey] == managedByLabelValue,
+
+		OwnerAppId:    cm.Annotations[appIdAnnotation],
+		OwnerRecordId: cm.Annotations[configMapIdAnnotation],
 	}
 	for _, key := range sortedConfigMapKeys(cm.Data, cm.BinaryData) {
 		if value, ok := cm.Data[key]; ok {

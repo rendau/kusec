@@ -1,12 +1,16 @@
 package mcp
 
 import (
+	"errors"
+	"fmt"
 	"regexp"
 	"strings"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+
+	"github.com/rendau/kusec/internal/errs"
 )
 
 func TestGenerateValue_Formats(t *testing.T) {
@@ -178,8 +182,47 @@ func TestResolveTemplate_Errors(t *testing.T) {
 	_, err = s.resolveValueSource(t.Context(), ValueSourceIn{Kind: "template", Template: "без плейсхолдеров"})
 	require.ErrorContains(t, err, "нет ни одного плейсхолдера")
 
+	// в ошибке — номер плейсхолдера, а не имя: имя задаёт агент
 	_, err = s.resolveValueSource(t.Context(), ValueSourceIn{Kind: "template", Template: "x-{{unknown}}"})
-	require.ErrorContains(t, err, `"unknown"`)
+	require.ErrorContains(t, err, "плейсхолдер №1")
+	assert.NotContains(t, err.Error(), "unknown")
+}
+
+// Подбор значения через текст ошибки: агент присылает список вариантов в поле,
+// которое попадает в текст ошибки, и смотрит, какой из них вычищен. Ни ввод
+// агента, ни место совпадения в ответ попадать не должны.
+func TestToolErr_NoGuessingThroughErrorText(t *testing.T) {
+	t.Parallel()
+
+	s := &sessionServer{vault: newVault()}
+	s.vault.markSeen("482913") // агент прочитал item: значение помечено увиденным
+
+	candidates := "482912 482913 482914"
+
+	// поля, которые раньше повторялись в тексте ошибки
+	for _, src := range []ValueSourceIn{
+		{Kind: candidates},
+		{Kind: "generate", Format: candidates},
+		{Kind: "reuse", Name: candidates},
+		{Kind: "template", Template: "{{a}}", Vars: map[string]TemplateVarIn{"a": {Kind: candidates}}},
+	} {
+		_, err := s.resolveValueSource(t.Context(), src)
+		require.Error(t, err)
+		text := s.toolErr(err).Error()
+		assert.NotContains(t, text, "482912", "ввод агента не повторяется в ошибке")
+		assert.NotContains(t, text, "[REDACTED]")
+	}
+
+	// ошибка нижних слоёв (например, Postgres повторяет присланный id) — общий текст
+	pgLike := fmt.Errorf("svc.Get: %w", errors.New(`invalid input syntax for type uuid: "`+candidates+`"`))
+	assert.Equal(t, internalErrText, s.toolErr(pgLike).Error())
+
+	// семантический код проходит как есть
+	assert.Equal(t, "copy_item: object_not_found", s.toolErr(agentWrap("copy_item", fmt.Errorf("svc.Get: %w", errs.ObjectNotFound))).Error())
+
+	// описание ErrFull с повтором ввода и совпадением — скрывается целиком
+	full := errs.ErrFull{Err: errs.ItemKeyExists, Desc: `item key "` + candidates + `" already exists in the secret`}
+	assert.Equal(t, secretInErrText, s.toolErr(full).Error())
 }
 
 func TestVault_Scrub(t *testing.T) {

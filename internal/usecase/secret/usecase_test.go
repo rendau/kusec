@@ -148,3 +148,47 @@ func TestUpdate_ExactSlug_NonAdminNoPermission(t *testing.T) {
 	assert.ErrorIs(t, err, errs.NoPermission)
 	assert.Empty(t, svc.updated)
 }
+
+// Не-админ не может переименовать или перенести запись с exact_slug: имя
+// объекта в кластере = slug как есть, и так запись нацеливается на любой
+// объект namespace (helm-релиз, TLS-секрет).
+func TestUpdate_ExactSlug_NonAdminCannotRenameOrMove(t *testing.T) {
+	t.Parallel()
+
+	uc, svc, sessionSvc := newExactSlugFixture(nil, true)
+	ctx := sessionSvc.WithContext(t.Context(), &sessionModel.Session{Id: 2, AppIds: []string{"app1", "app2"}})
+
+	err := uc.Update(ctx, "sec1", &model.Edit{SlugName: new("sh.helm.release.v1.airflow.v3")})
+	require.ErrorIs(t, err, errs.NoPermission)
+
+	err = uc.Update(ctx, "sec1", &model.Edit{AppId: new("app2")})
+	require.ErrorIs(t, err, errs.NoPermission)
+
+	assert.Empty(t, svc.updated)
+
+	// прочие поля и тот же slug — можно
+	require.NoError(t, uc.Update(ctx, "sec1", &model.Edit{SlugName: new("db"), Description: new("x")}))
+	require.Len(t, svc.updated, 1)
+}
+
+func TestUpdate_ExactSlug_AdminCanRename(t *testing.T) {
+	t.Parallel()
+
+	uc, svc, sessionSvc := newExactSlugFixture(nil, true)
+	ctx := sessionSvc.WithContext(t.Context(), &sessionModel.Session{Id: 1, Admin: true})
+
+	require.NoError(t, uc.Update(ctx, "sec1", &model.Edit{SlugName: new("db-new")}))
+	require.Len(t, svc.updated, 1)
+}
+
+// Без exact_slug переименование не-админом разрешено: имя в кластере всё
+// равно получает префикс и slug приложения.
+func TestUpdate_NoExactSlug_NonAdminCanRename(t *testing.T) {
+	t.Parallel()
+
+	uc, svc, sessionSvc := newExactSlugFixture(nil, false)
+	ctx := sessionSvc.WithContext(t.Context(), &sessionModel.Session{Id: 2, AppIds: []string{"app1"}})
+
+	require.NoError(t, uc.Update(ctx, "sec1", &model.Edit{SlugName: new("db-new")}))
+	require.Len(t, svc.updated, 1)
+}

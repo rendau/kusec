@@ -44,6 +44,9 @@ type ClusterResource struct {
 	Type string
 	// true — объект под управлением kusec (лейбл managed-by=kusec).
 	Managed bool
+	// Чья это запись по аннотациям kusec: id app и id секрета/configmap-а.
+	OwnerAppId    string
+	OwnerRecordId string
 	// Ключи data (отсортированы) со значениями.
 	Items []ClusterResourceItem
 }
@@ -146,4 +149,11 @@ type desiredConfigMap struct {
 	// (encoding=base64, декодированы в байты).
 	data       map[string]string
 	binaryData map[string][]byte
+}
+
+// OwnedBy сообщает, записан ли живой объект kusec-ом для этой записи:
+// лейбл managed-by=kusec и аннотация своего app или своей записи (запись
+// могли перенести в другой app).
+func (r *ClusterResource) OwnedBy(appId, recordId string) bool {
+	return r != nil && r.Managed && (r.OwnerAppId == appId || r.OwnerRecordId == recordId)
 }

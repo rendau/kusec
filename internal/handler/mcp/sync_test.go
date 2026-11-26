@@ -183,5 +183,7 @@ func TestSyncE2E(t *testing.T) {
 
 	assert.Contains(t, string(raw), "prod/kusec-app1-db")
 	assert.NotContains(t, string(raw), secretValue, "значение секрета утекло в ответ sync")
-	assert.Contains(t, string(raw), "[REDACTED]")
+	// текст ошибки со значением скрыт целиком: частичная вычистка показала бы место совпадения
+	assert.Contains(t, string(raw), secretInErrText)
+	assert.NotContains(t, string(raw), "[REDACTED]")
 }

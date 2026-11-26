@@ -70,6 +70,11 @@ func (s *Service) ConfirmTotp(ctx context.Context, usrId int64, code string) (*m
 	if item.TotpSecret == "" {
 		return nil, errs.TotpNotEnabled
 	}
+	// повторное подтверждение уже включённой 2FA не нужно и выдавало бы
+	// новые токены по одному коду
+	if item.TotpEnabled {
+		return nil, errs.TotpAlreadyOn
+	}
 	if !s.ValidateTotpCode(item.TotpSecret, code) {
 		return nil, errs.TotpInvalid
 	}

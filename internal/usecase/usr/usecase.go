@@ -108,13 +108,33 @@ func (u *Usecase) Login(ctx context.Context, username, password, totpCode string
 	return u.issueLoginResult(item)
 }
 
+// requireActiveSelf — текущий пользователь существует и не выключен.
+// Access-токен живёт до 15 минут и после выключения пользователя; методы
+// 2FA и профиля проверяют пользователя по БД, иначе выключенный, но не
+// удалённый пользователь продлевал бы себе доступ (ConfirmTotp выдаёт
+// новые токены).
+func (u *Usecase) requireActiveSelf(ctx context.Context) (int64, error) {
+	if !u.sessionSvc.CtxIsAuthorized(ctx) {
+		return 0, errs.NotAuthorized
+	}
+	usrId := u.sessionSvc.FromContext(ctx).Id
+	item, found, err := u.svc.Get(ctx, usrId, false)
+	if err != nil {
+		return 0, fmt.Errorf("svc.Get: %w", err)
+	}
+	if !found || !item.Active {
+		return 0, errs.NotAuthorized
+	}
+	return usrId, nil
+}
+
 // EnrollTotp генерирует новый секрет и otpauth-URL для привязки 2FA
 // текущему пользователю.
 func (u *Usecase) EnrollTotp(ctx context.Context) (string, string, error) {
-	if !u.sessionSvc.CtxIsAuthorized(ctx) {
-		return "", "", errs.NotAuthorized
+	usrId, err := u.requireActiveSelf(ctx)
+	if err != nil {
+		return "", "", err
 	}
-	usrId := u.sessionSvc.FromContext(ctx).Id
 	secret, url, err := u.svc.EnrollTotp(ctx, usrId)
 	if err != nil {
 		return "", "", fmt.Errorf("svc.EnrollTotp: %w", err)
@@ -123,13 +143,15 @@ func (u *Usecase) EnrollTotp(ctx context.Context) (string, string, error) {
 }
 
 // ConfirmTotp подтверждает привязку 2FA первым кодом и выдаёт пару токенов.
+// Только для активного пользователя и только пока 2FA не включена: иначе
+// вызов работал бы как бессрочное продление сессии без refresh-токена.
 func (u *Usecase) ConfirmTotp(ctx context.Context, code string) (*LoginResult, error) {
-	if !u.sessionSvc.CtxIsAuthorized(ctx) {
-		return nil, errs.NotAuthorized
+	usrId, err := u.requireActiveSelf(ctx)
+	if err != nil {
+		return nil, err
 	}
-	usrId := u.sessionSvc.FromContext(ctx).Id
 	var item *model.Main
-	err := u.auditUsrMutation(ctx, usrId, func(ctx context.Context) error {
+	err = u.auditUsrMutation(ctx, usrId, func(ctx context.Context) error {
 		var err error
 		if item, err = u.svc.ConfirmTotp(ctx, usrId, code); err != nil {
 			return fmt.Errorf("svc.ConfirmTotp: %w", err)
@@ -144,12 +166,12 @@ func (u *Usecase) ConfirmTotp(ctx context.Context, code string) (*LoginResult, e
 
 // DisableTotp отключает 2FA текущему пользователю (требуется действующий код).
 func (u *Usecase) DisableTotp(ctx context.Context, code string) error {
-	if !u.sessionSvc.CtxIsAuthorized(ctx) {
-		return errs.NotAuthorized
+	usrId, err := u.requireActiveSelf(ctx)
+	if err != nil {
+		return err
 	}
-	session := u.sessionSvc.FromContext(ctx)
-	return u.auditUsrMutation(ctx, session.Id, func(ctx context.Context) error {
-		if err := u.svc.DisableTotp(ctx, session.Id, code); err != nil {
+	return u.auditUsrMutation(ctx, usrId, func(ctx context.Context) error {
+		if err := u.svc.DisableTotp(ctx, usrId, code); err != nil {
 			return fmt.Errorf("svc.DisableTotp: %w", err)
 		}
 		return nil

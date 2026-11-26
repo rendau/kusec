@@ -169,6 +169,12 @@ func (s *Service) reconcileExistingConfigMap(
 	journal *syncJournal,
 	meta *runMeta,
 ) {
+	if reason := s.ownershipRefusal(ctx, current.Labels, current.Annotations, configMapIdAnnotation, want.appId, want.configMapId); reason != "" {
+		result.Errors = append(result.Errors, fmt.Sprintf("%s: %s", key, reason))
+		journal.addError(kubeKindConfigMap, want.namespace, want.name, reason)
+		return
+	}
+
 	wantContent := configMapContent(want.data, want.binaryData)
 	contentHash := contentFingerprint(wantContent)
 
@@ -237,7 +243,7 @@ func (s *Service) buildDesiredConfigMaps(ctx context.Context, result *SyncResult
 
 			if errMsgs := validation.IsDNS1123Subdomain(name); len(errMsgs) > 0 {
 				result.Errors = append(result.Errors,
-					fmt.Sprintf("%s: invalid configmap name: %s", key, strings.Join(errMsgs, "; ")))
+					fmt.Sprintf("%s/%s: invalid configmap name: %s", app.Namespace, clipName(name), strings.Join(errMsgs, "; ")))
 				continue
 			}
 			if clash, ok := desired[key]; ok {
@@ -283,7 +289,7 @@ func (s *Service) buildConfigMapData(ctx context.Context, configMapId string) (m
 	var binaryData map[string][]byte
 	for _, item := range items {
 		if errMsgs := validation.IsConfigMapKey(item.Key); len(errMsgs) > 0 {
-			return nil, nil, fmt.Errorf("invalid key %q: %s", item.Key, strings.Join(errMsgs, "; "))
+			return nil, nil, fmt.Errorf("invalid key %q: %s", clipName(item.Key), strings.Join(errMsgs, "; "))
 		}
 
 		if item.Encoding == "base64" {

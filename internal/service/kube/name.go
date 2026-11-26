@@ -1,6 +1,10 @@
 package kube
 
-import "github.com/rendau/kusec/internal/config"
+import (
+	"unicode/utf8"
+
+	"github.com/rendau/kusec/internal/config"
+)
 
 // SecretName — единственная точка формирования имени k8s-секрета:
 // используется и при синхронизации в кластер, и для показа в API.
@@ -24,4 +28,20 @@ func ConfigMapName(appSlugName, configMapSlugName string, exactSlug bool) string
 		return configMapSlugName
 	}
 	return config.Conf.KubeSecretNamePrefix + appSlugName + "-" + configMapSlugName
+}
+
+// maxEchoName — сколько символов невалидного имени или ключа показывать в
+// тексте ошибки sync.
+const maxEchoName = 64
+
+// clipName укорачивает невалидное имя или ключ для текста ошибки. Имя задаёт
+// пользователь (в том числе MCP-агент) и может быть любой длины, а ошибки
+// sync отдаются в ответах API и MCP: длинный «ключ» со списком вариантов
+// превратил бы ошибку в способ подбирать значения секретов (см.
+// internal/handler/mcp/errors.go).
+func clipName(s string) string {
+	if utf8.RuneCountInString(s) <= maxEchoName {
+		return s
+	}
+	return string([]rune(s)[:maxEchoName]) + "…"
 }

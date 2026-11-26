@@ -261,6 +261,9 @@ func (u *Usecase) GetClusterSecret(ctx context.Context, secretId string) (*kubeS
 	if err != nil {
 		return nil, false, false, fmt.Errorf("svc.GetClusterSecret: %w", err)
 	}
+	if err = u.requireClusterOwnership(ctx, resource, found, app.Id, secret.Id); err != nil {
+		return nil, false, false, err
+	}
 
 	return resource, inCluster, found, nil
 }
@@ -300,6 +303,9 @@ func (u *Usecase) GetClusterConfigMap(ctx context.Context, configMapId string) (
 	resource, inCluster, found, err := u.svc.GetClusterConfigMap(ctx, app.Namespace, name)
 	if err != nil {
 		return nil, false, false, fmt.Errorf("svc.GetClusterConfigMap: %w", err)
+	}
+	if err = u.requireClusterOwnership(ctx, resource, found, app.Id, configMap.Id); err != nil {
+		return nil, false, false, err
 	}
 
 	return resource, inCluster, found, nil
@@ -391,4 +397,19 @@ func (u *Usecase) syncScope(ctx context.Context, appId *string) ([]string, error
 		return accessibleAppIds, nil
 	}
 	return nil, nil
+}
+
+// requireClusterOwnership — значения живого объекта не-админ видит, только
+// если объект записан kusec-ом для этой же записи. Иначе по имени можно
+// прочитать чужой объект namespace: секрет другого app с совпавшим именем
+// (kusec-airflow-dags-main у app airflow и app airflow-dags) или объект вне
+// kusec. Админ видит всё — ему доступен и импорт из кластера.
+func (u *Usecase) requireClusterOwnership(ctx context.Context, resource *kubeService.ClusterResource, found bool, appId, recordId string) error {
+	if !found || u.sessionSvc.CtxIsAdmin(ctx) || resource.OwnedBy(appId, recordId) {
+		return nil
+	}
+	return errs.ErrFull{
+		Err:  errs.NoPermission,
+		Desc: "the live object " + resource.Namespace + "/" + resource.Name + " is not managed by kusec for this record; only an admin can view it",
+	}
 }

@@ -176,6 +176,12 @@ func (s *Service) reconcileExistingSecret(
 	journal *syncJournal,
 	meta *runMeta,
 ) {
+	if reason := s.ownershipRefusal(ctx, current.Labels, current.Annotations, secretIdAnnotation, want.appId, want.secretId); reason != "" {
+		result.Errors = append(result.Errors, fmt.Sprintf("%s: %s", key, reason))
+		journal.addError(kubeKindSecret, want.namespace, want.name, reason)
+		return
+	}
+
 	contentHash := contentFingerprint(want.data)
 
 	if secretUpToDate(current, want) {
@@ -260,7 +266,7 @@ func (s *Service) buildDesired(ctx context.Context, result *SyncResult, appIds [
 
 			if errMsgs := validation.IsDNS1123Subdomain(name); len(errMsgs) > 0 {
 				result.Errors = append(result.Errors,
-					fmt.Sprintf("%s: invalid secret name: %s", key, strings.Join(errMsgs, "; ")))
+					fmt.Sprintf("%s/%s: invalid secret name: %s", app.Namespace, clipName(name), strings.Join(errMsgs, "; ")))
 				continue
 			}
 			if clash, ok := desired[key]; ok {
@@ -306,7 +312,7 @@ func (s *Service) buildSecretData(ctx context.Context, secretId string) (map[str
 	data := make(map[string][]byte, len(items))
 	for _, item := range items {
 		if errMsgs := validation.IsConfigMapKey(item.Key); len(errMsgs) > 0 {
-			return nil, fmt.Errorf("invalid key %q: %s", item.Key, strings.Join(errMsgs, "; "))
+			return nil, fmt.Errorf("invalid key %q: %s", clipName(item.Key), strings.Join(errMsgs, "; "))
 		}
 
 		if item.Encoding == "base64" {
