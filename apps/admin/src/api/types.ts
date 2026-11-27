@@ -34,33 +34,12 @@ export interface UsrMain {
    * access to *nothing* — it is not a shortcut for "all" (see `usrAccess`).
    */
   app_ids?: string[]
-  /** Whether the user has 2FA (TOTP) enabled. */
-  totp_enabled?: boolean
 }
 
-/**
- * `UsrLoginRep` — the issued token pair, or a 2FA continuation signal.
- *
- * On a fully successful login the pair (`jwt` + `refresh_token`) is set. When
- * 2FA stands between the user and a session, the password was accepted but no
- * tokens are issued yet — instead exactly one flag is set:
- *   - `totp_required`: re-submit the login with a `totp_code`.
- */
+/** `UsrLoginRep` — the issued token pair. */
 export interface UsrLoginRep {
   jwt: string
   refresh_token: string
-  totp_required?: boolean
-}
-
-/** `UsrEnrollTotpReq` — starting 2FA setup is confirmed with the password. */
-export interface UsrEnrollTotpReq {
-  current_password: string
-}
-
-/** `UsrEnrollTotpRep` — secret + otpauth URL to bind in an authenticator app. */
-export interface UsrEnrollTotpRep {
-  secret: string
-  otpauth_url: string
 }
 
 /** `UsrRefreshTokenReq`. */

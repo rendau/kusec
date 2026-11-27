@@ -48,7 +48,6 @@ localStorage.removeItem('kusec_admin_credentials')
 let token = localStorage.getItem(storageKeys.token) ?? ''
 let refreshToken = localStorage.getItem(storageKeys.refreshToken) ?? ''
 let renewInFlight: Promise<RenewResult> | null = null
-let sessionReplacement: Promise<void> | null = null
 
 function persist(key: string, value: string): void {
   if (value) {
@@ -89,44 +88,6 @@ export function clearSession(): void {
  */
 export function timeoutSignal(ms: number): AbortSignal | null {
   return typeof AbortSignal.timeout === 'function' ? AbortSignal.timeout(ms) : null
-}
-
-/**
- * Run a call whose answer replaces the session: the backend issues a pair of
- * a new session version and the tokens held so far die the moment it commits
- * (`POST /usr/totp/confirm`).
- *
- * The new pair is stored in the same tick the answer is handed over, and
- * while the call is in flight `apiFetch` holds every other request back
- * (`sessionReplaced`). So nothing goes out with the old pair between the
- * answer and the save, and a request that was already on its way and came
- * back refused is repeated with the new pair instead of spending the dead
- * refresh token — which would end the session.
- *
- * The replacing call itself must run with `replacesSession` so it does not
- * wait for the replacement it is part of.
- */
-export async function replaceSession<T extends TokenPair>(
-  call: () => Promise<T>,
-): Promise<T> {
-  let release = (): void => {}
-  const pending = new Promise<void>((resolve) => {
-    release = resolve
-  })
-  sessionReplacement = pending
-  try {
-    const rep = await call()
-    if (rep.jwt) setSession(rep)
-    return rep
-  } finally {
-    if (sessionReplacement === pending) sessionReplacement = null
-    release()
-  }
-}
-
-/** Settles once no session replacement is in flight (`null` — none is). */
-export function sessionReplaced(): Promise<void> | null {
-  return sessionReplacement
 }
 
 /**

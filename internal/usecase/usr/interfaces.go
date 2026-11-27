@@ -18,12 +18,6 @@ type ServiceI interface {
 	Update(ctx context.Context, id int64, obj *model.Edit) error
 	RevokeSessions(ctx context.Context, id int64) error
 	Delete(ctx context.Context, id int64) error
-
-	ValidateTotpCode(usrId int64, secret, code string) bool
-	EnrollTotp(ctx context.Context, usrId int64) (secret, url string, err error)
-	ConfirmTotp(ctx context.Context, usrId int64, code string) (*model.Main, error)
-	DisableTotp(ctx context.Context, usrId int64, code string) error
-	ResetTotp(ctx context.Context, usrId int64) error
 }
 
 type TransactionManagerI interface {

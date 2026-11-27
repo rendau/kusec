@@ -16,15 +16,7 @@ import type { UsrAccessKind } from '@/utils/usrAccess'
 interface LoginPayload {
   username: string
   password: string
-  totpCode?: string
 }
-
-/**
- * Outcome of a login attempt:
- *   - `ok`: a session was established;
- *   - `totp_required`: password accepted, re-submit with a TOTP code.
- */
-export type LoginOutcome = { status: 'ok' } | { status: 'totp_required' }
 
 /**
  * Why the user was sent to the login page, shown there once:
@@ -96,15 +88,11 @@ export const useAuthStore = defineStore('auth', () => {
     initialized.value = true
   }
 
-  async function login(payload: LoginPayload): Promise<LoginOutcome> {
+  async function login(payload: LoginPayload): Promise<void> {
     loading.value = true
     try {
-      const rep = await apiLogin(payload.username, payload.password, payload.totpCode)
-      if (rep.totp_required) {
-        return { status: 'totp_required' }
-      }
+      await apiLogin(payload.username, payload.password)
       await completeSession()
-      return { status: 'ok' }
     } finally {
       loading.value = false
     }
@@ -115,7 +103,7 @@ export const useAuthStore = defineStore('auth', () => {
       profile.value = await getProfile()
     } finally {
       // The token pair may have been replaced outside the store (silent
-      // renewal, 2FA confirm) — pick it up even when the profile call fails.
+      // renewal) — pick it up even when the profile call fails.
       syncToken()
     }
   }

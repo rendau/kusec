@@ -16,13 +16,11 @@ import type { FormInst, FormItemInst, FormItemRule, FormRules } from 'naive-ui'
 import { storeToRefs } from 'pinia'
 
 import { ApiError, apiErrorMessage } from '@/api/http'
-import { disableTotp } from '@/api/usr'
 import type { UsrUpdateProfileReq } from '@/api/types'
 import { useAuthStore } from '@/stores/auth'
 import { passwordComplexityError } from '@/utils/password'
 
 import OAuthGrantCard from '@/components/oauth/OAuthGrantCard.vue'
-import TotpSetupCard from '@/components/usr/TotpSetupCard.vue'
 
 const message = useMessage()
 const router = useRouter()
@@ -31,45 +29,6 @@ const { profile } = storeToRefs(authStore)
 
 const formRef = ref<FormInst | null>(null)
 const submitting = ref(false)
-
-// ── 2FA (TOTP) ─────────────────────────────────────────────
-const enrolling = ref(false)
-const disabling = ref(false)
-const disableCode = ref('')
-
-// Enabling 2FA replaces the session: the new token pair is already stored by
-// the time this runs (`confirmTotp`), so the profile is re-read with it.
-async function onTotpEnabled(): Promise<void> {
-  enrolling.value = false
-  message.success('Two-factor authentication enabled')
-  try {
-    await authStore.refreshProfile()
-  } catch (error) {
-    // 2FA is on regardless; only this page still shows the old state.
-    message.error(
-      apiErrorMessage(error, 'Could not reload the profile — reload the page'),
-    )
-  }
-}
-
-async function submitDisable(): Promise<void> {
-  const code = disableCode.value.trim()
-  if (!code) {
-    message.error('Enter a current code to disable 2FA')
-    return
-  }
-  disabling.value = true
-  try {
-    await disableTotp(code)
-    disableCode.value = ''
-    await authStore.refreshProfile()
-    message.success('Two-factor authentication disabled')
-  } catch (error) {
-    message.error(apiErrorMessage(error, 'Failed to disable 2FA'))
-  } finally {
-    disabling.value = false
-  }
-}
 
 interface FormModel {
   name: string
@@ -281,49 +240,6 @@ async function submit(): Promise<void> {
           </NButton>
         </NFormItem>
       </NForm>
-    </NCard>
-
-    <NCard title="Two-factor authentication">
-      <NSpace align="center" :size="12" style="margin-bottom: 16px">
-        <NTag :type="profile?.totp_enabled ? 'success' : 'warning'" size="small">
-          {{ profile?.totp_enabled ? 'Enabled' : 'Disabled' }}
-        </NTag>
-        <NText :depth="3" style="font-size: 13px">
-          {{
-            profile?.totp_enabled
-              ? 'A code from your authenticator app is required at sign-in.'
-              : 'Add an extra layer of protection to your account.'
-          }}
-        </NText>
-      </NSpace>
-
-      <!-- Enabled: offer to turn off with a current code. -->
-      <template v-if="profile?.totp_enabled">
-        <NForm label-placement="top" @submit.prevent="submitDisable">
-          <NFormItem label="Current code (to disable)">
-            <NInput
-              v-model:value="disableCode"
-              placeholder="123456"
-              maxlength="6"
-              :input-props="{ inputmode: 'numeric', autocomplete: 'one-time-code' }"
-              style="max-width: 200px"
-            />
-          </NFormItem>
-          <NButton type="error" :loading="disabling" @click="submitDisable">
-            Disable 2FA
-          </NButton>
-        </NForm>
-      </template>
-
-      <!-- Disabled: start the enrolment flow. -->
-      <template v-else>
-        <TotpSetupCard
-          v-if="enrolling"
-          @confirmed="onTotpEnabled"
-          @cancel="enrolling = false"
-        />
-        <NButton v-else type="primary" @click="enrolling = true"> Enable 2FA </NButton>
-      </template>
     </NCard>
 
     <OAuthGrantCard />

@@ -11,8 +11,6 @@ type Select struct {
 	Name           string
 	Username       string
 	Password       string
-	TotpSecret     string
-	TotpEnabled    bool
 	AllApps        bool
 	AppIds         []string
 	SessionVersion int64
@@ -26,8 +24,6 @@ func (m *Select) ListColumnMap() map[string]any {
 		"name":            &m.Name,
 		"username":        &m.Username,
 		"password":        &m.Password,
-		"totp_secret":     &m.TotpSecret,
-		"totp_enabled":    &m.TotpEnabled,
 		"all_apps":        &m.AllApps,
 		"app_ids":         &m.AppIds,
 		"session_version": &m.SessionVersion,
@@ -52,8 +48,6 @@ func EncodeSelect(v *Select, _ int) *domainModel.Main {
 		Name:           v.Name,
 		Username:       v.Username,
 		Password:       v.Password,
-		TotpEnabled:    v.TotpEnabled,
-		TotpSecret:     v.TotpSecret,
 		AllApps:        v.AllApps,
 		AppIds:         v.AppIds,
 		SessionVersion: v.SessionVersion,

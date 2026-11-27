@@ -114,8 +114,8 @@ func TestConfigItemChangesValueStoredWithLimit(t *testing.T) {
 }
 
 func TestUsrChangesCredentialsMasked(t *testing.T) {
-	oldUsr := &usrModel.Main{Id: 1, Name: "N", Username: "u", Password: "hash-old", TotpSecret: "totp-secret-old"}
-	newUsr := &usrModel.Main{Id: 1, Name: "N", Username: "u", Password: "hash-new", TotpSecret: "totp-secret-new"}
+	oldUsr := &usrModel.Main{Id: 1, Name: "N", Username: "u", Password: "hash-old"}
+	newUsr := &usrModel.Main{Id: 1, Name: "N", Username: "u", Password: "hash-new"}
 
 	for name, changes := range map[string][]auditModel.Change{
 		"create": usrChanges(nil, newUsr),
@@ -125,7 +125,6 @@ func TestUsrChangesCredentialsMasked(t *testing.T) {
 		raw := changesJSON(t, changes)
 		assert.NotContains(t, raw, "hash-old", name)
 		assert.NotContains(t, raw, "hash-new", name)
-		assert.NotContains(t, raw, "totp-secret", name)
 	}
 
 	// факт смены пароля фиксируется маской

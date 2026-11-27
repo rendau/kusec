@@ -105,7 +105,7 @@ GET /api/audit?app_id=<id>&created_at_gte=2026-09-17T04:00:00Z&list_params.page_
   `truncated: true`; ключу `read_only` значения config_item не отдаются и
   здесь: вместо `old`/`new` — `old_hash/new_hash/old_size/new_size`, как у
   значений секретов;
-- пароль/TOTP пользователя — маркер `***` (только факт смены);
+- пароль пользователя — маркер `***` (только факт смены);
 - `batch_id` группирует каскадное удаление, импорт и sync (для sync
   `batch_id` = id запуска).
 

@@ -1,7 +1,7 @@
 import { API_BASE_URL } from './config'
 import { ApiError, UNKNOWN_ERROR_CODE } from './errors'
 import type { ErrorRep } from './types'
-import { clearSession, getToken, renewTokenOnce, sessionReplaced } from './auth-session'
+import { clearSession, getToken, renewTokenOnce } from './auth-session'
 
 export { ApiError, apiErrorMessage } from './errors'
 
@@ -53,11 +53,6 @@ interface FetchOptions {
    * session itself and a dead token is not news.
    */
   keepSessionOnAuthFailure?: boolean
-  /**
-   * The call itself replaces the session (see `replaceSession`), so it must
-   * not wait for the replacement it is part of.
-   */
-  replacesSession?: boolean
 }
 
 export async function apiFetch<T>(
@@ -65,10 +60,6 @@ export async function apiFetch<T>(
   init?: RequestInit,
   options: FetchOptions = {},
 ): Promise<T> {
-  // A session replacement is in flight (2FA confirm): the token held now is
-  // about to die, so wait for the new pair instead of sending a doomed request.
-  if (!options.replacesSession) await sessionReplaced()
-
   const headers = new Headers(init?.headers ?? {})
   headers.set('Content-Type', 'application/json')
 
@@ -95,11 +86,8 @@ export async function apiFetch<T>(
     throw parsedError
   }
 
-  // The request may have left before a session replacement began.
-  if (!options.replacesSession) await sessionReplaced()
-
   // The token has changed since this request left (another request renewed
-  // it, the session was replaced, the user signed in again): repeat with the
+  // it, the user signed in again): repeat with the
   // current one rather than spend a refresh.
   const current = getToken()
   if (current && current !== token) {

@@ -15,7 +15,6 @@ require (
 	github.com/modelcontextprotocol/go-sdk v1.6.1
 	github.com/opentracing-contrib/go-grpc v0.1.3
 	github.com/opentracing/opentracing-go v1.2.0
-	github.com/pquerna/otp v1.5.0
 	github.com/prometheus/client_golang v1.23.2
 	github.com/rendau/mobone/v2 v2.2.0
 	github.com/rs/cors v1.11.1
@@ -34,7 +33,6 @@ require (
 require (
 	github.com/HdrHistogram/hdrhistogram-go v1.1.2 // indirect
 	github.com/beorn7/perks v1.0.1 // indirect
-	github.com/boombuler/barcode v1.0.1-0.20190219062509-6c824513bacc // indirect
 	github.com/cespare/xxhash/v2 v2.3.0 // indirect
 	github.com/davecgh/go-spew v1.1.2-0.20180830191138-d8f796af33cc // indirect
 	github.com/emicklei/go-restful/v3 v3.13.0 // indirect

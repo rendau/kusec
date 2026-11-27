@@ -13,14 +13,13 @@ func EncodeUsrMain(v *domainModel.Main, _ int) *proto.UsrMain {
 		return nil
 	}
 	return &proto.UsrMain{
-		Id:          v.Id,
-		Active:      v.Active,
-		IsAdmin:     v.IsAdmin,
-		Name:        v.Name,
-		Username:    v.Username,
-		AppIds:      v.AppIds,
-		TotpEnabled: v.TotpEnabled,
-		AllApps:     v.AllApps,
+		Id:       v.Id,
+		Active:   v.Active,
+		IsAdmin:  v.IsAdmin,
+		Name:     v.Name,
+		Username: v.Username,
+		AppIds:   v.AppIds,
+		AllApps:  v.AllApps,
 	}
 }
 
@@ -31,7 +30,6 @@ func EncodeUsrLoginResult(v *usecase.LoginResult) *proto.UsrLoginRep {
 	return &proto.UsrLoginRep{
 		Jwt:          v.Jwt,
 		RefreshToken: v.RefreshToken,
-		TotpRequired: v.TotpRequired,
 	}
 }
 
@@ -89,7 +87,6 @@ func DecodeUsrLoginReq(v *proto.UsrLoginReq, clientIp string) *usecase.LoginReq 
 	return &usecase.LoginReq{
 		Username: v.Username,
 		Password: v.Password,
-		TotpCode: v.TotpCode,
 		ClientIp: clientIp,
 	}
 }

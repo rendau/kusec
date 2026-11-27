@@ -10,15 +10,13 @@ type Upsert struct {
 	PKId  int64
 	NewId int64
 
-	Active      *bool
-	IsAdmin     *bool
-	Name        *string
-	Username    *string
-	Password    *string
-	TotpSecret  *string
-	TotpEnabled *bool
-	AllApps     *bool
-	AppIds      []string
+	Active   *bool
+	IsAdmin  *bool
+	Name     *string
+	Username *string
+	Password *string
+	AllApps  *bool
+	AppIds   []string
 
 	// SessionVersionInc — session_version = session_version + 1 (только Update).
 	SessionVersionInc bool
@@ -40,12 +38,6 @@ func (m *Upsert) CreateColumnMap() map[string]any {
 	}
 	if m.Password != nil {
 		result["password"] = *m.Password
-	}
-	if m.TotpSecret != nil {
-		result["totp_secret"] = *m.TotpSecret
-	}
-	if m.TotpEnabled != nil {
-		result["totp_enabled"] = *m.TotpEnabled
 	}
 	if m.AllApps != nil {
 		result["all_apps"] = *m.AllApps
@@ -83,8 +75,6 @@ func DecodeUpsert(v *domainModel.Edit) *Upsert {
 		Name:              v.Name,
 		Username:          v.Username,
 		Password:          v.Password,
-		TotpSecret:        v.TotpSecret,
-		TotpEnabled:       v.TotpEnabled,
 		AllApps:           v.AllApps,
 		AppIds:            v.AppIds,
 		SessionVersionInc: v.SessionVersionInc,

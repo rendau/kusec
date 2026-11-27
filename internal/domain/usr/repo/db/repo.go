@@ -13,27 +13,17 @@ import (
 	"github.com/rendau/kusec/internal/domain/usr/model"
 	repoModel "github.com/rendau/kusec/internal/domain/usr/repo/db/model"
 	"github.com/rendau/kusec/internal/errs"
-	"github.com/rendau/kusec/internal/infra/secretbox"
 )
 
 // usernameUniqueIndex — уникальный индекс usr(username), см. migrations/000001_init.up.sql.
 const usernameUniqueIndex = "uq_usr_username"
 
-// totpSecretScope — контекст шифрования колонки usr.totp_secret (уходит в
-// AAD): шифртекст, переставленный в другую колонку, не расшифруется.
-const totpSecretScope = "usr.totp_secret"
-
 type Repo struct {
 	*commonRepoPg.Base
 	ModelStore *mobone.ModelStore
-
-	// box шифрует ключ 2FA (totp_secret) при записи и расшифровывает при
-	// чтении: всё, что выше репозитория, работает с открытым ключом. Без
-	// DATA_ENCRYPTION_KEY — проходит как есть.
-	box *secretbox.Box
 }
 
-func New(con *pgxpool.Pool, box *secretbox.Box) *Repo {
+func New(con *pgxpool.Pool) *Repo {
 	base := commonRepoPg.NewBase(con)
 	return &Repo{
 		Base: base,
@@ -43,7 +33,6 @@ func New(con *pgxpool.Pool, box *secretbox.Box) *Repo {
 			TransactionManager: base.TxM,
 			TableName:          "usr",
 		},
-		box: box,
 	}
 }
 
@@ -70,11 +59,6 @@ func (r *Repo) List(ctx context.Context, pars *model.ListReq) ([]*model.Main, in
 	if err != nil {
 		return nil, 0, fmt.Errorf("ModelStore.List: %w", err)
 	}
-	for _, item := range items {
-		if err = r.openTotpSecret(item); err != nil {
-			return nil, 0, err
-		}
-	}
 	return lo.Map(items, repoModel.EncodeSelect), totalCount, nil
 }
 
@@ -87,17 +71,11 @@ func (r *Repo) Get(ctx context.Context, id int64) (*model.Main, bool, error) {
 	if !found {
 		return nil, false, nil
 	}
-	if err = r.openTotpSecret(m); err != nil {
-		return nil, false, err
-	}
 	return repoModel.EncodeSelect(m, 0), true, nil
 }
 
 func (r *Repo) Create(ctx context.Context, obj *model.Edit) (int64, error) {
 	m := repoModel.DecodeUpsert(obj)
-	if err := r.sealTotpSecret(m); err != nil {
-		return 0, err
-	}
 	if err := r.ModelStore.Create(ctx, m); err != nil {
 		if commonRepoPg.IsUniqueViolation(err, usernameUniqueIndex) {
 			return 0, usernameExistsErr(obj)
@@ -110,9 +88,6 @@ func (r *Repo) Create(ctx context.Context, obj *model.Edit) (int64, error) {
 func (r *Repo) Update(ctx context.Context, id int64, obj *model.Edit) error {
 	m := repoModel.DecodeUpsert(obj)
 	m.PKId = id
-	if err := r.sealTotpSecret(m); err != nil {
-		return err
-	}
 	if err := r.ModelStore.Update(ctx, m); err != nil {
 		if commonRepoPg.IsUniqueViolation(err, usernameUniqueIndex) {
 			return usernameExistsErr(obj)
@@ -135,32 +110,5 @@ func (r *Repo) Delete(ctx context.Context, id int64) error {
 	if err := r.ModelStore.Delete(ctx, m); err != nil {
 		return fmt.Errorf("ModelStore.Delete: %w", err)
 	}
-	return nil
-}
-
-// sealTotpSecret шифрует ключ 2FA перед записью. Указатель в m подменяется
-// новым: m.TotpSecret указывает на поле доменной модели вызывающего, её не
-// трогаем.
-func (r *Repo) sealTotpSecret(m *repoModel.Upsert) error {
-	if m.TotpSecret == nil {
-		return nil
-	}
-	sealed, err := r.box.Seal(totpSecretScope, *m.TotpSecret)
-	if err != nil {
-		return fmt.Errorf("seal usr totp secret: %w", err)
-	}
-	m.TotpSecret = &sealed
-	return nil
-}
-
-// openTotpSecret расшифровывает прочитанный ключ 2FA на месте. Ошибку не
-// глотаем: с пустым или нерасшифрованным ключом проверка кода молча ломалась
-// бы. В текст ошибки попадает только id.
-func (r *Repo) openTotpSecret(m *repoModel.Select) error {
-	plain, err := r.box.Open(totpSecretScope, m.TotpSecret)
-	if err != nil {
-		return fmt.Errorf("open usr %d totp secret: %w", m.Id, err)
-	}
-	m.TotpSecret = plain
 	return nil
 }

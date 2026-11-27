@@ -59,7 +59,7 @@ const { loading, item: user } = useDrawerResource({
 const access = computed(() => (user.value ? usrAccessKind(user.value) : null))
 
 // Looking at one's own account: say where its sign-in settings are changed
-// (the Users page cannot change the own username, password or 2FA).
+// (the Users page cannot change the own username or password).
 const isSelf = computed(
   () =>
     user.value !== null &&
@@ -108,7 +108,7 @@ watch(user, async (value) => {
           :show-icon="false"
           style="margin-bottom: 12px"
         >
-          This is your account. Your username, password and 2FA are changed in
+          This is your account. Your username and password are changed in
           <RouterLink
             class="inline-link"
             :to="{ name: 'profile' }"
@@ -140,11 +140,6 @@ watch(user, async (value) => {
           <NDescriptionsItem label="Status">
             <NTag :type="user.active ? 'success' : 'default'" size="small">
               {{ user.active ? 'Active' : 'Inactive' }}
-            </NTag>
-          </NDescriptionsItem>
-          <NDescriptionsItem label="Two-factor auth">
-            <NTag :type="user.totp_enabled ? 'success' : 'default'" size="small">
-              {{ user.totp_enabled ? 'Enabled' : 'Disabled' }}
             </NTag>
           </NDescriptionsItem>
           <NDescriptionsItem label="Application access">

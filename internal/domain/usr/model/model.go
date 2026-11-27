@@ -13,9 +13,6 @@ type Main struct {
 	Username string
 	Password string // хеш пароля; наружу (в proto) не отдаётся — usecase обнуляет перед ответом
 
-	TotpEnabled bool
-	TotpSecret  string // секрет TOTP (base32); наружу не отдаётся
-
 	// AllApps — не-админ видит все приложения. Иначе доступ только к AppIds,
 	// пустой список = не видит ничего. У админа доступ ко всему всегда.
 	AllApps bool
@@ -33,9 +30,6 @@ type Edit struct {
 	Name     *string
 	Username *string
 	Password *string
-
-	TotpEnabled *bool
-	TotpSecret  *string
 
 	AllApps *bool
 	AppIds  []string

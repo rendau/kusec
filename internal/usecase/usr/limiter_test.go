@@ -23,7 +23,7 @@ func newTestLimiter() (*attemptLimiter, *time.Time) {
 	return l, &now
 }
 
-// userKey — ключ счётчика существующего пользователя (как uid:/totp:/pwd:).
+// userKey — ключ счётчика существующего пользователя (как uid:/pwd:).
 func userKey(id string) attemptKey { return attemptKey{id: id, user: true} }
 
 // unknownKey — ключ счётчика несуществующего логина.
@@ -125,7 +125,7 @@ func TestAttemptLimiter_SuccessResets(t *testing.T) {
 	assert.False(t, ok)
 }
 
-// Попытка без исхода (ошибка БД, «нужен код 2FA») счётчик не меняет: не
+// Попытка без исхода (например, ошибка БД) счётчик не меняет: не
 // добавляет неудачу и не сбрасывает уже набранные.
 func TestAttemptLimiter_ReleaseKeepsCounter(t *testing.T) {
 	t.Parallel()
@@ -304,8 +304,8 @@ func TestAttemptLimiter_UserEntryNotEvictedByUnknownLogins(t *testing.T) {
 	require.False(t, ok, "после пятой неудачи — блокировка")
 	assert.Equal(t, time.Minute, retryAfter)
 
-	// то же — для счётчиков кода 2FA и текущего пароля вошедшего пользователя
-	for _, key := range []attemptKey{totpAttemptKey(7), passwordAttemptKey(7)} {
+	// то же — для счётчика текущего пароля вошедшего пользователя
+	for _, key := range []attemptKey{passwordAttemptKey(7)} {
 		for range attemptMaxFailures - 1 {
 			require.True(t, failOnce(l, key))
 		}
@@ -448,8 +448,6 @@ func TestLoginAttemptKeys(t *testing.T) {
 	assert.NotEqual(t, loginAttemptKey(7).id, unknownLoginAttemptKey("uid:7").id)
 
 	// счётчики разных проверок одного пользователя не пересекаются
-	assert.NotEqual(t, totpAttemptKey(7), passwordAttemptKey(7))
 	assert.NotEqual(t, loginAttemptKey(7), passwordAttemptKey(7))
-	assert.True(t, totpAttemptKey(7).user)
 	assert.True(t, passwordAttemptKey(7).user)
 }

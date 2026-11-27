@@ -9,7 +9,6 @@ import (
 	"time"
 
 	jwtv5 "github.com/golang-jwt/jwt/v5"
-	"github.com/pquerna/otp/totp"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
@@ -29,8 +28,7 @@ const (
 // ── Моки ────────────────────────────────────────────────
 
 // repoMock — хранилище пользователей в памяти для настоящего доменного
-// сервиса usr (пароли, TOTP и номер поколения сессий проверяются вместе с
-// ним).
+// сервиса usr (пароли и номер поколения сессий проверяются вместе с ним).
 type repoMock struct {
 	items  map[int64]*model.Main
 	lastId int64
@@ -102,12 +100,6 @@ func applyEdit(item *model.Main, obj *model.Edit) {
 	if obj.Password != nil {
 		item.Password = *obj.Password
 	}
-	if obj.TotpEnabled != nil {
-		item.TotpEnabled = *obj.TotpEnabled
-	}
-	if obj.TotpSecret != nil {
-		item.TotpSecret = *obj.TotpSecret
-	}
 	if obj.AllApps != nil {
 		item.AllApps = *obj.AllApps
 	}
@@ -170,49 +162,13 @@ func (f *fixture) ctxOf(t *testing.T, session *sessionModel.Session) context.Con
 	return f.sessionSvc.WithContext(t.Context(), session)
 }
 
-func (f *fixture) login(t *testing.T, username, password, code string) (*LoginResult, error) {
+func (f *fixture) login(t *testing.T, username, password string) (*LoginResult, error) {
 	t.Helper()
 	return f.uc.Login(t.Context(), &LoginReq{
 		Username: username,
 		Password: password,
-		TotpCode: code,
 		ClientIp: "203.0.113.7",
 	})
-}
-
-// enableTotp включает пользователю 2FA и возвращает секрет.
-func (f *fixture) enableTotp(t *testing.T, usrId int64) string {
-	t.Helper()
-	secret, _, err := f.usrSvc.EnrollTotp(t.Context(), usrId)
-	require.NoError(t, err)
-	f.repo.items[usrId].TotpEnabled = true
-	return secret
-}
-
-func totpCode(t *testing.T, secret string) string {
-	t.Helper()
-	code, err := totp.GenerateCode(secret, time.Now().UTC())
-	require.NoError(t, err)
-	return code
-}
-
-// wrongTotpCode — код, который не подходит ни к одному из ближайших шагов
-// времени.
-func wrongTotpCode(t *testing.T, secret string) string {
-	t.Helper()
-	valid := map[string]bool{}
-	for shift := -3; shift <= 3; shift++ {
-		code, err := totp.GenerateCode(secret, time.Now().UTC().Add(time.Duration(shift)*30*time.Second))
-		require.NoError(t, err)
-		valid[code] = true
-	}
-	for _, candidate := range []string{"000000", "000001", "000002", "000003", "000004", "000005", "000006", "000007"} {
-		if !valid[candidate] {
-			return candidate
-		}
-	}
-	t.Fatal("no wrong code candidate")
-	return ""
 }
 
 // requireErrCode — ошибка ErrFull с заданным кодом; возвращает её поля.
@@ -223,235 +179,6 @@ func requireErrCode(t *testing.T, err error, code errs.Err) map[string]string {
 	require.True(t, ok, "expected errs.ErrFull, got: %v", err)
 	require.Equal(t, code, fullErr.Err)
 	return fullErr.Fields
-}
-
-// ── 2FA ─────────────────────────────────────────────────
-
-// Выключенный, но не удалённый пользователь с живым access-токеном не может
-// выпустить себе новые токены через 2FA.
-func TestTotp_InactiveUserRejected(t *testing.T) {
-	t.Parallel()
-
-	f := newEnv(t)
-	usrId := f.addUser(t, "bob", model.Edit{})
-	// сессия построена интерсептором ещё до того, как пользователя выключили
-	ctx := f.ctxOf(t, &sessionModel.Session{Id: usrId})
-
-	secret, _, err := f.uc.EnrollTotp(ctx, testPassword)
-	require.NoError(t, err)
-
-	f.repo.items[usrId].Active = false // админ выключил пользователя
-
-	_, err = f.uc.ConfirmTotp(ctx, totpCode(t, secret))
-	require.ErrorIs(t, err, errs.NotAuthorized)
-	assert.False(t, f.repo.items[usrId].TotpEnabled)
-
-	_, _, err = f.uc.EnrollTotp(ctx, testPassword)
-	require.ErrorIs(t, err, errs.NotAuthorized)
-
-	require.ErrorIs(t, f.uc.DisableTotp(ctx, totpCode(t, secret)), errs.NotAuthorized)
-}
-
-// Подтверждение уже включённой 2FA не выдаёт новых токенов: иначе по одному
-// коду из приложения можно продлевать сессию без конца.
-func TestConfirmTotp_OnlyOnce(t *testing.T) {
-	t.Parallel()
-
-	f := newEnv(t)
-	usrId := f.addUser(t, "bob", model.Edit{})
-	ctx := f.ctxOf(t, &sessionModel.Session{Id: usrId})
-
-	secret, _, err := f.uc.EnrollTotp(ctx, testPassword)
-	require.NoError(t, err)
-
-	res, err := f.uc.ConfirmTotp(ctx, totpCode(t, secret))
-	require.NoError(t, err)
-	assert.NotEmpty(t, res.Jwt)
-	assert.True(t, f.repo.items[usrId].TotpEnabled)
-
-	_, err = f.uc.ConfirmTotp(ctx, totpCode(t, secret))
-	require.ErrorIs(t, err, errs.TotpAlreadyOn)
-}
-
-// Привязка 2FA — только с верным текущим паролем. Иначе украденного на
-// четверть часа access-токена хватило бы, чтобы привязать к учётке без 2FA
-// чужой аутентификатор. Неверные пароли считаются тем же счётчиком, что и
-// текущий пароль в профиле.
-func TestEnrollTotp_RequiresCurrentPassword(t *testing.T) {
-	t.Parallel()
-
-	f := newEnv(t)
-	usrId := f.addUser(t, "bob", model.Edit{})
-	ctx := f.ctxOf(t, &sessionModel.Session{Id: usrId})
-
-	// без пароля — сколько угодно раз, попыткой подбора это не считается
-	for range attemptMaxFailures * 2 {
-		for name, password := range map[string]string{"empty": "", "blank": "   "} {
-			_, _, err := f.uc.EnrollTotp(ctx, password)
-			require.ErrorIs(t, err, errs.CurrentPasswordInvalid, name)
-		}
-	}
-	assert.Empty(t, f.repo.items[usrId].TotpSecret, "секрет без пароля не привязан")
-
-	// неверный пароль — отказ, и попытки считаются
-	for range attemptMaxFailures {
-		_, _, err := f.uc.EnrollTotp(ctx, "Wrong-Passw0rd!")
-		require.ErrorIs(t, err, errs.CurrentPasswordInvalid)
-	}
-	assert.Empty(t, f.repo.items[usrId].TotpSecret)
-
-	// блокировка — даже с верным паролем; счётчик общий с профилем
-	_, _, err := f.uc.EnrollTotp(ctx, testPassword)
-	fields := requireErrCode(t, err, errs.TooManyAttempts)
-	assert.Equal(t, "60", fields["retry_after"])
-
-	err = f.uc.UpdateProfile(ctx, &UpdateProfileReq{Password: new("N3w-Passw0rd!"), CurrentPassword: new(testPassword)})
-	requireErrCode(t, err, errs.TooManyAttempts)
-	assert.Empty(t, f.repo.items[usrId].TotpSecret)
-
-	// блокировка истекла — с верным паролем секрет выдан
-	*f.now = f.now.Add(time.Minute)
-	secret, url, err := f.uc.EnrollTotp(ctx, testPassword)
-	require.NoError(t, err)
-	assert.NotEmpty(t, secret)
-	assert.Contains(t, url, "otpauth://totp/")
-	assert.Equal(t, secret, f.repo.items[usrId].TotpSecret)
-	assert.False(t, f.repo.items[usrId].TotpEnabled, "до подтверждения кодом 2FA не включена")
-}
-
-// Включение 2FA закрывает все прежние сессии пользователя — в том числе
-// чужую, по украденному токену, — и возвращает пару токенов уже нового
-// поколения: текущая сессия продолжается на ней.
-func TestConfirmTotp_RevokesOldTokensAndIssuesNew(t *testing.T) {
-	t.Parallel()
-
-	f := newEnv(t)
-	usrId := f.addUser(t, "bob", model.Edit{})
-
-	stolen, err := f.login(t, "bob", testPassword, "")
-	require.NoError(t, err)
-	own, err := f.login(t, "bob", testPassword, "")
-	require.NoError(t, err)
-
-	session, err := f.uc.SessionFromToken(t.Context(), own.Jwt)
-	require.NoError(t, err)
-	ctx := f.ctxOf(t, session)
-
-	secret, _, err := f.uc.EnrollTotp(ctx, testPassword)
-	require.NoError(t, err)
-
-	// привязка без подтверждения сессий не трогает
-	assert.EqualValues(t, 0, f.repo.items[usrId].SessionVersion)
-	_, err = f.uc.SessionFromToken(t.Context(), stolen.Jwt)
-	require.NoError(t, err)
-
-	fresh, err := f.uc.ConfirmTotp(ctx, totpCode(t, secret))
-	require.NoError(t, err)
-	assert.EqualValues(t, 1, f.repo.items[usrId].SessionVersion)
-
-	for name, old := range map[string]*LoginResult{"stolen": stolen, "own": own} {
-		_, err = f.uc.SessionFromToken(t.Context(), old.Jwt)
-		require.ErrorIs(t, err, errs.NotAuthorized, "access: "+name)
-		_, _, err = f.uc.RefreshToken(t.Context(), old.RefreshToken)
-		require.ErrorIs(t, err, errs.NotAuthorized, "refresh: "+name)
-	}
-
-	// возвращённая пара — рабочая, с новым номером поколения
-	require.NotEmpty(t, fresh.Jwt)
-	require.NotEmpty(t, fresh.RefreshToken)
-	session, err = f.uc.SessionFromToken(t.Context(), fresh.Jwt)
-	require.NoError(t, err)
-	assert.Equal(t, usrId, session.Id)
-	_, _, err = f.uc.RefreshToken(t.Context(), fresh.RefreshToken)
-	require.NoError(t, err)
-
-	claims := jwtv5.MapClaims{}
-	_, _, err = jwtv5.NewParser().ParseUnverified(fresh.Jwt, claims)
-	require.NoError(t, err)
-	assert.EqualValues(t, 1, claims["ver"])
-}
-
-// Отключение 2FA действующим кодом сессий не закрывает: код — подтверждение,
-// что это сам пользователь.
-func TestDisableTotp_KeepsSessions(t *testing.T) {
-	t.Parallel()
-
-	f := newEnv(t)
-	usrId := f.addUser(t, "bob", model.Edit{})
-
-	res, err := f.login(t, "bob", testPassword, "")
-	require.NoError(t, err)
-	session, err := f.uc.SessionFromToken(t.Context(), res.Jwt)
-	require.NoError(t, err)
-
-	// 2FA включена мимо usecase: само включение сессии закрыло бы
-	secret := f.enableTotp(t, usrId)
-
-	require.NoError(t, f.uc.DisableTotp(f.ctxOf(t, session), totpCode(t, secret)))
-	assert.False(t, f.repo.items[usrId].TotpEnabled)
-	assert.EqualValues(t, 0, f.repo.items[usrId].SessionVersion)
-
-	_, err = f.uc.SessionFromToken(t.Context(), res.Jwt)
-	require.NoError(t, err, "access-токен после отключения 2FA")
-	_, _, err = f.uc.RefreshToken(t.Context(), res.RefreshToken)
-	require.NoError(t, err, "refresh-токен после отключения 2FA")
-}
-
-// Сброс 2FA админом закрывает все сессии целевого пользователя.
-func TestResetTotp_RevokesTargetSessions(t *testing.T) {
-	t.Parallel()
-
-	f := newEnv(t)
-	adminId := f.addUser(t, "root", model.Edit{IsAdmin: new(true)})
-	usrId := f.addUser(t, "bob", model.Edit{})
-	adminCtx := f.ctxOf(t, &sessionModel.Session{Id: adminId, Admin: true})
-
-	secret := f.enableTotp(t, usrId)
-	res, err := f.login(t, "bob", testPassword, totpCode(t, secret))
-	require.NoError(t, err)
-
-	require.NoError(t, f.uc.ResetTotp(adminCtx, usrId))
-
-	assert.False(t, f.repo.items[usrId].TotpEnabled)
-	assert.Empty(t, f.repo.items[usrId].TotpSecret)
-	assert.EqualValues(t, 1, f.repo.items[usrId].SessionVersion)
-	assert.EqualValues(t, 0, f.repo.items[adminId].SessionVersion, "сессии админа не тронуты")
-
-	_, err = f.uc.SessionFromToken(t.Context(), res.Jwt)
-	require.ErrorIs(t, err, errs.NotAuthorized)
-	_, _, err = f.uc.RefreshToken(t.Context(), res.RefreshToken)
-	require.ErrorIs(t, err, errs.NotAuthorized)
-
-	// вход теперь без второго фактора
-	res, err = f.login(t, "bob", testPassword, "")
-	require.NoError(t, err)
-	assert.NotEmpty(t, res.Jwt)
-}
-
-// Подбор кода 2FA вошедшим пользователем ограничен так же, как вход: пять
-// неверных кодов подряд — блокировка, даже верный код не принимается.
-func TestTotpCodeChecks_Limited(t *testing.T) {
-	t.Parallel()
-
-	f := newEnv(t)
-	usrId := f.addUser(t, "bob", model.Edit{})
-	ctx := f.ctxOf(t, &sessionModel.Session{Id: usrId})
-
-	secret := f.enableTotp(t, usrId)
-	wrong := wrongTotpCode(t, secret)
-
-	for range attemptMaxFailures {
-		require.ErrorIs(t, f.uc.DisableTotp(ctx, wrong), errs.TotpInvalid)
-	}
-
-	fields := requireErrCode(t, f.uc.DisableTotp(ctx, totpCode(t, secret)), errs.TooManyAttempts)
-	assert.Equal(t, "60", fields["retry_after"])
-	assert.True(t, f.repo.items[usrId].TotpEnabled, "2FA не отключена")
-
-	// блокировка истекла — верный код работает
-	*f.now = f.now.Add(time.Minute)
-	require.NoError(t, f.uc.DisableTotp(ctx, totpCode(t, secret)))
-	assert.False(t, f.repo.items[usrId].TotpEnabled)
 }
 
 // ── Вход ────────────────────────────────────────────────
@@ -465,35 +192,35 @@ func TestLogin_LocksAfterFailures(t *testing.T) {
 	f.addUser(t, "bob", model.Edit{})
 
 	for range attemptMaxFailures {
-		_, err := f.login(t, "bob", "Wrong-Passw0rd!", "")
+		_, err := f.login(t, "bob", "Wrong-Passw0rd!")
 		require.ErrorIs(t, err, errs.NotAuthorized)
 	}
 
-	_, err := f.login(t, "bob", testPassword, "")
+	_, err := f.login(t, "bob", testPassword)
 	fields := requireErrCode(t, err, errs.TooManyAttempts)
 	assert.Equal(t, "60", fields["retry_after"])
 
 	// пробелы по краям логина не важны — та же учётка и тот же счётчик
-	_, err = f.login(t, "  bob ", testPassword, "")
+	_, err = f.login(t, "  bob ", testPassword)
 	requireErrCode(t, err, errs.TooManyAttempts)
 
 	// а регистр важен, как и в базе: BOB — другой логин (такой учётки нет),
 	// блокировка bob на него не распространяется
-	_, err = f.login(t, "BOB", testPassword, "")
+	_, err = f.login(t, "BOB", testPassword)
 	require.ErrorIs(t, err, errs.NotAuthorized)
 
 	// блокировка истекла: верный пароль проходит и сбрасывает счётчик
 	*f.now = f.now.Add(time.Minute)
-	res, err := f.login(t, "bob", testPassword, "")
+	res, err := f.login(t, "bob", testPassword)
 	require.NoError(t, err)
 	assert.NotEmpty(t, res.Jwt)
 	assert.NotEmpty(t, res.RefreshToken)
 
 	for range attemptMaxFailures - 1 {
-		_, err = f.login(t, "bob", "Wrong-Passw0rd!", "")
+		_, err = f.login(t, "bob", "Wrong-Passw0rd!")
 		require.ErrorIs(t, err, errs.NotAuthorized)
 	}
-	_, err = f.login(t, "bob", testPassword, "")
+	_, err = f.login(t, "bob", testPassword)
 	require.NoError(t, err, "после сброса снова пять попыток")
 }
 
@@ -516,26 +243,26 @@ func TestLogin_OtherCaseLoginDoesNotResetCounter(t *testing.T) {
 	}))
 
 	for range attemptMaxFailures - 1 {
-		_, err := f.login(t, "admin", "Wrong-Passw0rd!", "")
+		_, err := f.login(t, "admin", "Wrong-Passw0rd!")
 		require.ErrorIs(t, err, errs.NotAuthorized)
 	}
 
 	// успешный вход под Admin — это вход другого пользователя
-	res, err := f.login(t, "Admin", testPassword, "")
+	res, err := f.login(t, "Admin", testPassword)
 	require.NoError(t, err)
 	session, err := f.uc.SessionFromToken(t.Context(), res.Jwt)
 	require.NoError(t, err)
 	require.Equal(t, bobId, session.Id)
 
 	// счётчик admin не сброшен: пятая неудача блокирует
-	_, err = f.login(t, "admin", "Wrong-Passw0rd!", "")
+	_, err = f.login(t, "admin", "Wrong-Passw0rd!")
 	require.ErrorIs(t, err, errs.NotAuthorized)
-	_, err = f.login(t, "admin", testPassword, "")
+	_, err = f.login(t, "admin", testPassword)
 	fields := requireErrCode(t, err, errs.TooManyAttempts)
 	assert.Equal(t, "60", fields["retry_after"])
 
 	// а блокировка admin не мешает входить под Admin
-	_, err = f.login(t, "Admin", testPassword, "")
+	_, err = f.login(t, "Admin", testPassword)
 	require.NoError(t, err)
 }
 
@@ -547,15 +274,15 @@ func TestLogin_RenameKeepsCounter(t *testing.T) {
 	usrId := f.addUser(t, "bob", model.Edit{})
 
 	for range attemptMaxFailures - 1 {
-		_, err := f.login(t, "bob", "Wrong-Passw0rd!", "")
+		_, err := f.login(t, "bob", "Wrong-Passw0rd!")
 		require.ErrorIs(t, err, errs.NotAuthorized)
 	}
 
 	f.repo.items[usrId].Username = "bobby"
 
-	_, err := f.login(t, "bobby", "Wrong-Passw0rd!", "")
+	_, err := f.login(t, "bobby", "Wrong-Passw0rd!")
 	require.ErrorIs(t, err, errs.NotAuthorized)
-	_, err = f.login(t, "bobby", testPassword, "")
+	_, err = f.login(t, "bobby", testPassword)
 	requireErrCode(t, err, errs.TooManyAttempts)
 }
 
@@ -570,21 +297,21 @@ func TestLogin_UnknownLoginsDoNotEvictUserCounter(t *testing.T) {
 	f.addUser(t, "bob", model.Edit{})
 
 	for range attemptMaxFailures - 1 {
-		_, err := f.login(t, "bob", "Wrong-Passw0rd!", "")
+		_, err := f.login(t, "bob", "Wrong-Passw0rd!")
 		require.ErrorIs(t, err, errs.NotAuthorized)
 	}
 
 	// логинов втрое больше, чем вмещает карта несуществующих логинов
 	for i := range 3 * f.uc.limiter.maxUnknown {
 		*f.now = f.now.Add(time.Millisecond)
-		_, err := f.login(t, fmt.Sprintf("ghost-%d", i), "Wrong-Passw0rd!", "")
+		_, err := f.login(t, fmt.Sprintf("ghost-%d", i), "Wrong-Passw0rd!")
 		require.ErrorIs(t, err, errs.NotAuthorized)
 	}
 	require.Len(t, f.uc.limiter.unknown, f.uc.limiter.maxUnknown)
 
-	_, err := f.login(t, "bob", "Wrong-Passw0rd!", "")
+	_, err := f.login(t, "bob", "Wrong-Passw0rd!")
 	require.ErrorIs(t, err, errs.NotAuthorized)
-	_, err = f.login(t, "bob", testPassword, "")
+	_, err = f.login(t, "bob", testPassword)
 	requireErrCode(t, err, errs.TooManyAttempts)
 }
 
@@ -603,7 +330,7 @@ func TestLogin_BusyGate(t *testing.T) {
 
 	for _, username := range []string{"bob", "no-such-user"} {
 		for range attemptMaxFailures * 2 {
-			_, err := f.login(t, username, testPassword, "")
+			_, err := f.login(t, username, testPassword)
 			fullErr, ok := errors.AsType[errs.ErrFull](err)
 			require.True(t, ok, "%s: expected errs.ErrFull, got: %v", username, err)
 			require.Equal(t, errs.ServiceNA, fullErr.Err, username)
@@ -615,7 +342,7 @@ func TestLogin_BusyGate(t *testing.T) {
 
 	// место освободилось — вход работает
 	f.uc.loginGate.release()
-	res, err := f.login(t, "bob", testPassword, "")
+	res, err := f.login(t, "bob", testPassword)
 	require.NoError(t, err)
 	assert.NotEmpty(t, res.Jwt)
 }
@@ -628,15 +355,15 @@ func TestLogin_LockEscalates(t *testing.T) {
 	f.addUser(t, "bob", model.Edit{})
 
 	for range attemptMaxFailures {
-		_, err := f.login(t, "bob", "Wrong-Passw0rd!", "")
+		_, err := f.login(t, "bob", "Wrong-Passw0rd!")
 		require.ErrorIs(t, err, errs.NotAuthorized)
 	}
 
 	*f.now = f.now.Add(time.Minute)
-	_, err := f.login(t, "bob", "Wrong-Passw0rd!", "")
+	_, err := f.login(t, "bob", "Wrong-Passw0rd!")
 	require.ErrorIs(t, err, errs.NotAuthorized)
 
-	_, err = f.login(t, "bob", testPassword, "")
+	_, err = f.login(t, "bob", testPassword)
 	fields := requireErrCode(t, err, errs.TooManyAttempts)
 	assert.Equal(t, "120", fields["retry_after"])
 }
@@ -651,10 +378,10 @@ func TestLogin_UnknownUserCountedLikeExisting(t *testing.T) {
 
 	for _, username := range []string{"bob", "no-such-user"} {
 		for range attemptMaxFailures {
-			_, err := f.login(t, username, "Wrong-Passw0rd!", "")
+			_, err := f.login(t, username, "Wrong-Passw0rd!")
 			require.ErrorIs(t, err, errs.NotAuthorized, username)
 		}
-		_, err := f.login(t, username, "Wrong-Passw0rd!", "")
+		_, err := f.login(t, username, "Wrong-Passw0rd!")
 		fields := requireErrCode(t, err, errs.TooManyAttempts)
 		assert.Equal(t, "60", fields["retry_after"], username)
 	}
@@ -669,66 +396,10 @@ func TestLogin_InactiveCountedAsFailure(t *testing.T) {
 	f.addUser(t, "bob", model.Edit{Active: new(false)})
 
 	for range attemptMaxFailures {
-		_, err := f.login(t, "bob", testPassword, "")
+		_, err := f.login(t, "bob", testPassword)
 		require.ErrorIs(t, err, errs.NotAuthorized)
 	}
-	_, err := f.login(t, "bob", testPassword, "")
-	requireErrCode(t, err, errs.TooManyAttempts)
-}
-
-// Код 2FA нельзя использовать повторно: второй вход с тем же кодом — отказ.
-func TestLogin_TotpCodeNotReusable(t *testing.T) {
-	t.Parallel()
-
-	f := newEnv(t)
-	usrId := f.addUser(t, "bob", model.Edit{})
-	secret := f.enableTotp(t, usrId)
-
-	res, err := f.login(t, "bob", testPassword, "")
-	require.NoError(t, err)
-	require.True(t, res.TotpRequired)
-	assert.Empty(t, res.Jwt)
-
-	code := totpCode(t, secret)
-
-	res, err = f.login(t, "bob", testPassword, code)
-	require.NoError(t, err)
-	assert.NotEmpty(t, res.Jwt)
-
-	// подсмотренный код второй раз не проходит
-	_, err = f.login(t, "bob", testPassword, code)
-	require.ErrorIs(t, err, errs.TotpInvalid)
-}
-
-// Неверные коды 2FA считаются так же, как неверные пароли; запрос без кода
-// («нужен второй фактор») счётчик не сбрасывает — иначе код перебирался бы
-// без ограничений.
-func TestLogin_TotpFailuresLimited(t *testing.T) {
-	t.Parallel()
-
-	f := newEnv(t)
-	usrId := f.addUser(t, "bob", model.Edit{})
-	secret := f.enableTotp(t, usrId)
-	wrong := wrongTotpCode(t, secret)
-
-	for range attemptMaxFailures - 1 {
-		_, err := f.login(t, "bob", testPassword, wrong)
-		require.ErrorIs(t, err, errs.TotpInvalid)
-
-		// верный пароль без кода — не успех и не неудача
-		res, err := f.login(t, "bob", testPassword, "")
-		require.NoError(t, err)
-		require.True(t, res.TotpRequired)
-	}
-
-	_, err := f.login(t, "bob", testPassword, wrong)
-	require.ErrorIs(t, err, errs.TotpInvalid)
-
-	_, err = f.login(t, "bob", testPassword, totpCode(t, secret))
-	requireErrCode(t, err, errs.TooManyAttempts)
-
-	// и запрос без кода во время блокировки не проходит
-	_, err = f.login(t, "bob", testPassword, "")
+	_, err := f.login(t, "bob", testPassword)
 	requireErrCode(t, err, errs.TooManyAttempts)
 }
 
@@ -742,7 +413,7 @@ func TestSessionFromToken_LiveRecord(t *testing.T) {
 	f := newEnv(t)
 	usrId := f.addUser(t, "bob", model.Edit{AppIds: []string{"app1"}})
 
-	res, err := f.login(t, "bob", testPassword, "")
+	res, err := f.login(t, "bob", testPassword)
 	require.NoError(t, err)
 
 	session, err := f.uc.SessionFromToken(t.Context(), res.Jwt)
@@ -796,7 +467,7 @@ func TestAccessToken_CarriesNoPermissions(t *testing.T) {
 	f := newEnv(t)
 	usrId := f.addUser(t, "root", model.Edit{IsAdmin: new(true), AppIds: []string{"app1"}})
 
-	res, err := f.login(t, "root", testPassword, "")
+	res, err := f.login(t, "root", testPassword)
 	require.NoError(t, err)
 
 	for name, token := range map[string]string{"access": res.Jwt, "refresh": res.RefreshToken} {
@@ -818,7 +489,7 @@ func TestLogout_RevokesTokens(t *testing.T) {
 	f := newEnv(t)
 	f.addUser(t, "bob", model.Edit{})
 
-	res, err := f.login(t, "bob", testPassword, "")
+	res, err := f.login(t, "bob", testPassword)
 	require.NoError(t, err)
 
 	session, err := f.uc.SessionFromToken(t.Context(), res.Jwt)
@@ -832,7 +503,7 @@ func TestLogout_RevokesTokens(t *testing.T) {
 	require.ErrorIs(t, err, errs.NotAuthorized, "refresh-токен после выхода")
 
 	// новый вход выдаёт рабочие токены
-	res, err = f.login(t, "bob", testPassword, "")
+	res, err = f.login(t, "bob", testPassword)
 	require.NoError(t, err)
 	_, err = f.uc.SessionFromToken(t.Context(), res.Jwt)
 	require.NoError(t, err)
@@ -857,7 +528,7 @@ func TestPasswordChange_RevokesTokens(t *testing.T) {
 	const newPassword = "N3w-Passw0rd!"
 
 	// админ меняет пароль пользователю
-	res, err := f.login(t, "bob", testPassword, "")
+	res, err := f.login(t, "bob", testPassword)
 	require.NoError(t, err)
 
 	// правка без пароля токены не трогает
@@ -872,7 +543,7 @@ func TestPasswordChange_RevokesTokens(t *testing.T) {
 	require.ErrorIs(t, err, errs.NotAuthorized)
 
 	// пользователь меняет пароль сам
-	res, err = f.login(t, "bob", newPassword, "")
+	res, err = f.login(t, "bob", newPassword)
 	require.NoError(t, err)
 	session, err := f.uc.SessionFromToken(t.Context(), res.Jwt)
 	require.NoError(t, err)
@@ -897,7 +568,7 @@ func TestDeactivation_RevokesTokens(t *testing.T) {
 	usrId := f.addUser(t, "bob", model.Edit{})
 	adminCtx := f.ctxOf(t, &sessionModel.Session{Id: adminId, Admin: true})
 
-	res, err := f.login(t, "bob", testPassword, "")
+	res, err := f.login(t, "bob", testPassword)
 	require.NoError(t, err)
 
 	require.NoError(t, f.uc.Update(adminCtx, usrId, &model.Edit{Active: new(false)}))
@@ -986,7 +657,7 @@ func TestUpdateProfile_RequiresCurrentPassword(t *testing.T) {
 	assert.Equal(t, "bobby", f.repo.items[usrId].Username)
 	assert.NotEqual(t, oldHash, f.repo.items[usrId].Password)
 
-	_, err = f.login(t, "bobby", newPassword, "")
+	_, err = f.login(t, "bobby", newPassword)
 	require.NoError(t, err)
 }
 
@@ -1016,17 +687,8 @@ func TestUpdateProfile_CurrentPasswordAttemptsLimited(t *testing.T) {
 	fields := requireErrCode(t, change(new(testPassword)), errs.TooManyAttempts)
 	assert.Equal(t, "60", fields["retry_after"])
 
-	// привязка 2FA спрашивает тот же пароль под тем же счётчиком
-	_, _, err := f.uc.EnrollTotp(ctx, testPassword)
-	requireErrCode(t, err, errs.TooManyAttempts)
-
-	// успешная проверка кода 2FA счётчик текущего пароля не сбрасывает
-	// (секрет привязан мимо usecase: привязка сейчас заблокирована)
-	secret, _, err := f.usrSvc.EnrollTotp(t.Context(), usrId)
-	require.NoError(t, err)
-	_, err = f.uc.ConfirmTotp(ctx, totpCode(t, secret))
-	require.NoError(t, err)
-	requireErrCode(t, change(new(testPassword)), errs.TooManyAttempts)
+	// подтверждение паролем (выпуск ключа, согласие OAuth) — тот же счётчик
+	requireErrCode(t, f.uc.ConfirmPassword(ctx, testPassword), errs.TooManyAttempts)
 
 	*f.now = f.now.Add(time.Minute)
 	require.NoError(t, change(new(testPassword)))
@@ -1049,8 +711,6 @@ func TestApiKeySession_CannotManageAccounts(t *testing.T) {
 		ApiKeyId: "key-1", ApiKeyName: "ci",
 	})
 
-	secret := f.enableTotp(t, adminId)
-
 	calls := map[string]func() error{
 		"UpdateProfile": func() error {
 			return f.uc.UpdateProfile(keyCtx, &UpdateProfileReq{
@@ -1061,32 +721,22 @@ func TestApiKeySession_CannotManageAccounts(t *testing.T) {
 		"UpdateProfile(name)": func() error {
 			return f.uc.UpdateProfile(keyCtx, &UpdateProfileReq{Name: new("Root")})
 		},
-		"EnrollTotp": func() error {
-			_, _, err := f.uc.EnrollTotp(keyCtx, testPassword)
-			return err
-		},
-		"ConfirmTotp": func() error {
-			_, err := f.uc.ConfirmTotp(keyCtx, totpCode(t, secret))
-			return err
-		},
-		"DisableTotp": func() error { return f.uc.DisableTotp(keyCtx, totpCode(t, secret)) },
-		"Logout":      func() error { return f.uc.Logout(keyCtx) },
+		"ConfirmPassword": func() error { return f.uc.ConfirmPassword(keyCtx, testPassword) },
+		"Logout":          func() error { return f.uc.Logout(keyCtx) },
 		"Create": func() error {
 			_, err := f.uc.Create(keyCtx, &model.Edit{
 				Name: new("Eve"), Username: new("eve"), Password: new(testPassword), IsAdmin: new(true),
 			})
 			return err
 		},
-		"Update":    func() error { return f.uc.Update(keyCtx, usrId, &model.Edit{IsAdmin: new(true)}) },
-		"Delete":    func() error { return f.uc.Delete(keyCtx, usrId) },
-		"ResetTotp": func() error { return f.uc.ResetTotp(keyCtx, adminId) },
+		"Update": func() error { return f.uc.Update(keyCtx, usrId, &model.Edit{IsAdmin: new(true)}) },
+		"Delete": func() error { return f.uc.Delete(keyCtx, usrId) },
 	}
 	for name, call := range calls {
 		require.ErrorIs(t, call(), errs.NoPermission, name)
 	}
 
 	// ничего не изменилось
-	assert.True(t, f.repo.items[adminId].TotpEnabled)
 	assert.EqualValues(t, 0, f.repo.items[adminId].SessionVersion)
 	assert.False(t, f.repo.items[usrId].IsAdmin)
 	assert.Len(t, f.repo.items, 2)
@@ -1142,8 +792,8 @@ func TestUsrListGet_AdminOnly(t *testing.T) {
 	assert.Empty(t, item.Password)
 }
 
-// Свои пароль, логин и 2FA админ меняет только в профиле (там нужен текущий
-// пароль или действующий код). Через управление пользователями — отказ: это
+// Свои пароль и логин админ меняет только в профиле (там нужен текущий
+// пароль). Через управление пользователями — отказ: это
 // был бы обход тех проверок для украденной сессии админа. Остальные свои
 // поля менять можно, свой логин без изменения — не отказ.
 func TestAdminCannotChangeOwnCredentialsViaUpdate(t *testing.T) {
@@ -1155,7 +805,6 @@ func TestAdminCannotChangeOwnCredentialsViaUpdate(t *testing.T) {
 	adminCtx := f.ctxOf(t, &sessionModel.Session{Id: adminId, Admin: true})
 	otherAdminCtx := f.ctxOf(t, &sessionModel.Session{Id: otherAdminId, Admin: true})
 
-	secret := f.enableTotp(t, adminId)
 	oldHash := f.repo.items[adminId].Password
 
 	requireSelfDenied := func(err error, what string) {
@@ -1163,7 +812,7 @@ func TestAdminCannotChangeOwnCredentialsViaUpdate(t *testing.T) {
 		fullErr, ok := errors.AsType[errs.ErrFull](err)
 		require.True(t, ok, "%s: expected errs.ErrFull, got: %v", what, err)
 		require.Equal(t, errs.NoPermission, fullErr.Err, what)
-		assert.Equal(t, "change your own password, username and 2FA in the profile", fullErr.Desc, what)
+		assert.Equal(t, "change your own password and username in the profile", fullErr.Desc, what)
 	}
 
 	requireSelfDenied(f.uc.Update(adminCtx, adminId, &model.Edit{Password: new("N3w-Passw0rd!")}), "свой пароль")
@@ -1172,15 +821,12 @@ func TestAdminCannotChangeOwnCredentialsViaUpdate(t *testing.T) {
 	requireSelfDenied(f.uc.Update(adminCtx, adminId, &model.Edit{
 		Name: new("Root"), Username: new("root"), Password: new("N3w-Passw0rd!"),
 	}), "пароль вместе с прежним логином")
-	requireSelfDenied(f.uc.ResetTotp(adminCtx, adminId), "сброс своей 2FA")
 
 	// ничего не изменилось, сессии не отозваны
 	self := f.repo.items[adminId]
 	assert.Equal(t, oldHash, self.Password)
 	assert.Equal(t, "root", self.Username)
 	assert.Equal(t, "root", self.Name)
-	assert.True(t, self.TotpEnabled)
-	assert.Equal(t, secret, self.TotpSecret)
 	assert.EqualValues(t, 0, self.SessionVersion)
 
 	// остальные свои поля — можно; логин без изменения (форма шлёт его
@@ -1195,8 +841,6 @@ func TestAdminCannotChangeOwnCredentialsViaUpdate(t *testing.T) {
 	require.NoError(t, f.uc.Update(adminCtx, otherAdminId, &model.Edit{Password: new("N3w-Passw0rd!"), Username: new("root-two")}))
 	assert.Equal(t, "root-two", f.repo.items[otherAdminId].Username)
 
-	require.NoError(t, f.uc.ResetTotp(otherAdminCtx, adminId))
-	assert.False(t, f.repo.items[adminId].TotpEnabled)
 	require.NoError(t, f.uc.Update(otherAdminCtx, adminId, &model.Edit{Password: new("N3w-Passw0rd!")}))
 	assert.NotEqual(t, oldHash, f.repo.items[adminId].Password)
 }
@@ -1211,9 +855,8 @@ func TestAdminActions_AnonymousNotAuthorized(t *testing.T) {
 	usrCtx := f.ctxOf(t, &sessionModel.Session{Id: usrId})
 
 	calls := map[string]func(ctx context.Context) error{
-		"Update":    func(ctx context.Context) error { return f.uc.Update(ctx, usrId, &model.Edit{Name: new("Bob")}) },
-		"Delete":    func(ctx context.Context) error { return f.uc.Delete(ctx, usrId) },
-		"ResetTotp": func(ctx context.Context) error { return f.uc.ResetTotp(ctx, usrId) },
+		"Update": func(ctx context.Context) error { return f.uc.Update(ctx, usrId, &model.Edit{Name: new("Bob")}) },
+		"Delete": func(ctx context.Context) error { return f.uc.Delete(ctx, usrId) },
 		"Create": func(ctx context.Context) error {
 			_, err := f.uc.Create(ctx, &model.Edit{Name: new("Eve"), Username: new("eve"), Password: new(testPassword)})
 			return err

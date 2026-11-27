@@ -12,7 +12,6 @@ import (
 	"time"
 
 	"github.com/golang-migrate/migrate/v4"
-	"github.com/pquerna/otp/totp"
 	"github.com/samber/lo"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -85,7 +84,7 @@ func newAccessStack(t *testing.T) *accessStack {
 		suffix: fmt.Sprintf("%x", time.Now().UnixNano()),
 	}
 
-	a.usrSvc = usrService.New(usrDb.New(s.pool, s.box))
+	a.usrSvc = usrService.New(usrDb.New(s.pool))
 	a.syncRunSvc = syncrunService.New(syncrunDb.New(s.pool))
 	apikeySvc := apikeyService.New(apikeyDb.New(s.pool))
 
@@ -696,8 +695,23 @@ func TestMigrationKeepsAccessOfExistingUsers(t *testing.T) {
 		_, _ = m.Close()
 	})
 
-	// откат последней миграции: колонок all_apps и session_version нет
-	require.NoError(t, m.Steps(-1))
+	usrColumns := func(names ...string) int {
+		t.Helper()
+		var n int
+		require.NoError(t, a.pool.QueryRow(ctx, `
+			select count(*) from information_schema.columns
+			where table_name = 'usr' and column_name = any($1)
+		`, names).Scan(&n))
+		return n
+	}
+
+	// 000013 убрала колонки 2FA, её откат возвращает их пустыми
+	require.Zero(t, usrColumns("totp_secret", "totp_enabled"), "колонок 2FA нет")
+	require.NoError(t, m.Migrate(12))
+	require.Equal(t, 2, usrColumns("totp_secret", "totp_enabled"), "down 000013 возвращает колонки 2FA")
+
+	// откат 000012: колонок all_apps и session_version нет
+	require.NoError(t, m.Migrate(11))
 
 	var columns int
 	require.NoError(t, a.pool.QueryRow(ctx, `
@@ -997,99 +1011,8 @@ func TestLoginCounterNotResetByOtherCaseLogin(t *testing.T) {
 	a.login(t, twin, accessPassword)
 }
 
-// ── 2FA и украденная сессия ─────────────────────────────
-
-func totpCodeNow(t *testing.T, secret string) string {
-	t.Helper()
-	code, err := totp.GenerateCode(secret, time.Now().UTC())
-	require.NoError(t, err)
-	return code
-}
-
-// Привязка 2FA требует текущего пароля; включение 2FA закрывает прежние
-// сессии и выдаёт пару токенов нового поколения; сброс 2FA админом закрывает
-// сессии пользователя; отключение действующим кодом — нет.
-func TestTotpChangesAndSessions(t *testing.T) {
-	a := newAccessStack(t)
-
-	usrId, username := a.newUser(t, "totp-user", usrModel.Edit{})
-
-	version := func() int64 {
-		t.Helper()
-		var v int64
-		require.NoError(t, a.pool.QueryRow(context.Background(),
-			`select session_version from usr where id = $1`, usrId).Scan(&v))
-		return v
-	}
-	requireRevoked := func(res *usrUsc.LoginResult, why string) {
-		t.Helper()
-		_, err := a.usrUsecase.SessionFromToken(context.Background(), res.Jwt)
-		require.ErrorIs(t, err, errs.NotAuthorized, "access: "+why)
-		_, _, err = a.usrUsecase.RefreshToken(context.Background(), res.RefreshToken)
-		require.ErrorIs(t, err, errs.NotAuthorized, "refresh: "+why)
-	}
-
-	stolen := a.login(t, username, accessPassword)
-	own := a.login(t, username, accessPassword)
-	ctx := a.tokenCtx(t, own.Jwt)
-
-	// украденной сессии для привязки аутентификатора мало: нужен пароль
-	stolenCtx := a.tokenCtx(t, stolen.Jwt)
-	for name, password := range map[string]string{"без пароля": "", "неверный пароль": "Wrong-Passw0rd!"} {
-		_, _, err := a.usrUsecase.EnrollTotp(stolenCtx, password)
-		require.ErrorIs(t, err, errs.CurrentPasswordInvalid, name)
-	}
-	assert.Empty(t, a.rawTotpSecret(t, usrId), "секрет без пароля не привязан")
-
-	secret, _, err := a.usrUsecase.EnrollTotp(ctx, accessPassword)
-	require.NoError(t, err)
-	require.NotEmpty(t, secret)
-	require.Zero(t, version(), "привязка без подтверждения сессий не трогает")
-
-	// подтверждение: прежние сессии закрыты, возвращённая пара — рабочая
-	fresh, err := a.usrUsecase.ConfirmTotp(ctx, totpCodeNow(t, secret))
-	require.NoError(t, err)
-	assert.EqualValues(t, 1, version())
-	requireRevoked(stolen, "украденная сессия после включения 2FA")
-	requireRevoked(own, "прежняя своя сессия после включения 2FA")
-
-	freshCtx := a.tokenCtx(t, fresh.Jwt)
-	profile, err := a.usrUsecase.GetProfile(freshCtx)
-	require.NoError(t, err)
-	assert.True(t, profile.TotpEnabled)
-	_, _, err = a.usrUsecase.RefreshToken(context.Background(), fresh.RefreshToken)
-	require.NoError(t, err)
-
-	// сброс админом: 2FA снята, сессии пользователя закрыты
-	require.NoError(t, a.usrUsecase.ResetTotp(a.adminCtx(), usrId))
-	assert.EqualValues(t, 2, version())
-	requireRevoked(fresh, "после сброса 2FA админом")
-	assert.Empty(t, a.rawTotpSecret(t, usrId))
-
-	// отключение действующим кодом сессии не закрывает
-	again := a.login(t, username, accessPassword)
-	againCtx := a.tokenCtx(t, again.Jwt)
-	secret, _, err = a.usrUsecase.EnrollTotp(againCtx, accessPassword)
-	require.NoError(t, err)
-	// включаем мимо usecase: его подтверждение потратило бы код этого шага
-	// времени, а отключению нужен действующий
-	_, err = a.pool.Exec(context.Background(), `update usr set totp_enabled = true where id = $1`, usrId)
-	require.NoError(t, err)
-
-	require.NoError(t, a.usrUsecase.DisableTotp(againCtx, totpCodeNow(t, secret)))
-	assert.EqualValues(t, 2, version(), "отключение 2FA кодом номер поколения не меняет")
-	a.tokenCtx(t, again.Jwt)
-
-	// события в аудите есть, секрета 2FA в них нет
-	rows := a.auditRows(t, auditModel.EntityUsr, fmt.Sprint(usrId))
-	require.NotEmpty(t, rows)
-	for _, row := range rows {
-		assert.NotContains(t, row.changes, secret)
-	}
-}
-
-// Свои пароль, логин и 2FA админ через управление пользователями не меняет:
-// только в профиле, где нужен текущий пароль или действующий код.
+// Свои пароль и логин админ через управление пользователями не меняет:
+// только в профиле, где нужен текущий пароль.
 func TestAdminCannotChangeOwnCredentialsViaUsrUpdate(t *testing.T) {
 	a := newAccessStack(t)
 
@@ -1102,14 +1025,13 @@ func TestAdminCannotChangeOwnCredentialsViaUsrUpdate(t *testing.T) {
 		fullErr, ok := errors.AsType[errs.ErrFull](err)
 		require.True(t, ok, "%s: expected errs.ErrFull, got: %v", what, err)
 		assert.Equal(t, errs.NoPermission, fullErr.Err, what)
-		assert.Equal(t, "change your own password, username and 2FA in the profile", fullErr.Desc, what)
+		assert.Equal(t, "change your own password and username in the profile", fullErr.Desc, what)
 	}
 
 	const newPassword = "N3w-Access-Passw0rd!"
 
 	requireSelfDenied(a.usrUsecase.Update(ctx, adminId, &usrModel.Edit{Password: new(newPassword)}), "свой пароль")
 	requireSelfDenied(a.usrUsecase.Update(ctx, adminId, &usrModel.Edit{Username: new(a.name("self-renamed"))}), "свой логин")
-	requireSelfDenied(a.usrUsecase.ResetTotp(ctx, adminId), "сброс своей 2FA")
 
 	// прежние логин и пароль работают, сессия жива
 	a.login(t, adminUsername, accessPassword)
@@ -1128,7 +1050,6 @@ func TestAdminCannotChangeOwnCredentialsViaUsrUpdate(t *testing.T) {
 	// чужую учётку — как раньше
 	require.NoError(t, a.usrUsecase.Update(ctx, otherId, &usrModel.Edit{Password: new(newPassword)}))
 	a.login(t, otherUsername, newPassword)
-	require.NoError(t, a.usrUsecase.ResetTotp(ctx, otherId))
 
 	// в профиле с текущим паролем свой пароль меняется
 	require.NoError(t, a.usrUsecase.UpdateProfile(ctx, &usrUsc.UpdateProfileReq{
@@ -1167,25 +1088,15 @@ func TestApiKeySessionCannotManageAccounts(t *testing.T) {
 		"UpdateProfile (имя)": func() error {
 			return a.usrUsecase.UpdateProfile(keyCtx, &usrUsc.UpdateProfileReq{Name: new("x")})
 		},
-		"EnrollTotp": func() error {
-			_, _, err := a.usrUsecase.EnrollTotp(keyCtx, accessPassword)
-			return err
-		},
-		"ConfirmTotp": func() error {
-			_, err := a.usrUsecase.ConfirmTotp(keyCtx, "000000")
-			return err
-		},
-		"DisableTotp": func() error { return a.usrUsecase.DisableTotp(keyCtx, "000000") },
-		"Logout":      func() error { return a.usrUsecase.Logout(keyCtx) },
+		"Logout": func() error { return a.usrUsecase.Logout(keyCtx) },
 		"Usr.Create": func() error {
 			_, err := a.usrUsecase.Create(keyCtx, &usrModel.Edit{
 				Name: new("eve"), Username: new(a.name("key-eve")), Password: new(accessPassword), IsAdmin: new(true),
 			})
 			return err
 		},
-		"Usr.Update":    func() error { return a.usrUsecase.Update(keyCtx, victimId, &usrModel.Edit{IsAdmin: new(true)}) },
-		"Usr.Delete":    func() error { return a.usrUsecase.Delete(keyCtx, victimId) },
-		"Usr.ResetTotp": func() error { return a.usrUsecase.ResetTotp(keyCtx, victimId) },
+		"Usr.Update": func() error { return a.usrUsecase.Update(keyCtx, victimId, &usrModel.Edit{IsAdmin: new(true)}) },
+		"Usr.Delete": func() error { return a.usrUsecase.Delete(keyCtx, victimId) },
 		"ApiKey.Create": func() error {
 			_, _, err := a.apikeyUsecase.Create(keyCtx, "more", nil, constant.ApiKeyScopeFull, accessPassword)
 			return err

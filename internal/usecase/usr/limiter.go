@@ -39,8 +39,8 @@ const (
 type attemptKey struct {
 	// id — вид проверки и тот, кого проверяют: пользователь либо логин.
 	id string
-	// user — счётчик существующего пользователя (вход по его id, код 2FA,
-	// текущий пароль). Такие записи хранятся отдельно от записей
+	// user — счётчик существующего пользователя (вход по его id, текущий
+	// пароль). Такие записи хранятся отдельно от записей
 	// несуществующих логинов и чужими ключами не вытесняются.
 	user bool
 }
@@ -63,8 +63,8 @@ type attemptEntry struct {
 // одновременно проверяется не больше попыток, чем осталось до блокировки.
 //
 // Записи лежат в двух картах:
-//   - users — счётчики существующих пользователей. Их не больше трёх на
-//     учётку (вход, код 2FA, текущий пароль), поэтому места им хватает
+//   - users — счётчики существующих пользователей. Их не больше двух на
+//     учётку (вход, текущий пароль), поэтому места им хватает
 //     всегда: запись уходит только после успеха либо по сроку
 //     (attemptEntryTTL). Иначе четыре попытки по жертве можно было бы «смыть»
 //     потоком случайных логинов и подбирать пароль без блокировки;
@@ -159,7 +159,7 @@ type attemptOutcome int8
 
 const (
 	// attemptNeutral — попытка не дошла до проверки секрета либо её исход
-	// не говорит ни о подборе, ни об успехе (ошибка БД, нужен код 2FA).
+	// не говорит ни о подборе, ни об успехе (например, ошибка БД).
 	attemptNeutral attemptOutcome = iota
 	attemptFailed
 	attemptSucceeded
@@ -294,8 +294,7 @@ func tooManyAttemptsErr(retryAfter time.Duration) error {
 }
 
 // Ключи ограничителя. У каждого вида проверки свой счётчик: иначе успех
-// одной проверки (например, подтверждение 2FA своим же новым секретом)
-// сбрасывал бы счётчик подбора другой (текущего пароля).
+// одной проверки сбрасывал бы счётчик подбора другой.
 
 // loginAttemptKey — вход существующего пользователя: счётчик ведётся по его
 // id, а не по логину. Логин меняется (и самим пользователем), а база
@@ -316,14 +315,8 @@ func unknownLoginAttemptKey(username string) attemptKey {
 	return attemptKey{id: "login:" + hex.EncodeToString(sum[:16])}
 }
 
-// totpAttemptKey — проверки кода 2FA вошедшего пользователя (ConfirmTotp,
-// DisableTotp).
-func totpAttemptKey(usrId int64) attemptKey {
-	return attemptKey{id: "totp:" + strconv.FormatInt(usrId, 10), user: true}
-}
-
 // passwordAttemptKey — проверки текущего пароля вошедшего пользователя
-// (UpdateProfile, EnrollTotp).
+// (UpdateProfile, ConfirmPassword).
 func passwordAttemptKey(usrId int64) attemptKey {
 	return attemptKey{id: "pwd:" + strconv.FormatInt(usrId, 10), user: true}
 }

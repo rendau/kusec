@@ -5,7 +5,6 @@ package usr
 type LoginReq struct {
 	Username string
 	Password string
-	TotpCode string
 
 	ClientIp string
 }
@@ -20,12 +19,8 @@ type UpdateProfileReq struct {
 	CurrentPassword *string
 }
 
-// LoginResult — итог попытки логина. Возможны два исхода:
-//   - выдана пара токенов (Jwt+RefreshToken);
-//   - пароль верный, но включена 2FA и не передан код (TotpRequired).
+// LoginResult — пара токенов, выданная при входе.
 type LoginResult struct {
 	Jwt          string
 	RefreshToken string
-
-	TotpRequired bool
 }

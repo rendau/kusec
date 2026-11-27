@@ -1,7 +1,5 @@
 <script setup lang="ts">
 import { computed, h, onBeforeUnmount, onMounted, reactive, ref, watch } from 'vue'
-import type { VNodeChild } from 'vue'
-import { RouterLink } from 'vue-router'
 import {
   NButton,
   NCard,
@@ -20,10 +18,10 @@ import {
   useMessage,
 } from 'naive-ui'
 import type { DataTableColumns, SelectOption } from 'naive-ui'
-import { InfoCircle, Pencil, Plus, ShieldOff, Trash } from '@vicons/tabler'
+import { InfoCircle, Pencil, Plus, Trash } from '@vicons/tabler'
 
 import { apiErrorMessage } from '@/api/http'
-import { deleteUser, listUsers, resetUserTotp } from '@/api/usr'
+import { deleteUser, listUsers } from '@/api/usr'
 import type { UsrListReq, UsrMain } from '@/api/types'
 import { useBreakpoint } from '@/composables/useBreakpoint'
 import { useAuthStore } from '@/stores/auth'
@@ -197,43 +195,13 @@ async function removeUser(row: UsrMain): Promise<void> {
   }
 }
 
-// An admin cannot reset their own 2FA from this list (the backend answers
-// `no_permission`): it is turned off in My profile, with a current code.
-const SELF_2FA_HINT = 'Your own 2FA is managed in My profile'
-
-/** The same hint for a tooltip, with "My profile" as a link. */
-function self2faHint(): VNodeChild {
-  return [
-    'Your own 2FA is managed in ',
-    h(
-      RouterLink,
-      { to: { name: 'profile' }, style: 'color: inherit; text-decoration: underline' },
-      { default: () => 'My profile' },
-    ),
-  ]
-}
-
-// Admin-reset: clear another user's 2FA when they lost their authenticator.
-async function resetTotp(row: UsrMain): Promise<void> {
-  if (isSelf(row)) return
-  try {
-    await resetUserTotp(row.id)
-    message.success(`2FA reset for "${row.username}"`)
-    await fetchUsers()
-  } catch (error) {
-    message.error(apiErrorMessage(error, 'Failed to reset 2FA'))
-  }
-}
-
 function iconButton(
   icon: typeof Pencil,
   tooltip: string,
   onClick: () => void,
   options: {
-    type?: 'error' | 'warning'
+    type?: 'error'
     disabled?: boolean
-    /** Rich tooltip content; `tooltip` stays the plain-text `aria-label`. */
-    hint?: () => VNodeChild
   } = {},
 ) {
   return h(
@@ -254,7 +222,7 @@ function iconButton(
           },
           { icon: () => h(NIcon, { component: icon }) },
         ),
-      default: options.hint ?? (() => tooltip),
+      default: () => tooltip,
     },
   )
 }
@@ -306,17 +274,6 @@ const columns: DataTableColumns<UsrMain> = [
       ),
   },
   {
-    title: '2FA',
-    key: 'totp_enabled',
-    width: 90,
-    render: (row) =>
-      h(
-        NTag,
-        { type: row.totp_enabled ? 'success' : 'default', size: 'small' },
-        { default: () => (row.totp_enabled ? 'On' : 'Off') },
-      ),
-  },
-  {
     title: 'Actions',
     key: 'actions',
     width: 180,
@@ -324,33 +281,6 @@ const columns: DataTableColumns<UsrMain> = [
       h(NSpace, { size: 4, wrapItem: false }, () => [
         iconButton(InfoCircle, 'Details', () => openDetail(row)),
         iconButton(Pencil, 'Edit', () => openEdit(row)),
-        !row.totp_enabled
-          ? null
-          : isSelf(row)
-            ? iconButton(ShieldOff, SELF_2FA_HINT, () => {}, {
-                type: 'warning',
-                disabled: true,
-                hint: self2faHint,
-              })
-            : h(
-                NPopconfirm,
-                { onPositiveClick: () => resetTotp(row) },
-                {
-                  trigger: () =>
-                    h(
-                      NButton,
-                      {
-                        quaternary: true,
-                        circle: true,
-                        size: 'small',
-                        type: 'warning',
-                        'aria-label': 'Reset 2FA',
-                      },
-                      { icon: () => h(NIcon, { component: ShieldOff }) },
-                    ),
-                  default: () => `Reset 2FA for "${row.username}"?`,
-                },
-              ),
         isSelf(row)
           ? iconButton(Trash, 'You cannot delete yourself', () => {}, {
               type: 'error',
@@ -441,7 +371,6 @@ onMounted(fetchUsers)
               <NTag :type="accessTagType(row)" size="small">
                 {{ usrAccessLabel(row) }}
               </NTag>
-              <NTag v-if="row.totp_enabled" type="success" size="small"> 2FA </NTag>
             </NSpace>
             <template #action>
               <NSpace justify="end" :size="4" :wrap-item="false">
@@ -467,38 +396,6 @@ onMounted(fetchUsers)
                     <NIcon :component="Pencil" />
                   </template>
                 </NButton>
-                <NButton
-                  v-if="row.totp_enabled && isSelf(row)"
-                  quaternary
-                  circle
-                  size="small"
-                  type="warning"
-                  disabled
-                  :aria-label="SELF_2FA_HINT"
-                >
-                  <template #icon>
-                    <NIcon :component="ShieldOff" />
-                  </template>
-                </NButton>
-                <NPopconfirm
-                  v-else-if="row.totp_enabled"
-                  @positive-click="resetTotp(row)"
-                >
-                  <template #trigger>
-                    <NButton
-                      quaternary
-                      circle
-                      size="small"
-                      type="warning"
-                      aria-label="Reset 2FA"
-                    >
-                      <template #icon>
-                        <NIcon :component="ShieldOff" />
-                      </template>
-                    </NButton>
-                  </template>
-                  Reset 2FA for "{{ row.username }}"?
-                </NPopconfirm>
                 <NButton
                   v-if="isSelf(row)"
                   quaternary

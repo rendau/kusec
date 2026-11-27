@@ -36,11 +36,7 @@ const (
 	ConfigMapSlugExists = Err("configmap_slug_exists")
 	ConfigItemKeyExists = Err("config_item_key_exists")
 
-	TotpInvalid    = Err("totp_invalid")
-	TotpAlreadyOn  = Err("totp_already_enabled")
-	TotpNotEnabled = Err("totp_not_enabled")
-
-	// слишком много неудачных попыток (вход, код 2FA, текущий пароль):
+	// слишком много неудачных попыток (вход, текущий пароль):
 	// отдаётся как ErrFull с Fields["retry_after"] — через сколько секунд
 	// можно повторить
 	TooManyAttempts = Err("too_many_attempts")

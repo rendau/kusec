@@ -140,7 +140,7 @@ func newStackWith(t *testing.T, dsn string, box *secretbox.Box) *stack {
 		sessionSvc: sessionService.New("integration-test"),
 	}
 
-	usrSvc := usrService.New(usrDb.New(pool, box))
+	usrSvc := usrService.New(usrDb.New(pool))
 	s.appSvc = appService.New(appDb.New(pool))
 	s.secretSvc = secretService.New(secretDb.New(pool))
 	s.itemSvc = itemService.New(itemDb.New(pool, box))
@@ -166,8 +166,8 @@ func newStackWith(t *testing.T, dsn string, box *secretbox.Box) *stack {
 
 // stackAdminId — id «админа» из adminCtx. Такой учётки в базе нет, и номер
 // заведомо не совпадает с учётками, которые создают тесты: через adminCtx
-// они правят чужие учётки (пароль, 2FA), а собственные пароль, логин и 2FA
-// админ через управление пользователями не меняет.
+// они правят чужие учётки (пароль), а собственные пароль и логин админ через
+// управление пользователями не меняет.
 const stackAdminId = 1_000_000_000
 
 // adminCtx — сессия админа с именем (имя в сессии избавляет аудит от

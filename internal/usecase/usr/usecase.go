@@ -32,15 +32,14 @@ const (
 // Причины отказа во входе (поле reason журнала «login failed»).
 const (
 	loginReasonBadCredentials = "bad_credentials"
-	loginReasonTotpInvalid    = "totp_invalid"
 	loginReasonLocked         = "locked"
 	loginReasonInactive       = "inactive"
 	loginReasonBusy           = "busy"
 )
 
 // selfManagedDesc — отказ администратору, который пытается сменить
-// собственные пароль, логин или 2FA через управление пользователями.
-const selfManagedDesc = "change your own password, username and 2FA in the profile"
+// собственные пароль или логин через управление пользователями.
+const selfManagedDesc = "change your own password and username in the profile"
 
 type Usecase struct {
 	svc        ServiceI
@@ -48,7 +47,7 @@ type Usecase struct {
 	txm        TransactionManagerI
 	auditRec   AuditRecorderI
 
-	// limiter — ограничитель перебора пароля и кода 2FA (в памяти процесса).
+	// limiter — ограничитель перебора пароля (в памяти процесса).
 	limiter *attemptLimiter
 	// loginGate — предел одновременных проверок пароля на входе.
 	loginGate *checkGate
@@ -67,7 +66,7 @@ func New(svc ServiceI, sessionSvc SessionServiceI, txm TransactionManagerI, audi
 
 // auditUsrMutation выполняет мутацию пользователя в транзакции с записью
 // аудита: старое/новое состояние читаются вокруг мутации, пустой дифф
-// (например, привязка TOTP-секрета до подтверждения) не пишется.
+// не пишется.
 func (u *Usecase) auditUsrMutation(ctx context.Context, id int64, mutate func(ctx context.Context) error) error {
 	return u.txm.TxFn(ctx, func(ctx context.Context) error {
 		old, _, err := u.svc.Get(ctx, id, false)
@@ -125,9 +124,9 @@ func (u *Usecase) beginAttempt(key attemptKey) (*attempt, error) {
 	return a, nil
 }
 
-// Login проверяет логин, пароль и (если включена 2FA) одноразовый код.
+// Login проверяет логин и пароль.
 //
-// Защита от перебора: неудачи (неверный пароль или код) считаются по
+// Защита от перебора: неудачи (неверный пароль) считаются по
 // пользователю — по его id, а для логина, которого нет, по самому логину;
 // после 5 подряд вход блокируется (см. attemptLimiter). Пока действует
 // блокировка, отказ выдаётся без проверки пароля — даже верного.
@@ -186,21 +185,6 @@ func (u *Usecase) Login(ctx context.Context, req *LoginReq) (*LoginResult, error
 		attempt.fail()
 		logFailed(loginReasonInactive)
 		return nil, errs.NotAuthorized
-	}
-
-	// 2FA необязательна ни для кого: включает её сам пользователь в профиле.
-	if item.TotpEnabled {
-		if strings.TrimSpace(req.TotpCode) == "" {
-			// пароль верный, но нужен второй фактор. Это ни неудача, ни
-			// успех: сброс счётчика здесь позволил бы перебирать код без
-			// ограничений, чередуя попытки с запросом без кода
-			return &LoginResult{TotpRequired: true}, nil
-		}
-		if !u.svc.ValidateTotpCode(item.Id, item.TotpSecret, req.TotpCode) {
-			attempt.fail()
-			logFailed(loginReasonTotpInvalid)
-			return nil, errs.TotpInvalid
-		}
 	}
 
 	res, err := u.issueLoginResult(item)
@@ -275,7 +259,7 @@ func (u *Usecase) SessionFromToken(ctx context.Context, token string) (*sessionM
 
 // requireHuman — действие доступно только из входа в админку. Сессия по
 // API-ключу или OAuth-подключению учётками не управляет: утёкший ключ не
-// должен давать смену пароля, отключение 2FA или выпуск новых ключей.
+// должен давать смену пароля или выпуск новых ключей.
 func requireHuman(session *sessionModel.Session) error {
 	if !session.IsAuthorized() {
 		return errs.NotAuthorized
@@ -303,8 +287,8 @@ func (u *Usecase) requireAdminHuman(ctx context.Context) error {
 // requireActiveSelf — текущий пользователь вошёл через админку (не по
 // ключу), существует и не выключен. Session-интерсептор уже сверяет
 // пользователя по БД на каждый запрос; здесь запись перечитывается ещё раз,
-// потому что методы профиля и 2FA работают с её актуальным состоянием
-// (хэш пароля, секрет TOTP).
+// потому что методы профиля работают с её актуальным состоянием (хэш
+// пароля).
 func (u *Usecase) requireActiveSelf(ctx context.Context) (*model.Main, error) {
 	session := u.sessionSvc.FromContext(ctx)
 	if err := requireHuman(session); err != nil {
@@ -335,26 +319,6 @@ func (u *Usecase) Logout(ctx context.Context) error {
 	return nil
 }
 
-// EnrollTotp генерирует новый секрет и otpauth-URL для привязки 2FA
-// текущему пользователю. Только с верным текущим паролем: иначе чужой с
-// живой сессией (украденный токен, открытый экран) привязал бы к учётке без
-// 2FA свой аутентификатор и закрыл бы владельцу вход. Неверные пароли
-// считаются тем же счётчиком, что и текущий пароль в профиле.
-func (u *Usecase) EnrollTotp(ctx context.Context, currentPassword string) (string, string, error) {
-	item, err := u.requireActiveSelf(ctx)
-	if err != nil {
-		return "", "", err
-	}
-	if err = u.checkCurrentPassword(item, &currentPassword); err != nil {
-		return "", "", err
-	}
-	secret, url, err := u.svc.EnrollTotp(ctx, item.Id)
-	if err != nil {
-		return "", "", fmt.Errorf("svc.EnrollTotp: %w", err)
-	}
-	return secret, url, nil
-}
-
 // ConfirmPassword подтверждает текущим паролем действие, выдающее долгий
 // доступ в обход сессии: выпуск API-ключа, согласие на OAuth-подключение MCP.
 // Ключ и подключение переживают выход и смену пароля, поэтому чужой с живой
@@ -366,96 +330,6 @@ func (u *Usecase) ConfirmPassword(ctx context.Context, currentPassword string) e
 		return err
 	}
 	return u.checkCurrentPassword(item, &currentPassword)
-}
-
-// totpAttempt выполняет проверку кода 2FA вошедшего пользователя под
-// ограничителем перебора: неверный код засчитывается как неудача, верный
-// сбрасывает счётчик, прочие ошибки счётчик не трогают.
-func (u *Usecase) totpAttempt(usrId int64, check func() error) error {
-	attempt, err := u.beginAttempt(totpAttemptKey(usrId))
-	if err != nil {
-		slog.Warn("2fa code check failed", "usr_id", usrId, "reason", loginReasonLocked)
-		return err
-	}
-	defer attempt.release()
-
-	if err = check(); err != nil {
-		if errors.Is(err, errs.TotpInvalid) {
-			attempt.fail()
-			slog.Warn("2fa code check failed", "usr_id", usrId, "reason", loginReasonTotpInvalid)
-		}
-		return err
-	}
-
-	attempt.succeed()
-	return nil
-}
-
-// ConfirmTotp подтверждает привязку 2FA первым кодом и выдаёт пару токенов.
-// Только для активного пользователя и только пока 2FA не включена: иначе
-// вызов работал бы как бессрочное продление сессии без refresh-токена.
-// Включение 2FA отзывает все прежние токены пользователя (в том числе тот,
-// с которым пришёл запрос) — возвращённая пара выдана уже с новым номером
-// поколения сессий, клиент обязан перейти на неё.
-func (u *Usecase) ConfirmTotp(ctx context.Context, code string) (*LoginResult, error) {
-	self, err := u.requireActiveSelf(ctx)
-	if err != nil {
-		return nil, err
-	}
-
-	var item *model.Main
-	err = u.totpAttempt(self.Id, func() error {
-		return u.auditUsrMutation(ctx, self.Id, func(ctx context.Context) error {
-			var err error
-			if item, err = u.svc.ConfirmTotp(ctx, self.Id, code); err != nil {
-				return fmt.Errorf("svc.ConfirmTotp: %w", err)
-			}
-			return nil
-		})
-	})
-	if err != nil {
-		return nil, err
-	}
-	return u.issueLoginResult(item)
-}
-
-// DisableTotp отключает 2FA текущему пользователю (требуется действующий код).
-func (u *Usecase) DisableTotp(ctx context.Context, code string) error {
-	self, err := u.requireActiveSelf(ctx)
-	if err != nil {
-		return err
-	}
-
-	return u.totpAttempt(self.Id, func() error {
-		return u.auditUsrMutation(ctx, self.Id, func(ctx context.Context) error {
-			if err := u.svc.DisableTotp(ctx, self.Id, code); err != nil {
-				return fmt.Errorf("svc.DisableTotp: %w", err)
-			}
-			return nil
-		})
-	})
-}
-
-// ResetTotp принудительно сбрасывает 2FA пользователю (только админ) и
-// отзывает все его токены. Себе админ 2FA так не сбрасывает: это был бы
-// обход проверки действующего кода (DisableTotp) — украденной сессии админа
-// хватило бы, чтобы снять с его учётки второй фактор.
-func (u *Usecase) ResetTotp(ctx context.Context, id int64) error {
-	if err := u.requireAdminHuman(ctx); err != nil {
-		return err
-	}
-	if id == 0 {
-		return errs.IdRequired
-	}
-	if id == u.sessionSvc.FromContext(ctx).Id {
-		return errs.ErrFull{Err: errs.NoPermission, Desc: selfManagedDesc}
-	}
-	return u.auditUsrMutation(ctx, id, func(ctx context.Context) error {
-		if err := u.svc.ResetTotp(ctx, id); err != nil {
-			return fmt.Errorf("svc.ResetTotp: %w", err)
-		}
-		return nil
-	})
 }
 
 // RefreshToken обменивает валидный refresh-токен на новую пару токенов
@@ -558,7 +432,8 @@ func (u *Usecase) UpdateProfile(ctx context.Context, req *UpdateProfileReq) erro
 }
 
 // checkCurrentPassword сверяет текущий пароль пользователя под ограничителем
-// перебора (смена пароля и логина в профиле, привязка 2FA — счётчик общий).
+// перебора (смена пароля и логина в профиле, выпуск ключа, согласие OAuth —
+// счётчик общий).
 // Пустой пароль — отказ без попытки (это не подбор).
 func (u *Usecase) checkCurrentPassword(item *model.Main, currentPassword *string) error {
 	if currentPassword == nil || strings.TrimSpace(*currentPassword) == "" {

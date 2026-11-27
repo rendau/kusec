@@ -141,7 +141,7 @@ func TestOpenWithWrongScope(t *testing.T) {
 	sealed, err := box.Seal("item.value", "s3cret")
 	require.NoError(t, err)
 
-	opened, err := box.Open("usr.totp_secret", sealed)
+	opened, err := box.Open("other.column", sealed)
 	require.ErrorIs(t, err, ErrDecrypt)
 	assert.Empty(t, opened)
 }

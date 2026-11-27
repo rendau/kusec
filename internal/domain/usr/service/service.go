@@ -3,7 +3,6 @@ package service
 import (
 	"context"
 	"fmt"
-	"time"
 
 	"github.com/rendau/kusec/internal/domain/usr/model"
 	"github.com/rendau/kusec/internal/errs"
@@ -11,12 +10,6 @@ import (
 
 type Service struct {
 	repoDb RepoDbI
-
-	// totpGuard — защита от повторного использования кода 2FA (в памяти
-	// процесса, общая для входа, подтверждения и отключения 2FA).
-	totpGuard *totpReplayGuard
-	// now — часы; подменяются в тестах.
-	now func() time.Time
 }
 
 func New(repoDb RepoDbI) *Service {
@@ -24,9 +17,7 @@ func New(repoDb RepoDbI) *Service {
 	dummyPasswordHash()
 
 	return &Service{
-		repoDb:    repoDb,
-		totpGuard: newTotpReplayGuard(),
-		now:       time.Now,
+		repoDb: repoDb,
 	}
 }
 
@@ -73,7 +64,7 @@ func (s *Service) BurnPasswordCheck(password string) {
 }
 
 // PasswordMatches сверяет пароль с сохранённым хэшем (вход, подтверждение
-// смены пароля/логина и привязки 2FA текущим паролем).
+// текущим паролем смены пароля/логина, выпуска ключа и согласия OAuth).
 func (s *Service) PasswordMatches(passwordHash, password string) (bool, error) {
 	ok, err := comparePassword(passwordHash, password)
 	if err != nil {
@@ -144,15 +135,4 @@ func (s *Service) Delete(ctx context.Context, id int64) error {
 		return fmt.Errorf("repoDb.Delete: %w", err)
 	}
 	return nil
-}
-
-// ApplyValueEncryption приводит хранимые ключи 2FA к текущему режиму
-// шифрования (см. repo): шаг запуска сервиса, после миграций и до приёма
-// запросов. Возвращает число строк, зашифрованных этим вызовом.
-func (s *Service) ApplyValueEncryption(ctx context.Context) (int64, error) {
-	sealedCount, err := s.repoDb.ApplyValueEncryption(ctx)
-	if err != nil {
-		return sealedCount, fmt.Errorf("repoDb.ApplyValueEncryption: %w", err)
-	}
-	return sealedCount, nil
 }

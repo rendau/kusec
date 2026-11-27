@@ -66,10 +66,6 @@ const ERROR_TEXTS: Record<string, string> = {
     'A config map with this name already exists in the application',
   config_item_key_exists: 'An item with this key already exists in the config map',
 
-  totp_invalid: 'Invalid code, try again',
-  totp_already_enabled: 'Two-factor authentication is already enabled',
-  totp_not_enabled: 'Two-factor authentication is not enabled',
-
   oauth_not_enabled: 'Sign-in for MCP clients is not enabled on this server',
   oauth_invalid_request: 'Invalid authorization request',
 

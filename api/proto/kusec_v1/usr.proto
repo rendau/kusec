@@ -81,35 +81,6 @@ service Usr {
       body: "*"
     };
   }
-
-  // 2FA (TOTP)
-
-  rpc EnrollTotp(UsrEnrollTotpReq) returns (UsrEnrollTotpRep) {
-    option (google.api.http) = {
-      post: "/usr/totp/enroll"
-      body: "*"
-    };
-  }
-
-  rpc ConfirmTotp(UsrConfirmTotpReq) returns (UsrLoginRep) {
-    option (google.api.http) = {
-      post: "/usr/totp/confirm"
-      body: "*"
-    };
-  }
-
-  rpc DisableTotp(UsrDisableTotpReq) returns (google.protobuf.Empty) {
-    option (google.api.http) = {
-      post: "/usr/totp/disable"
-      body: "*"
-    };
-  }
-
-  rpc ResetTotp(UsrGetReq) returns (google.protobuf.Empty) {
-    option (google.api.http) = {
-      post: "/usr/{id}/totp/reset"
-    };
-  }
 }
 
 // ── Messages ────────────────────────────────────────────
@@ -123,7 +94,9 @@ message UsrMain {
   // app_ids — приложения, доступные не-админу при all_apps=false.
   // Пустой список = не доступно ни одно.
   repeated string app_ids = 6;
-  bool totp_enabled = 7;
+  // 7 — totp_enabled: 2FA убрана.
+  reserved 7;
+  reserved "totp_enabled";
   // all_apps — не-админ видит все приложения (app_ids не учитывается).
   // У админа доступ ко всему всегда.
   bool all_apps = 8;
@@ -191,18 +164,17 @@ message UsrUpdateReq {
 message UsrLoginReq {
   string username = 1;
   string password = 2;
-  string totp_code = 3;
+  // 3 — totp_code: 2FA убрана.
+  reserved 3;
+  reserved "totp_code";
 }
 
 message UsrLoginRep {
   string jwt = 1;
   string refresh_token = 2;
-  // totp_required — пароль верный, но требуется код 2FA (повторить логин с totp_code).
-  bool totp_required = 3;
-  // 4, 5 — totp_setup_required/setup_token: обязательная привязка 2FA для
-  // админов снята, 2FA включается по желанию из профиля.
-  reserved 4, 5;
-  reserved "totp_setup_required", "setup_token";
+  // 3, 4, 5 — totp_required/totp_setup_required/setup_token: 2FA убрана.
+  reserved 3, 4, 5;
+  reserved "totp_required", "totp_setup_required", "setup_token";
 }
 
 message UsrRefreshTokenReq {
@@ -220,30 +192,4 @@ message UsrUpdateProfileReq {
   // current_password — текущий пароль; обязателен, если меняется password
   // или username. Неверный или пустой — ошибка current_password_invalid.
   optional string current_password = 4;
-}
-
-// 2FA (TOTP)
-
-message UsrEnrollTotpReq {
-  reserved 1;
-  reserved "setup_token";
-  // current_password — текущий пароль; обязателен. Неверный или пустой —
-  // ошибка current_password_invalid (попытки ограничены так же, как текущий
-  // пароль в профиле).
-  string current_password = 2;
-}
-
-message UsrEnrollTotpRep {
-  string secret = 1;
-  string otpauth_url = 2;
-}
-
-message UsrConfirmTotpReq {
-  reserved 1;
-  reserved "setup_token";
-  string code = 2;
-}
-
-message UsrDisableTotpReq {
-  string code = 1;
 }

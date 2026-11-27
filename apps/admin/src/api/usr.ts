@@ -1,14 +1,12 @@
 import { API_BASE_URL } from './config'
 import { ApiError, apiFetch } from './http'
 import { buildListQuery } from './query'
-import { replaceSession, setSession, timeoutSignal } from './auth-session'
+import { setSession, timeoutSignal } from './auth-session'
 import type {
   ErrorRep,
   UsrBootstrapStatusRep,
   UsrCreateRep,
   UsrCreateReq,
-  UsrEnrollTotpRep,
-  UsrEnrollTotpReq,
   UsrListRep,
   UsrListReq,
   UsrLoginRep,
@@ -37,84 +35,13 @@ async function postPublic<T>(path: string, body: unknown): Promise<T> {
   return payload as T
 }
 
-/**
- * Authenticate. Returns the raw `UsrLoginRep` so the caller can branch on the
- * 2FA flags. The session is persisted here only when a token pair is issued;
- * a 2FA continuation (`totp_required`) is a non-error 200 response and leaves the session untouched.
- */
-export async function login(
-  username: string,
-  password: string,
-  totpCode = '',
-): Promise<UsrLoginRep> {
-  const rep = await postPublic<UsrLoginRep>('/usr/login', {
-    username,
-    password,
-    totp_code: totpCode,
-  })
+/** Authenticate and persist the issued token pair. */
+export async function login(username: string, password: string): Promise<UsrLoginRep> {
+  const rep = await postPublic<UsrLoginRep>('/usr/login', { username, password })
   if (rep.jwt) {
     setSession({ jwt: rep.jwt, refresh_token: rep.refresh_token ?? '' })
   }
   return rep
-}
-
-// ── 2FA (TOTP) ─────────────────────────────────────────────
-
-/**
- * Generate a new TOTP secret + otpauth URL to bind for the current user.
- * The backend asks for the current password first: an empty or wrong one is
- * `current_password_invalid`, repeated failures — `too_many_attempts`.
- */
-export function enrollTotp(currentPassword: string): Promise<UsrEnrollTotpRep> {
-  const req: UsrEnrollTotpReq = { current_password: currentPassword }
-  return apiFetch<UsrEnrollTotpRep>('/usr/totp/enroll', {
-    method: 'POST',
-    body: JSON.stringify(req),
-  })
-}
-
-/** Cap for the confirm call: every other request waits for it (see below). */
-const CONFIRM_TOTP_TIMEOUT_MS = 30_000
-
-/**
- * Confirm enrolment with the first code, enabling 2FA.
- *
- * The answer carries a token pair of a **new session version**: the tokens
- * held so far are dead from the moment the backend commits. So the call runs
- * through `replaceSession` — the new pair is stored the instant the answer
- * arrives, and no other request goes out with the old pair meanwhile.
- */
-export function confirmTotp(code: string): Promise<UsrLoginRep> {
-  return replaceSession(() =>
-    apiFetch<UsrLoginRep>(
-      '/usr/totp/confirm',
-      {
-        method: 'POST',
-        body: JSON.stringify({ code }),
-        signal: timeoutSignal(CONFIRM_TOTP_TIMEOUT_MS),
-      },
-      { replacesSession: true },
-    ),
-  )
-}
-
-/** Disable 2FA for the current user (requires a current code). */
-export function disableTotp(code: string): Promise<void> {
-  return apiFetch<void>('/usr/totp/disable', {
-    method: 'POST',
-    body: JSON.stringify({ code }),
-  })
-}
-
-/**
- * Admin-reset another user's 2FA (clears it so they can re-enrol). Not for
- * oneself: the backend answers `no_permission` — own 2FA is turned off in the
- * profile, with a current code.
- */
-export function resetUserTotp(id: number | string): Promise<void> {
-  return apiFetch<void>(`/usr/${encodeURIComponent(String(id))}/totp/reset`, {
-    method: 'POST',
-  })
 }
 
 /** How long sign-out waits for the server before giving up. */

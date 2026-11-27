@@ -19,7 +19,7 @@ import (
 const configValueMaxLen = 4096
 
 // maskedMarker — заглушка для полей, чьи значения не пишутся в аудит даже
-// отпечатком (пароль, TOTP-секрет): фиксируется только факт изменения.
+// отпечатком (пароль): фиксируется только факт изменения.
 const maskedMarker = "***"
 
 // changeSet — построитель списка изменённых полей: на create пишутся
@@ -73,8 +73,8 @@ func (c *changeSet) strSlice(field string, oldV, newV []string) {
 	c.str(field, strings.Join(oldV, ", "), strings.Join(newV, ", "))
 }
 
-// masked фиксирует изменение поля без значения и без отпечатка (пароль,
-// TOTP-секрет). На create/delete не пишется — важен только факт смены.
+// masked фиксирует изменение поля без значения и без отпечатка (пароль).
+// На create/delete не пишется — важен только факт смены.
 func (c *changeSet) masked(field string, changed bool) {
 	if !c.hasOld || !c.hasNew || !changed {
 		return
@@ -215,7 +215,7 @@ func (s *Service) configItemChanges(old, cur *configitemModel.Main) []auditModel
 	return c.changes
 }
 
-// usrChanges — password и totp_secret не пишутся ни значением, ни отпечатком.
+// usrChanges — password не пишется ни значением, ни отпечатком.
 func usrChanges(old, cur *usrModel.Main) []auditModel.Change {
 	c := newChangeSet(old != nil, cur != nil)
 	var o, n usrModel.Main
@@ -231,7 +231,6 @@ func usrChanges(old, cur *usrModel.Main) []auditModel.Change {
 	c.str("username", o.Username, n.Username)
 	c.boolF("all_apps", o.AllApps, n.AllApps)
 	c.strSlice("app_ids", o.AppIds, n.AppIds)
-	c.boolF("totp_enabled", o.TotpEnabled, n.TotpEnabled)
 	c.masked("password", o.Password != n.Password)
 	return c.changes
 }

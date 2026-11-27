@@ -73,10 +73,6 @@ func (r *Repo) GetByUsername(ctx context.Context, username string) (*model.Main,
 		return nil, false, fmt.Errorf("GetByUsername: %w", err)
 	}
 
-	if err = r.openTotpSecret(m); err != nil {
-		return nil, false, err
-	}
-
 	return repoModel.EncodeSelect(m, 0), true, nil
 }
 

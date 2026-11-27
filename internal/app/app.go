@@ -168,7 +168,7 @@ func (a *App) Init() {
 	txm := mobone.NewTransactionManager(a.pgpool)
 
 	// dependency graph
-	usrSvc := usrService.New(usrDb.New(a.pgpool, dataBox))
+	usrSvc := usrService.New(usrDb.New(a.pgpool))
 	a.usrSvc = usrSvc
 	appSvc := appService.New(appDb.New(a.pgpool))
 	secretSvc := secretService.New(secretDb.New(a.pgpool))
@@ -181,7 +181,6 @@ func (a *App) Init() {
 
 	// перевод значений в базе на шифрование: после миграций, до запуска серверов
 	errCheck(applyValueEncryption(a.ctx, dataBox, "item.value", itemSvc), "data encryption")
-	errCheck(applyValueEncryption(a.ctx, dataBox, "usr.totp_secret", usrSvc), "data encryption")
 
 	// регистратор аудита: пишется usecase-ами внутри транзакции мутации
 	auditRec := auditRecorder.New(auditSvc, usrSvc, appSvc, secretSvc, configMapSvc, sessionSvc, config.Conf.AuditHashKey)

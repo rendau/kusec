@@ -20,7 +20,6 @@ const model = reactive({
   name: '',
   username: '',
   password: '',
-  totpCode: '',
 })
 
 // Why the user landed here, when the app itself sent them (shown once).
@@ -40,7 +39,7 @@ const successMessage = ref(
 /**
  * Text for a failed sign-in. On this endpoint `not_authorized` means wrong
  * credentials (or a disabled account), not an expired session; everything
- * else — `totp_invalid`, `too_many_attempts` with its wait time, an
+ * else — `too_many_attempts` with its wait time, an
  * unexpected failure — reads the same as anywhere.
  */
 function loginErrorText(error: unknown, fallback: string): string {
@@ -53,10 +52,6 @@ function loginErrorText(error: unknown, fallback: string): string {
 const statusLoading = ref(true)
 const bootstrapAvailable = ref(false)
 const bootstrapLoading = ref(false)
-
-// Шаги логина: пароль → код 2FA (если она включена).
-type Step = 'credentials' | 'totp'
-const step = ref<Step>('credentials')
 
 const loginRules: FormRules = {
   username: [
@@ -86,50 +81,14 @@ async function submitLogin(): Promise<void> {
   errorMessage.value = ''
   successMessage.value = ''
   try {
-    const outcome = await authStore.login({
+    await authStore.login({
       username: model.username,
       password: model.password,
     })
-    if (outcome.status === 'ok') {
-      await goAfterAuth()
-    } else {
-      step.value = 'totp'
-    }
+    await goAfterAuth()
   } catch (error) {
     errorMessage.value = loginErrorText(error, 'Unable to sign in')
   }
-}
-
-async function submitTotp(): Promise<void> {
-  if (!model.totpCode.trim()) {
-    errorMessage.value = 'Enter the 6-digit code'
-    return
-  }
-  errorMessage.value = ''
-  try {
-    const outcome = await authStore.login({
-      username: model.username,
-      password: model.password,
-      totpCode: model.totpCode.trim(),
-    })
-    if (outcome.status === 'ok') {
-      await goAfterAuth()
-    } else {
-      // Маловероятно (код устарел между шагами) — просим ввести заново.
-      errorMessage.value = 'Invalid code, try again'
-      model.totpCode = ''
-    }
-  } catch (error) {
-    errorMessage.value = loginErrorText(error, 'Unable to verify the code, try again')
-    model.totpCode = ''
-  }
-}
-
-function backToCredentials(): void {
-  step.value = 'credentials'
-  model.password = ''
-  model.totpCode = ''
-  errorMessage.value = ''
 }
 
 async function submitBootstrap(): Promise<void> {
@@ -223,9 +182,8 @@ onMounted(async () => {
         <p class="login-hint">Available only on first setup, while no users exist.</p>
       </NForm>
 
-      <!-- Step: enter username + password. -->
       <NForm
-        v-else-if="step === 'credentials'"
+        v-else
         ref="formRef"
         :model="model"
         :rules="loginRules"
@@ -251,32 +209,6 @@ onMounted(async () => {
           Sign in
         </NButton>
       </NForm>
-
-      <!-- Step: enter the TOTP code (2FA already enabled). -->
-      <form v-else @submit.prevent="submitTotp">
-        <p class="login-hint login-hint--lead">
-          Enter the 6-digit code from your authenticator app.
-        </p>
-        <NInput
-          v-model:value="model.totpCode"
-          placeholder="123456"
-          maxlength="6"
-          autofocus
-          :input-props="{ inputmode: 'numeric', autocomplete: 'one-time-code' }"
-        />
-        <NButton
-          :loading="authStore.loading"
-          type="primary"
-          attr-type="submit"
-          block
-          class="login-spaced"
-        >
-          Verify
-        </NButton>
-        <NButton text block class="login-spaced" @click="backToCredentials">
-          Back
-        </NButton>
-      </form>
 
       <NAlert v-if="errorMessage" class="login-alert" type="error" :show-icon="false">
         {{ errorMessage }}
@@ -342,15 +274,5 @@ onMounted(async () => {
   margin: 12px 0 0;
   font-size: 12px;
   opacity: 0.7;
-}
-
-.login-hint--lead {
-  margin: 0 0 16px;
-  font-size: 13px;
-  opacity: 0.8;
-}
-
-.login-spaced {
-  margin-top: 12px;
 }
 </style>
