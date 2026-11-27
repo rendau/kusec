@@ -53,20 +53,22 @@ func TestRefreshToken_RoundTrip(t *testing.T) {
 
 	const passwordHash = "$2a$10$hash"
 
-	refresh, err := svc.CreateRefreshToken(42, passwordHash, 3)
+	start := time.Now().UTC().Add(-time.Hour).Truncate(time.Second)
+	refresh, err := svc.CreateRefreshToken(42, passwordHash, 3, start)
 	require.NoError(t, err)
 
 	usrId, err := svc.RefreshTokenUserId(refresh)
 	require.NoError(t, err)
 	assert.EqualValues(t, 42, usrId)
 
-	usrId, ver, err := svc.ParseRefreshToken(refresh, passwordHash)
+	usrId, ver, sessionStart, err := svc.ParseRefreshToken(refresh, passwordHash)
 	require.NoError(t, err)
 	assert.EqualValues(t, 42, usrId)
 	assert.EqualValues(t, 3, ver)
+	assert.True(t, start.Equal(sessionStart), "время входа переносится через токен")
 
 	// смена пароля отзывает refresh-токен
-	_, _, err = svc.ParseRefreshToken(refresh, "$2a$10$other")
+	_, _, _, err = svc.ParseRefreshToken(refresh, "$2a$10$other")
 	require.Error(t, err)
 
 	// типы токенов не взаимозаменяемы
@@ -75,10 +77,54 @@ func TestRefreshToken_RoundTrip(t *testing.T) {
 
 	access, err := svc.CreateToken(42, 3)
 	require.NoError(t, err)
-	_, _, err = svc.ParseRefreshToken(access, passwordHash)
+	_, _, _, err = svc.ParseRefreshToken(access, passwordHash)
 	require.Error(t, err)
 	_, err = svc.RefreshTokenUserId(access)
 	require.Error(t, err)
+}
+
+// Общий срок сессии считается от входа по паролю и продлением не сдвигается:
+// refresh-токен истекает не позже входа + maxSessionAge, а сессию старше
+// этого срока не продлить, даже если сам токен ещё не истёк.
+func TestRefreshToken_MaxSessionAge(t *testing.T) {
+	t.Parallel()
+	svc := New(testSecret)
+
+	const passwordHash = "$2a$10$hash"
+	now := time.Now().UTC()
+
+	// вход 6 дней назад: токен живёт до входа + maxSessionAge, а не 30 дней
+	start := now.Add(-6 * 24 * time.Hour).Truncate(time.Second)
+	refresh, err := svc.CreateRefreshToken(42, passwordHash, 0, start)
+	require.NoError(t, err)
+	claims := jwtv5.MapClaims{}
+	_, _, err = jwtv5.NewParser().ParseUnverified(refresh, claims)
+	require.NoError(t, err)
+	assert.EqualValues(t, start.Add(maxSessionAge).Unix(), claims["exp"])
+	assert.EqualValues(t, start.Unix(), claims["ast"])
+
+	_, _, sessionStart, err := svc.ParseRefreshToken(refresh, passwordHash)
+	require.NoError(t, err)
+	assert.True(t, start.Equal(sessionStart))
+
+	// вход раньше maxSessionAge — новый токен не выдаётся
+	_, err = svc.CreateRefreshToken(42, passwordHash, 0, now.Add(-maxSessionAge-time.Second))
+	require.Error(t, err)
+
+	// токен ещё не истёк, но сессия старше maxSessionAge — отказ; для старых
+	// токенов без ast время входа — момент выдачи (iat)
+	old := now.Add(-maxSessionAge - time.Hour).Unix()
+	exp := now.Add(time.Hour).Unix()
+	fp := passwordFingerprint(passwordHash)
+	for name, c := range map[string]jwtv5.MapClaims{
+		"ast старше срока":    {"typ": tokenTypeRefresh, "id": 42, "pwd": fp, "ast": old, "iat": now.Unix(), "exp": exp},
+		"без ast, iat старый": {"typ": tokenTypeRefresh, "id": 42, "pwd": fp, "iat": old, "exp": exp},
+		"без ast и iat":       {"typ": tokenTypeRefresh, "id": 42, "pwd": fp, "exp": exp},
+		"ast не число":        {"typ": tokenTypeRefresh, "id": 42, "pwd": fp, "ast": "x", "exp": exp},
+	} {
+		_, _, _, err = svc.ParseRefreshToken(signTestClaims(t, testSecret, c), passwordHash)
+		require.Error(t, err, name)
+	}
 }
 
 // Токены, выданные до появления claim ver (и до claim typ), — поколение 0.
@@ -101,13 +147,15 @@ func TestLegacyTokens_VersionZero(t *testing.T) {
 	}
 
 	const passwordHash = "$2a$10$hash"
+	issued := now.Add(-time.Hour).Truncate(time.Second)
 	legacyRefresh := signTestClaims(t, testSecret, jwtv5.MapClaims{
-		"typ": tokenTypeRefresh, "id": 42, "pwd": passwordFingerprint(passwordHash), "exp": exp,
+		"typ": tokenTypeRefresh, "id": 42, "pwd": passwordFingerprint(passwordHash), "iat": issued.Unix(), "exp": exp,
 	})
-	usrId, ver, err := svc.ParseRefreshToken(legacyRefresh, passwordHash)
+	usrId, ver, sessionStart, err := svc.ParseRefreshToken(legacyRefresh, passwordHash)
 	require.NoError(t, err)
 	assert.EqualValues(t, 42, usrId)
 	assert.EqualValues(t, 0, ver)
+	assert.True(t, issued.Equal(sessionStart), "без ast время входа — iat")
 }
 
 // Битые и просроченные токены отвергаются.

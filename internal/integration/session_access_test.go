@@ -782,7 +782,7 @@ func TestMigrationKeepsAccessOfExistingUsers(t *testing.T) {
 
 	legacyAccess, err := a.sessionSvc.CreateToken(inactiveId, 0)
 	require.NoError(t, err)
-	legacyRefresh, err := a.sessionSvc.CreateRefreshToken(inactiveId, passwordHash, 0)
+	legacyRefresh, err := a.sessionSvc.CreateRefreshToken(inactiveId, passwordHash, 0, time.Now())
 	require.NoError(t, err)
 
 	require.NoError(t, a.usrUsecase.Update(a.adminCtx(), inactiveId, &usrModel.Edit{Active: new(true), AppIds: []string{"some-app"}}))

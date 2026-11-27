@@ -2,6 +2,7 @@ package usr
 
 import (
 	"context"
+	"time"
 
 	sessionModel "github.com/rendau/kusec/internal/domain/session/model"
 	"github.com/rendau/kusec/internal/domain/usr/model"
@@ -33,8 +34,8 @@ type SessionServiceI interface {
 	CtxIsAuthorized(ctx context.Context) bool
 	CtxIsAdmin(ctx context.Context) bool
 	CreateToken(usrId, ver int64) (string, error)
-	CreateRefreshToken(usrId int64, passwordHash string, ver int64) (string, error)
+	CreateRefreshToken(usrId int64, passwordHash string, ver int64, sessionStart time.Time) (string, error)
 	ParseAccessToken(tokenStr string) (usrId, ver int64, err error)
-	ParseRefreshToken(tokenStr, currentPasswordHash string) (usrId, ver int64, err error)
+	ParseRefreshToken(tokenStr, currentPasswordHash string) (usrId, ver int64, sessionStart time.Time, err error)
 	RefreshTokenUserId(tokenStr string) (int64, error)
 }

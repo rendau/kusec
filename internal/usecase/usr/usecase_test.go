@@ -516,6 +516,43 @@ func TestLogout_RevokesTokens(t *testing.T) {
 	require.ErrorIs(t, f.uc.Logout(t.Context()), errs.NotAuthorized)
 }
 
+// Продление не сдвигает время входа: новый refresh-токен несёт время входа
+// из старого и истекает не позже входа + общий срок сессии (7 дней).
+func TestRefreshToken_KeepsSessionStart(t *testing.T) {
+	t.Parallel()
+
+	f := newEnv(t)
+	usrId := f.addUser(t, "bob", model.Edit{})
+
+	refreshClaims := func(token string) jwtv5.MapClaims {
+		t.Helper()
+		claims := jwtv5.MapClaims{}
+		_, _, err := jwtv5.NewParser().ParseUnverified(token, claims)
+		require.NoError(t, err)
+		return claims
+	}
+
+	// при входе время входа — сейчас, и продление его сохраняет
+	res, err := f.login(t, "bob", testPassword)
+	require.NoError(t, err)
+	loginAst := refreshClaims(res.RefreshToken)["ast"]
+	require.NotNil(t, loginAst)
+	_, refresh, err := f.uc.RefreshToken(t.Context(), res.RefreshToken)
+	require.NoError(t, err)
+	assert.Equal(t, loginAst, refreshClaims(refresh)["ast"])
+
+	// вход 6 дней назад: продление отдаёт токен до входа + 7 дней
+	item := f.repo.items[usrId]
+	start := time.Now().Add(-6 * 24 * time.Hour).Truncate(time.Second)
+	old, err := f.sessionSvc.CreateRefreshToken(usrId, item.Password, item.SessionVersion, start)
+	require.NoError(t, err)
+	_, refresh, err = f.uc.RefreshToken(t.Context(), old)
+	require.NoError(t, err)
+	claims := refreshClaims(refresh)
+	assert.EqualValues(t, start.Unix(), claims["ast"])
+	assert.EqualValues(t, start.Add(7*24*time.Hour).Unix(), claims["exp"])
+}
+
 // Смена пароля — самим пользователем или админом — отзывает выданные токены.
 func TestPasswordChange_RevokesTokens(t *testing.T) {
 	t.Parallel()

@@ -19,9 +19,14 @@ const (
 	// accessTokenTTL — короткий срок жизни access-токена: окно утечки
 	// ограничено, продление идёт через refresh-токен.
 	accessTokenTTL = 15 * time.Minute
-	// refreshTokenTTL — срок жизни refresh-токена (максимальная длина сессии
-	// без повторного логина).
+	// refreshTokenTTL — срок жизни refresh-токена: столько сессия живёт без
+	// единого обращения.
 	refreshTokenTTL = 30 * 24 * time.Hour
+	// maxSessionAge — общий срок сессии от входа по паролю. Продление
+	// refresh-токеном его не сдвигает: время входа переносится из старого
+	// токена в новый (claim "ast"), и украденный refresh-токен нельзя
+	// продлевать бесконечно. По истечении — вход заново.
+	maxSessionAge = 7 * 24 * time.Hour
 
 	// Значения claim "typ", разделяющие назначение токенов. Access-токены,
 	// выданные до введения refresh-flow, не имеют "typ" — они принимаются
@@ -156,53 +161,93 @@ func passwordFingerprint(passwordHash string) string {
 	return hex.EncodeToString(sum[:8])
 }
 
-// CreateRefreshToken подписывает долгоживущий refresh-токен.
-func (s *Service) CreateRefreshToken(usrId int64, passwordHash string, ver int64) (string, error) {
+// CreateRefreshToken подписывает долгоживущий refresh-токен. sessionStart —
+// время входа по паролю: при входе это сейчас, при продлении — значение из
+// предыдущего refresh-токена (ParseRefreshToken). Токен истекает через
+// refreshTokenTTL, но не позже sessionStart + maxSessionAge; сессию, чей
+// общий срок вышел, продлить нельзя.
+func (s *Service) CreateRefreshToken(usrId int64, passwordHash string, ver int64, sessionStart time.Time) (string, error) {
 	now := time.Now().UTC()
+	exp := now.Add(refreshTokenTTL)
+	if limit := sessionStart.Add(maxSessionAge); limit.Before(exp) {
+		exp = limit
+	}
+	if !exp.After(now) {
+		return "", fmt.Errorf("session max age exceeded")
+	}
 	return s.signClaims(jwtv5.MapClaims{
 		"typ": tokenTypeRefresh,
 		"id":  usrId,
 		"ver": ver,
 		"pwd": passwordFingerprint(passwordHash),
+		"ast": sessionStart.Unix(),
 		"iat": now.Unix(),
-		"exp": now.Add(refreshTokenTTL).Unix(),
+		"exp": exp.Unix(),
 	})
 }
 
-// ParseRefreshToken валидирует refresh-токен и возвращает id пользователя и
+// ParseRefreshToken валидирует refresh-токен и возвращает id пользователя,
 // номер поколения сессий (claim "ver" — вызывающий сверяет его с
-// usr.session_version). Отпечаток пароля сверяется с актуальным хешем —
-// после смены пароля токен считается отозванным.
-func (s *Service) ParseRefreshToken(tokenStr, currentPasswordHash string) (usrId, ver int64, err error) {
+// usr.session_version) и время входа по паролю (его передают в
+// CreateRefreshToken при продлении). Отпечаток пароля сверяется с актуальным
+// хешем — после смены пароля токен считается отозванным. Сессия старше
+// maxSessionAge отвергается, даже если сам токен ещё не истёк.
+func (s *Service) ParseRefreshToken(tokenStr, currentPasswordHash string) (usrId, ver int64, sessionStart time.Time, err error) {
 	claims, err := s.parseClaims(tokenStr)
 	if err != nil {
-		return 0, 0, err
+		return 0, 0, time.Time{}, err
 	}
 
 	if tokenType(claims) != tokenTypeRefresh {
-		return 0, 0, fmt.Errorf("not a refresh token")
+		return 0, 0, time.Time{}, fmt.Errorf("not a refresh token")
 	}
 
 	fp, _ := claims["pwd"].(string)
 	if fp == "" || fp != passwordFingerprint(currentPasswordHash) {
-		return 0, 0, fmt.Errorf("refresh token revoked by password change")
+		return 0, 0, time.Time{}, fmt.Errorf("refresh token revoked by password change")
 	}
 
 	usrRaw, ok := claims["id"]
 	if !ok {
-		return 0, 0, fmt.Errorf("missing user id claim in token")
+		return 0, 0, time.Time{}, fmt.Errorf("missing user id claim in token")
 	}
 	usrId, err = usrIDFromClaim(usrRaw)
 	if err != nil {
-		return 0, 0, err
+		return 0, 0, time.Time{}, err
 	}
 
 	ver, err = versionFromClaims(claims)
 	if err != nil {
-		return 0, 0, err
+		return 0, 0, time.Time{}, err
 	}
 
-	return usrId, ver, nil
+	sessionStart, err = sessionStartFromClaims(claims)
+	if err != nil {
+		return 0, 0, time.Time{}, err
+	}
+	if time.Since(sessionStart) >= maxSessionAge {
+		return 0, 0, time.Time{}, fmt.Errorf("session max age exceeded")
+	}
+
+	return usrId, ver, sessionStart, nil
+}
+
+// sessionStartFromClaims — время входа по паролю (claim "ast"). Refresh-токены,
+// выданные до его появления, считаются начавшими сессию в момент своей выдачи
+// (claim "iat"): цепочка продлений таких токенов тоже ограничена maxSessionAge.
+func sessionStartFromClaims(claims jwtv5.MapClaims) (time.Time, error) {
+	for _, name := range []string{"ast", "iat"} {
+		raw, ok := claims[name]
+		if !ok {
+			continue
+		}
+		sec, err := usrIDFromClaim(raw)
+		if err != nil {
+			return time.Time{}, fmt.Errorf("invalid %s claim in token", name)
+		}
+		return time.Unix(sec, 0).UTC(), nil
+	}
+	return time.Time{}, fmt.Errorf("missing session start claim in token")
 }
 
 // versionFromClaims — claim "ver". Токены без него выданы до введения

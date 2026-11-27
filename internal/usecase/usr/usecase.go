@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"log/slog"
 	"strings"
+	"time"
 	"unicode"
 	"unicode/utf8"
 
@@ -92,13 +93,15 @@ func (u *Usecase) auditUsrMutation(ctx context.Context, id int64, mutate func(ct
 // issueTokenPair выдаёт access- и refresh-токен с текущим номером поколения
 // сессий пользователя (claim ver): после смены пароля или выхода номер в
 // записи растёт, и выданные раньше токены перестают приниматься.
-func (u *Usecase) issueTokenPair(item *model.Main) (string, string, error) {
+// sessionStart — время входа по паролю: продление его не сдвигает, поэтому
+// общий срок сессии ограничен (см. session service, maxSessionAge).
+func (u *Usecase) issueTokenPair(item *model.Main, sessionStart time.Time) (string, string, error) {
 	access, err := u.sessionSvc.CreateToken(item.Id, item.SessionVersion)
 	if err != nil {
 		return "", "", fmt.Errorf("sessionSvc.CreateToken: %w", err)
 	}
 
-	refresh, err := u.sessionSvc.CreateRefreshToken(item.Id, item.Password, item.SessionVersion)
+	refresh, err := u.sessionSvc.CreateRefreshToken(item.Id, item.Password, item.SessionVersion, sessionStart)
 	if err != nil {
 		return "", "", fmt.Errorf("sessionSvc.CreateRefreshToken: %w", err)
 	}
@@ -107,7 +110,7 @@ func (u *Usecase) issueTokenPair(item *model.Main) (string, string, error) {
 }
 
 func (u *Usecase) issueLoginResult(item *model.Main) (*LoginResult, error) {
-	access, refresh, err := u.issueTokenPair(item)
+	access, refresh, err := u.issueTokenPair(item, time.Now())
 	if err != nil {
 		return nil, err
 	}
@@ -336,7 +339,9 @@ func (u *Usecase) ConfirmPassword(ctx context.Context, currentPassword string) e
 // (refresh ротируется). Пользователь перечитывается из БД: выключенный
 // пользователь токенов не получает, а смена пароля и выход отзывают ранее
 // выданные refresh-токены (несовпадение отпечатка пароля или номера
-// поколения сессий).
+// поколения сессий). Время входа переносится в новый токен: через
+// maxSessionAge после входа по паролю продление отвергается, нужен вход
+// заново.
 func (u *Usecase) RefreshToken(ctx context.Context, refreshToken string) (string, string, error) {
 	refreshToken = strings.TrimSpace(refreshToken)
 	if refreshToken == "" {
@@ -356,12 +361,12 @@ func (u *Usecase) RefreshToken(ctx context.Context, refreshToken string) (string
 		return "", "", errs.NotAuthorized
 	}
 
-	_, ver, err := u.sessionSvc.ParseRefreshToken(refreshToken, item.Password)
+	_, ver, sessionStart, err := u.sessionSvc.ParseRefreshToken(refreshToken, item.Password)
 	if err != nil || ver != item.SessionVersion {
 		return "", "", errs.NotAuthorized
 	}
 
-	return u.issueTokenPair(item)
+	return u.issueTokenPair(item, sessionStart)
 }
 
 // BootstrapStatus сообщает, можно ли создать первого администратора (нет ни одного пользователя).
