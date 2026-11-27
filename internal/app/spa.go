@@ -18,6 +18,50 @@ var adminDistCandidates = []string{
 // чтобы новый деплой подхватывался быстро (бандл не имеет content-hash в имени).
 const adminCacheControl = "max-age=300"
 
+// adminCSP — что странице админки разрешено загружать и выполнять. Админка —
+// один бандл и один css с того же хоста, API — тот же хост (/api), поэтому
+// почти всё — только 'self'. Смысл политики: внедрённый в страницу чужой
+// скрипт не выполнится и не сможет отправить токен из localStorage на чужой
+// хост.
+//
+// Что ослаблено и почему:
+//   - style-src 'unsafe-inline' — Naive UI (css-render) и CodeMirror
+//     (style-mod) вставляют <style> на лету, плюс атрибуты style в шаблонах;
+//     без этого админка остаётся без оформления. На скрипты послабление не
+//     распространяется: script-src — только 'self', без 'unsafe-inline' и
+//     'unsafe-eval' (встроенных скриптов и eval в сборке нет).
+//   - img-src data: — QR-код 2FA рисуется локально в data:-адрес (секрет TOTP
+//     во внешний сервис не уходит), и Naive UI держит мелкие svg-картинки
+//     прямо в стилях (url('data:image/svg+xml,…')).
+//   - img-src blob:, font-src data:, worker-src blob: — текущая сборка их не
+//     использует (внешних шрифтов, CDN и воркеров нет); оставлены про запас
+//     для картинок из памяти страницы, вшитых в css шрифтов и воркеров
+//     редактора. Чтобы ими воспользоваться, чужому коду сначала нужно
+//     выполниться, а это запрещает script-src.
+//
+// connect-src 'self' рассчитан на штатную сборку, где API — тот же хост. Если
+// админку собрать с VITE_API_BASE_URL на другой хост и раздавать этим
+// бэкендом, запросы к API заблокирует браузер — тогда хост нужно добавить сюда.
+const adminCSP = "default-src 'self'; " +
+	"script-src 'self'; " +
+	"style-src 'self' 'unsafe-inline'; " +
+	"img-src 'self' data: blob:; " +
+	"font-src 'self' data:; " +
+	"connect-src 'self'; " +
+	"worker-src 'self' blob:; " +
+	"object-src 'none'; " +
+	"base-uri 'self'; " +
+	"form-action 'self'; " +
+	"frame-ancestors 'none'"
+
+// adminPermissionsPolicy — админке не нужны камера, микрофон и геолокация;
+// буфер обмена (копирование значений) не трогаем.
+const adminPermissionsPolicy = "camera=(), microphone=(), geolocation=()"
+
+// adminHSTS отдаётся только по https: год браузер ходит на этот хост только
+// по https. Поддомены не включаем — политика чужих поддоменов не наше дело.
+const adminHSTS = "max-age=31536000"
+
 func NewAdminSPAHandler() http.Handler {
 	distPath := resolveFirstExistingDir(adminDistCandidates...)
 	if distPath == "" {
@@ -31,6 +75,7 @@ func newAdminSPAHandler(distPath string) http.Handler {
 	indexPath := filepath.Join(distPath, "index.html")
 
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		setAdminSecurityHeaders(w, r)
 		w.Header().Set("Cache-Control", adminCacheControl)
 
 		requestPath := strings.TrimPrefix(filepath.Clean("/"+r.URL.Path), "/")
@@ -45,6 +90,40 @@ func newAdminSPAHandler(distPath string) http.Handler {
 
 		serveAdminFile(w, r, filePath)
 	})
+}
+
+// setAdminSecurityHeaders ставит защитные заголовки на любой ответ админки
+// (страница, статика, 304).
+func setAdminSecurityHeaders(w http.ResponseWriter, r *http.Request) {
+	header := w.Header()
+
+	header.Set("Content-Security-Policy", adminCSP)
+	// запрет показа во фрейме чужого сайта (clickjacking): для старых
+	// браузеров, новые смотрят frame-ancestors из CSP
+	header.Set("X-Frame-Options", "DENY")
+	// браузер не угадывает тип файла по содержимому
+	header.Set("X-Content-Type-Options", "nosniff")
+	// адрес страницы (в нём id приложений и секретов) не уходит другим сайтам
+	header.Set("Referrer-Policy", "no-referrer")
+	header.Set("Permissions-Policy", adminPermissionsPolicy)
+
+	if requestIsHTTPS(r) {
+		header.Set("Strict-Transport-Security", adminHSTS)
+	}
+}
+
+// requestIsHTTPS — запрос пришёл по https: напрямую либо через прокси,
+// завершающий TLS (он сообщает исходную схему в X-Forwarded-Proto). По http
+// заголовок HSTS не отдаём: браузер его там всё равно игнорирует.
+func requestIsHTTPS(r *http.Request) bool {
+	if r.TLS != nil {
+		return true
+	}
+
+	// цепочка прокси пишет схемы через запятую, первая — от клиента
+	proto, _, _ := strings.Cut(r.Header.Get("X-Forwarded-Proto"), ",")
+
+	return strings.EqualFold(strings.TrimSpace(proto), "https")
 }
 
 type precompressedEncoding struct {

@@ -52,6 +52,11 @@ func (u *Usecase) Tree(ctx context.Context) ([]*TreeApp, error) {
 
 	listReq := &appModel.ListReq{}
 	if !all {
+		// ни одного доступного приложения — пустое дерево: appSvc.List с
+		// пустым списком id вернул бы все приложения
+		if len(accessibleAppIds) == 0 {
+			return []*TreeApp{}, nil
+		}
 		listReq.Ids = accessibleAppIds
 	}
 

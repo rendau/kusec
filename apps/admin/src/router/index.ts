@@ -103,16 +103,19 @@ router.beforeEach(async (to) => {
   const authStore = useAuthStore()
 
   if (!authStore.initialized) {
-    try {
-      await authStore.initialize()
-    } catch {
-      authStore.logout()
-    }
+    // Never rejects and never drops a session that was merely unreachable
+    // (server down, no network) — see `initialize`.
+    await authStore.initialize()
   }
 
-  // Public pages (login): bounce authenticated users to the dashboard.
+  // Public pages (login): bounce authenticated users to where they were
+  // heading (`redirect`, e.g. after a reload restored the session), else home.
   if (to.meta.public) {
-    return authStore.isAuthenticated ? { name: 'home' } : true
+    if (!authStore.isAuthenticated) return true
+    const redirect = to.query.redirect
+    return typeof redirect === 'string' && redirect.startsWith('/')
+      ? redirect
+      : { name: 'home' }
   }
 
   // Protected pages: redirect to login, preserving the target.

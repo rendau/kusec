@@ -229,6 +229,7 @@ func usrChanges(old, cur *usrModel.Main) []auditModel.Change {
 	c.boolF("is_admin", o.IsAdmin, n.IsAdmin)
 	c.str("name", o.Name, n.Name)
 	c.str("username", o.Username, n.Username)
+	c.boolF("all_apps", o.AllApps, n.AllApps)
 	c.strSlice("app_ids", o.AppIds, n.AppIds)
 	c.boolF("totp_enabled", o.TotpEnabled, n.TotpEnabled)
 	c.masked("password", o.Password != n.Password)

@@ -64,6 +64,8 @@ const showForm = ref(false)
 const ownerNames = reactive<Record<string, string>>({})
 
 async function resolveOwners(items: ApiKeyMain[]): Promise<void> {
+  // `GET /usr/{id}` is admin-only; a non-admin sees only their own keys and
+  // no Owner column, so there is nothing to resolve.
   if (!authStore.isAdmin) return
   const unknown = [...new Set(items.map((r) => String(r.usr_id)))].filter(
     (id) => !(id in ownerNames),
@@ -89,6 +91,8 @@ const usrOptions = ref<SelectOption[]>([])
 const usrLoading = ref(false)
 
 async function searchUsers(query: string): Promise<void> {
+  // `GET /usr` is admin-only; the owner filter is not shown to anyone else.
+  if (!authStore.isAdmin) return
   usrLoading.value = true
   try {
     const rep = await listUsers({

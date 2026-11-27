@@ -383,6 +383,10 @@ func (u *Usecase) Sync(ctx context.Context, appId *string) (*kubeService.SyncRes
 
 // syncScope определяет область синхронизации: при заданном appId — один app
 // (с проверкой доступа), иначе — все доступные app (или nil, если доступны все).
+//
+// Пустой список kube-сервис понимает как «все приложения», поэтому сессии
+// без единого доступного приложения — отказ: иначе пользователь без прав
+// запустил бы sync всего кластера.
 func (u *Usecase) syncScope(ctx context.Context, appId *string) ([]string, error) {
 	session := u.sessionSvc.FromContext(ctx)
 	accessibleAppIds, all := session.AccessibleAppIds()
@@ -393,10 +397,13 @@ func (u *Usecase) syncScope(ctx context.Context, appId *string) ([]string, error
 		}
 		return []string{*appId}, nil
 	}
-	if !all {
-		return accessibleAppIds, nil
+	if all {
+		return nil, nil
 	}
-	return nil, nil
+	if len(accessibleAppIds) == 0 {
+		return nil, errs.NoPermission
+	}
+	return accessibleAppIds, nil
 }
 
 // requireClusterOwnership — значения живого объекта не-админ видит, только

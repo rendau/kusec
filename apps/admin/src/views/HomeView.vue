@@ -72,7 +72,9 @@ const stats = computed<StatCard[]>(() => {
     card('items', 'Items', Key, rep?.item),
     card('configmaps', 'Config maps', FileText, rep?.configmap),
     card('config-items', 'Config items', Adjustments, rep?.config_item),
-    card('users', 'Users', Users, rep?.usr),
+    // The number of users is admin-only: a non-admin gets zeros from the
+    // backend, and a "Users 0" tile would be a lie — no tile at all.
+    ...(authStore.isAdmin ? [card('users', 'Users', Users, rep?.usr)] : []),
   ]
 })
 

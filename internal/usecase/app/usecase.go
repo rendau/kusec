@@ -97,9 +97,22 @@ func (u *Usecase) Get(ctx context.Context, id string) (*model.Main, error) {
 	return result, nil
 }
 
-func (u *Usecase) Create(ctx context.Context, obj *model.Edit) (string, error) {
+// requireAdmin — действие администратора. Без входа (нет токена либо он
+// истёк) — not_authorized, а не no_permission: по этому коду клиент обновляет
+// токен и повторяет запрос.
+func (u *Usecase) requireAdmin(ctx context.Context) error {
+	if !u.sessionSvc.CtxIsAuthorized(ctx) {
+		return errs.NotAuthorized
+	}
 	if !u.sessionSvc.CtxIsAdmin(ctx) {
-		return "", errs.NoPermission
+		return errs.NoPermission
+	}
+	return nil
+}
+
+func (u *Usecase) Create(ctx context.Context, obj *model.Edit) (string, error) {
+	if err := u.requireAdmin(ctx); err != nil {
+		return "", err
 	}
 	if err := u.validateEdit(obj, true); err != nil {
 		return "", err
@@ -129,8 +142,8 @@ func (u *Usecase) Create(ctx context.Context, obj *model.Edit) (string, error) {
 }
 
 func (u *Usecase) Update(ctx context.Context, id string, obj *model.Edit) error {
-	if !u.sessionSvc.CtxIsAdmin(ctx) {
-		return errs.NoPermission
+	if err := u.requireAdmin(ctx); err != nil {
+		return err
 	}
 	if id == "" {
 		return errs.IdRequired
@@ -164,8 +177,8 @@ func (u *Usecase) Update(ctx context.Context, id string, obj *model.Edit) error 
 // каскад FK, поэтому записи аудита на каждого ребёнка пишутся здесь явно
 // (с общим batch_id) — до удаления, пока контекст объекта ещё резолвится.
 func (u *Usecase) Delete(ctx context.Context, id string) error {
-	if !u.sessionSvc.CtxIsAdmin(ctx) {
-		return errs.NoPermission
+	if err := u.requireAdmin(ctx); err != nil {
+		return err
 	}
 	if id == "" {
 		return errs.IdRequired

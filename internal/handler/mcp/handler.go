@@ -86,6 +86,10 @@ type Handler struct {
 	syncrunUsecase    *syncrunUsc.Usecase
 
 	guard *authGuard
+
+	// knownValueWrites — ограничитель записи в секрет значений, известных
+	// агенту (literal, template); общий на все сессии, счёт по principal
+	knownValueWrites *writeLimiter
 }
 
 func New(
@@ -114,6 +118,7 @@ func New(
 		auditUsecase:      auditUsecase,
 		syncrunUsecase:    syncrunUsecase,
 		guard:             newAuthGuard(),
+		knownValueWrites:  newWriteLimiter(knownValueWriteBurst, knownValueWriteRefill),
 	}
 }
 

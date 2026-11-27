@@ -171,13 +171,17 @@ function onUserMenuSelect(key: string | number): void {
 }
 
 function confirmLogout(): void {
-  dialog.warning({
+  const logoutDialog = dialog.warning({
     title: 'Log out',
-    content: 'Log out from the current session?',
+    content: 'You will be signed out on all your devices. Continue?',
     positiveText: 'Log out',
     negativeText: 'Cancel',
-    onPositiveClick: () => {
-      authStore.logout()
+    // The dialog stays open (spinner, buttons locked) while the server
+    // revokes the tokens. `logout` never rejects and always drops the local
+    // session, so the redirect follows whatever the server answered.
+    onPositiveClick: async () => {
+      logoutDialog.loading = true
+      await authStore.logout()
       void router.push({ name: 'login' })
     },
   })

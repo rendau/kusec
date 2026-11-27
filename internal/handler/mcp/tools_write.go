@@ -311,6 +311,10 @@ func (s *sessionServer) createItem(ctx context.Context, req *mcpsdk.CallToolRequ
 		return nil, CreateItemOut{}, err
 	}
 
+	if err = s.limitKnownValueWrite(in.ValueSource); err != nil {
+		return nil, CreateItemOut{}, s.toolErr(err)
+	}
+
 	value, err := s.resolveValueSource(ctx, in.ValueSource)
 	if err != nil {
 		return nil, CreateItemOut{}, s.toolErr(err)
@@ -379,6 +383,10 @@ func (s *sessionServer) updateItem(ctx context.Context, req *mcpsdk.CallToolRequ
 	}
 
 	if in.ValueSource != nil {
+		if err = s.limitKnownValueWrite(*in.ValueSource); err != nil {
+			return nil, StatusOut{}, s.toolErr(err)
+		}
+
 		value, verr := s.resolveValueSource(ctx, *in.ValueSource)
 		if verr != nil {
 			return nil, StatusOut{}, s.toolErr(verr)

@@ -16,7 +16,14 @@ type Main struct {
 	TotpEnabled bool
 	TotpSecret  string // секрет TOTP (base32); наружу не отдаётся
 
-	AppIds []string
+	// AllApps — не-админ видит все приложения. Иначе доступ только к AppIds,
+	// пустой список = не видит ничего. У админа доступ ко всему всегда.
+	AllApps bool
+	AppIds  []string
+
+	// SessionVersion — номер поколения сессий: зашит в токены (claim ver),
+	// токен с другим номером не принимается. Наружу не отдаётся.
+	SessionVersion int64
 }
 
 // Edit — мутация (все поля pointer-типы для partial update)
@@ -30,7 +37,12 @@ type Edit struct {
 	TotpEnabled *bool
 	TotpSecret  *string
 
-	AppIds []string
+	AllApps *bool
+	AppIds  []string
+
+	// SessionVersionInc — увеличить session_version на 1 (отозвать все
+	// выданные токены). Только для Update; само значение напрямую не задаётся.
+	SessionVersionInc bool
 }
 
 // ListReq — параметры выборки

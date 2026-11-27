@@ -16,12 +16,12 @@ import (
 func (s *sessionServer) registerMonitoringTools(srv *mcpsdk.Server) {
 	mcpsdk.AddTool(srv, &mcpsdk.Tool{
 		Name:        "audit_list",
-		Description: "Аудит изменений kusec: кто, когда и что менял (create/update/delete/activate/deactivate/import/sync). Значения секретов не раскрываются — только HMAC-отпечатки и размеры. Фильтры по app, объекту, действию, актору и окну времени (RFC3339); новые записи первыми.",
+		Description: "Аудит изменений kusec: кто, когда и что менял (create/update/delete/activate/deactivate/import/sync). Значения секретов не раскрываются — только HMAC-отпечатки (те же, что value_hash) и размеры; у значений конфигмапов длиннее лимита — только размер. Не-админу видны записи только доступных ему app. Фильтры по app, объекту, действию, актору и окну времени (RFC3339); новые записи первыми.",
 	}, s.auditList)
 
 	mcpsdk.AddTool(srv, &mcpsdk.Tool{
 		Name:        "sync_run_list",
-		Description: "Журнал запусков синхронизации kusec → Kubernetes: статус (running|ok|partial|error), актор, длительность. Укажи id — вернётся один запуск с затронутыми объектами (op, имена изменившихся ключей, отпечаток содержимого).",
+		Description: "Журнал запусков синхронизации kusec → Kubernetes: статус (running|ok|partial|error), актор, длительность. Укажи id — вернётся один запуск с затронутыми объектами (op и имена изменившихся ключей).",
 	}, s.syncRunList)
 }
 
@@ -67,8 +67,8 @@ type AuditChangeOut struct {
 	Field     string  `json:"field"`
 	Old       *string `json:"old,omitempty"`
 	New       *string `json:"new,omitempty"`
-	OldHash   string  `json:"old_hash,omitempty" jsonschema:"HMAC-отпечаток старого значения (для секретов)"`
-	NewHash   string  `json:"new_hash,omitempty"`
+	OldHash   string  `json:"old_hash,omitempty" jsonschema:"HMAC-отпечаток старого значения item-а секрета (тот же, что value_hash)"`
+	NewHash   string  `json:"new_hash,omitempty" jsonschema:"HMAC-отпечаток нового значения item-а секрета"`
 	OldSize   *int64  `json:"old_size,omitempty"`
 	NewSize   *int64  `json:"new_size,omitempty"`
 	Truncated bool    `json:"truncated,omitempty"`
@@ -99,20 +99,38 @@ type AuditListOut struct {
 	Results        []AuditOut    `json:"results"`
 }
 
-func auditChangeToOut(v auditModel.Change, _ int) AuditChangeOut {
-	return AuditChangeOut{
+// auditChangeToOut — withHash=false убирает отпечатки значения (остаются
+// размеры).
+func auditChangeToOut(v auditModel.Change, withHash bool) AuditChangeOut {
+	out := AuditChangeOut{
 		Field:     v.Field,
 		Old:       v.Old,
 		New:       v.New,
-		OldHash:   v.OldHash,
-		NewHash:   v.NewHash,
 		OldSize:   v.OldSize,
 		NewSize:   v.NewSize,
 		Truncated: v.Truncated,
 	}
+	if withHash {
+		out.OldHash = v.OldHash
+		out.NewHash = v.NewHash
+	}
+	return out
 }
 
+// auditToOut — запись аудита для агента. Отпечатки значений отдаются только
+// у item-ов секрета: там это тот же value_hash, что агент видит при чтении, а
+// запись известных ему значений в секрет ограничена по частоте
+// (literal_limit.go). Отпечатки остальных значений убираются: значение
+// конфигмапа длиннее лимита аудит хранит отпечатком, считается он так же, как
+// value_hash, а конфигмапы агент пишет без ограничений — сравнивая такие
+// отпечатки с отпечатками секретов, он проверял бы догадки о длинных
+// секретах сколько угодно раз.
 func auditToOut(v *auditModel.Main, _ int) AuditOut {
+	withHash := v.EntityType == auditModel.EntityItem
+	changes := lo.Map(v.Changes, func(change auditModel.Change, _ int) AuditChangeOut {
+		return auditChangeToOut(change, withHash)
+	})
+
 	return AuditOut{
 		Id:            v.Id,
 		CreatedAt:     timeOut(v.CreatedAt),
@@ -129,7 +147,7 @@ func auditToOut(v *auditModel.Main, _ int) AuditOut {
 		KubeName:      v.KubeName,
 		Key:           v.Key,
 		Action:        v.Action,
-		Changes:       lo.Map(v.Changes, auditChangeToOut),
+		Changes:       changes,
 		BatchId:       v.BatchId,
 	}
 }
@@ -187,13 +205,19 @@ type SyncRunListIn struct {
 	StartedAtLt  string `json:"started_at_lt,omitempty" jsonschema:"верхняя граница времени старта (RFC3339)"`
 }
 
+// SyncRunObjectOut — объект запуска sync для агента. Отпечатка содержимого
+// объекта (content_hash журнала sync) здесь нет намеренно: он считается
+// одинаково для Secret и ConfigMap, а конфигмапы агент пишет без ограничений —
+// конфигмап из одного ключа с догадкой и секрет из одного ключа дали бы
+// совпадение отпечатков, то есть проверку догадки в обход ограничителя записи
+// известных значений (literal_limit.go). Основной API отпечаток отдаёт
+// по-прежнему (контракт мониторинга).
 type SyncRunObjectOut struct {
 	Namespace   string   `json:"namespace"`
 	KubeKind    string   `json:"kube_kind"`
 	KubeName    string   `json:"kube_name"`
 	Op          string   `json:"op"`
 	Error       string   `json:"error,omitempty"`
-	ContentHash string   `json:"content_hash,omitempty"`
 	ChangedKeys []string `json:"changed_keys"`
 }
 
@@ -230,7 +254,6 @@ func (s *sessionServer) syncRunObjectToOut(v *syncrunModel.Object, _ int) SyncRu
 		KubeName:    v.KubeName,
 		Op:          v.Op,
 		Error:       s.safeText(v.Error),
-		ContentHash: v.ContentHash,
 		ChangedKeys: changedKeys,
 	}
 }

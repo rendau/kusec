@@ -55,6 +55,14 @@ service Usr {
     };
   }
 
+  // Logout — выход: гасит все выданные текущему пользователю токены
+  // (access и refresh, на всех устройствах).
+  rpc Logout(google.protobuf.Empty) returns (google.protobuf.Empty) {
+    option (google.api.http) = {
+      post: "/usr/logout"
+    };
+  }
+
   rpc BootstrapStatus(google.protobuf.Empty) returns (UsrBootstrapStatusRep) {
     option (google.api.http) = {
       get: "/usr/bootstrap/status"
@@ -112,8 +120,13 @@ message UsrMain {
   bool is_admin = 3;
   string name = 4;
   string username = 5;
+  // app_ids — приложения, доступные не-админу при all_apps=false.
+  // Пустой список = не доступно ни одно.
   repeated string app_ids = 6;
   bool totp_enabled = 7;
+  // all_apps — не-админ видит все приложения (app_ids не учитывается).
+  // У админа доступ ко всему всегда.
+  bool all_apps = 8;
 }
 
 // List
@@ -124,7 +137,7 @@ message UsrListReq {
   optional bool is_admin = 3;
   optional string search = 4;
   // app_id — только пользователи с доступом к этому приложению: админы,
-  // пользователи с ним в app_ids и пользователи с пустым app_ids (доступ ко всем).
+  // пользователи с all_apps=true и пользователи с ним в app_ids.
   optional string app_id = 5;
 }
 
@@ -148,6 +161,7 @@ message UsrCreateReq {
   string username = 4;
   string password = 5;
   repeated string app_ids = 6;
+  bool all_apps = 7;
 }
 
 // Create response
@@ -165,7 +179,11 @@ message UsrUpdateReq {
   optional string name = 4;
   optional string username = 5;
   optional string password = 6;
+  // app_ids заменяется целиком на каждый Update (пустой список = ни одного
+  // приложения).
   repeated string app_ids = 7;
+  // all_apps — не передан: флаг не меняется.
+  optional bool all_apps = 8;
 }
 
 // Auth
@@ -199,6 +217,9 @@ message UsrUpdateProfileReq {
   optional string name = 1;
   optional string password = 2;
   optional string username = 3;
+  // current_password — текущий пароль; обязателен, если меняется password
+  // или username. Неверный или пустой — ошибка current_password_invalid.
+  optional string current_password = 4;
 }
 
 // 2FA (TOTP)
@@ -206,6 +227,10 @@ message UsrUpdateProfileReq {
 message UsrEnrollTotpReq {
   reserved 1;
   reserved "setup_token";
+  // current_password — текущий пароль; обязателен. Неверный или пустой —
+  // ошибка current_password_invalid (попытки ограничены так же, как текущий
+  // пароль в профиле).
+  string current_password = 2;
 }
 
 message UsrEnrollTotpRep {

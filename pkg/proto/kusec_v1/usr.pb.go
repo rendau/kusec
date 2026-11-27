@@ -24,14 +24,19 @@ const (
 )
 
 type UsrMain struct {
-	state         protoimpl.MessageState `protogen:"open.v1"`
-	Id            int64                  `protobuf:"varint,1,opt,name=id,proto3" json:"id,omitempty"`
-	Active        bool                   `protobuf:"varint,2,opt,name=active,proto3" json:"active,omitempty"`
-	IsAdmin       bool                   `protobuf:"varint,3,opt,name=is_admin,json=isAdmin,proto3" json:"is_admin,omitempty"`
-	Name          string                 `protobuf:"bytes,4,opt,name=name,proto3" json:"name,omitempty"`
-	Username      string                 `protobuf:"bytes,5,opt,name=username,proto3" json:"username,omitempty"`
-	AppIds        []string               `protobuf:"bytes,6,rep,name=app_ids,json=appIds,proto3" json:"app_ids,omitempty"`
-	TotpEnabled   bool                   `protobuf:"varint,7,opt,name=totp_enabled,json=totpEnabled,proto3" json:"totp_enabled,omitempty"`
+	state    protoimpl.MessageState `protogen:"open.v1"`
+	Id       int64                  `protobuf:"varint,1,opt,name=id,proto3" json:"id,omitempty"`
+	Active   bool                   `protobuf:"varint,2,opt,name=active,proto3" json:"active,omitempty"`
+	IsAdmin  bool                   `protobuf:"varint,3,opt,name=is_admin,json=isAdmin,proto3" json:"is_admin,omitempty"`
+	Name     string                 `protobuf:"bytes,4,opt,name=name,proto3" json:"name,omitempty"`
+	Username string                 `protobuf:"bytes,5,opt,name=username,proto3" json:"username,omitempty"`
+	// app_ids — приложения, доступные не-админу при all_apps=false.
+	// Пустой список = не доступно ни одно.
+	AppIds      []string `protobuf:"bytes,6,rep,name=app_ids,json=appIds,proto3" json:"app_ids,omitempty"`
+	TotpEnabled bool     `protobuf:"varint,7,opt,name=totp_enabled,json=totpEnabled,proto3" json:"totp_enabled,omitempty"`
+	// all_apps — не-админ видит все приложения (app_ids не учитывается).
+	// У админа доступ ко всему всегда.
+	AllApps       bool `protobuf:"varint,8,opt,name=all_apps,json=allApps,proto3" json:"all_apps,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -115,6 +120,13 @@ func (x *UsrMain) GetTotpEnabled() bool {
 	return false
 }
 
+func (x *UsrMain) GetAllApps() bool {
+	if x != nil {
+		return x.AllApps
+	}
+	return false
+}
+
 type UsrListReq struct {
 	state      protoimpl.MessageState `protogen:"open.v1"`
 	ListParams *ListParamsSt          `protobuf:"bytes,1,opt,name=list_params,json=listParams,proto3" json:"list_params,omitempty"`
@@ -122,7 +134,7 @@ type UsrListReq struct {
 	IsAdmin    *bool                  `protobuf:"varint,3,opt,name=is_admin,json=isAdmin,proto3,oneof" json:"is_admin,omitempty"`
 	Search     *string                `protobuf:"bytes,4,opt,name=search,proto3,oneof" json:"search,omitempty"`
 	// app_id — только пользователи с доступом к этому приложению: админы,
-	// пользователи с ним в app_ids и пользователи с пустым app_ids (доступ ко всем).
+	// пользователи с all_apps=true и пользователи с ним в app_ids.
 	AppId         *string `protobuf:"bytes,5,opt,name=app_id,json=appId,proto3,oneof" json:"app_id,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
@@ -297,6 +309,7 @@ type UsrCreateReq struct {
 	Username      string                 `protobuf:"bytes,4,opt,name=username,proto3" json:"username,omitempty"`
 	Password      string                 `protobuf:"bytes,5,opt,name=password,proto3" json:"password,omitempty"`
 	AppIds        []string               `protobuf:"bytes,6,rep,name=app_ids,json=appIds,proto3" json:"app_ids,omitempty"`
+	AllApps       bool                   `protobuf:"varint,7,opt,name=all_apps,json=allApps,proto3" json:"all_apps,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -373,6 +386,13 @@ func (x *UsrCreateReq) GetAppIds() []string {
 	return nil
 }
 
+func (x *UsrCreateReq) GetAllApps() bool {
+	if x != nil {
+		return x.AllApps
+	}
+	return false
+}
+
 type UsrCreateRep struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
 	Id            int64                  `protobuf:"varint,1,opt,name=id,proto3" json:"id,omitempty"`
@@ -418,14 +438,18 @@ func (x *UsrCreateRep) GetId() int64 {
 }
 
 type UsrUpdateReq struct {
-	state         protoimpl.MessageState `protogen:"open.v1"`
-	Id            int64                  `protobuf:"varint,1,opt,name=id,proto3" json:"id,omitempty"`
-	Active        *bool                  `protobuf:"varint,2,opt,name=active,proto3,oneof" json:"active,omitempty"`
-	IsAdmin       *bool                  `protobuf:"varint,3,opt,name=is_admin,json=isAdmin,proto3,oneof" json:"is_admin,omitempty"`
-	Name          *string                `protobuf:"bytes,4,opt,name=name,proto3,oneof" json:"name,omitempty"`
-	Username      *string                `protobuf:"bytes,5,opt,name=username,proto3,oneof" json:"username,omitempty"`
-	Password      *string                `protobuf:"bytes,6,opt,name=password,proto3,oneof" json:"password,omitempty"`
-	AppIds        []string               `protobuf:"bytes,7,rep,name=app_ids,json=appIds,proto3" json:"app_ids,omitempty"`
+	state    protoimpl.MessageState `protogen:"open.v1"`
+	Id       int64                  `protobuf:"varint,1,opt,name=id,proto3" json:"id,omitempty"`
+	Active   *bool                  `protobuf:"varint,2,opt,name=active,proto3,oneof" json:"active,omitempty"`
+	IsAdmin  *bool                  `protobuf:"varint,3,opt,name=is_admin,json=isAdmin,proto3,oneof" json:"is_admin,omitempty"`
+	Name     *string                `protobuf:"bytes,4,opt,name=name,proto3,oneof" json:"name,omitempty"`
+	Username *string                `protobuf:"bytes,5,opt,name=username,proto3,oneof" json:"username,omitempty"`
+	Password *string                `protobuf:"bytes,6,opt,name=password,proto3,oneof" json:"password,omitempty"`
+	// app_ids заменяется целиком на каждый Update (пустой список = ни одного
+	// приложения).
+	AppIds []string `protobuf:"bytes,7,rep,name=app_ids,json=appIds,proto3" json:"app_ids,omitempty"`
+	// all_apps — не передан: флаг не меняется.
+	AllApps       *bool `protobuf:"varint,8,opt,name=all_apps,json=allApps,proto3,oneof" json:"all_apps,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -507,6 +531,13 @@ func (x *UsrUpdateReq) GetAppIds() []string {
 		return x.AppIds
 	}
 	return nil
+}
+
+func (x *UsrUpdateReq) GetAllApps() bool {
+	if x != nil && x.AllApps != nil {
+		return *x.AllApps
+	}
+	return false
 }
 
 type UsrLoginReq struct {
@@ -719,12 +750,15 @@ func (x *UsrBootstrapStatusRep) GetCanCreateFirstAdmin() bool {
 }
 
 type UsrUpdateProfileReq struct {
-	state         protoimpl.MessageState `protogen:"open.v1"`
-	Name          *string                `protobuf:"bytes,1,opt,name=name,proto3,oneof" json:"name,omitempty"`
-	Password      *string                `protobuf:"bytes,2,opt,name=password,proto3,oneof" json:"password,omitempty"`
-	Username      *string                `protobuf:"bytes,3,opt,name=username,proto3,oneof" json:"username,omitempty"`
-	unknownFields protoimpl.UnknownFields
-	sizeCache     protoimpl.SizeCache
+	state    protoimpl.MessageState `protogen:"open.v1"`
+	Name     *string                `protobuf:"bytes,1,opt,name=name,proto3,oneof" json:"name,omitempty"`
+	Password *string                `protobuf:"bytes,2,opt,name=password,proto3,oneof" json:"password,omitempty"`
+	Username *string                `protobuf:"bytes,3,opt,name=username,proto3,oneof" json:"username,omitempty"`
+	// current_password — текущий пароль; обязателен, если меняется password
+	// или username. Неверный или пустой — ошибка current_password_invalid.
+	CurrentPassword *string `protobuf:"bytes,4,opt,name=current_password,json=currentPassword,proto3,oneof" json:"current_password,omitempty"`
+	unknownFields   protoimpl.UnknownFields
+	sizeCache       protoimpl.SizeCache
 }
 
 func (x *UsrUpdateProfileReq) Reset() {
@@ -778,10 +812,21 @@ func (x *UsrUpdateProfileReq) GetUsername() string {
 	return ""
 }
 
+func (x *UsrUpdateProfileReq) GetCurrentPassword() string {
+	if x != nil && x.CurrentPassword != nil {
+		return *x.CurrentPassword
+	}
+	return ""
+}
+
 type UsrEnrollTotpReq struct {
-	state         protoimpl.MessageState `protogen:"open.v1"`
-	unknownFields protoimpl.UnknownFields
-	sizeCache     protoimpl.SizeCache
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// current_password — текущий пароль; обязателен. Неверный или пустой —
+	// ошибка current_password_invalid (попытки ограничены так же, как текущий
+	// пароль в профиле).
+	CurrentPassword string `protobuf:"bytes,2,opt,name=current_password,json=currentPassword,proto3" json:"current_password,omitempty"`
+	unknownFields   protoimpl.UnknownFields
+	sizeCache       protoimpl.SizeCache
 }
 
 func (x *UsrEnrollTotpReq) Reset() {
@@ -812,6 +857,13 @@ func (x *UsrEnrollTotpReq) ProtoReflect() protoreflect.Message {
 // Deprecated: Use UsrEnrollTotpReq.ProtoReflect.Descriptor instead.
 func (*UsrEnrollTotpReq) Descriptor() ([]byte, []int) {
 	return file_kusec_v1_usr_proto_rawDescGZIP(), []int{12}
+}
+
+func (x *UsrEnrollTotpReq) GetCurrentPassword() string {
+	if x != nil {
+		return x.CurrentPassword
+	}
+	return ""
 }
 
 type UsrEnrollTotpRep struct {
@@ -958,7 +1010,7 @@ var File_kusec_v1_usr_proto protoreflect.FileDescriptor
 
 const file_kusec_v1_usr_proto_rawDesc = "" +
 	"\n" +
-	"\x12kusec_v1/usr.proto\x12\bkusec_v1\x1a\x1cgoogle/api/annotations.proto\x1a\x1bgoogle/protobuf/empty.proto\x1a\x15kusec_v1/common.proto\"\xb8\x01\n" +
+	"\x12kusec_v1/usr.proto\x12\bkusec_v1\x1a\x1cgoogle/api/annotations.proto\x1a\x1bgoogle/protobuf/empty.proto\x1a\x15kusec_v1/common.proto\"\xd3\x01\n" +
 	"\aUsrMain\x12\x0e\n" +
 	"\x02id\x18\x01 \x01(\x03R\x02id\x12\x16\n" +
 	"\x06active\x18\x02 \x01(\bR\x06active\x12\x19\n" +
@@ -966,7 +1018,8 @@ const file_kusec_v1_usr_proto_rawDesc = "" +
 	"\x04name\x18\x04 \x01(\tR\x04name\x12\x1a\n" +
 	"\busername\x18\x05 \x01(\tR\busername\x12\x17\n" +
 	"\aapp_ids\x18\x06 \x03(\tR\x06appIds\x12!\n" +
-	"\ftotp_enabled\x18\a \x01(\bR\vtotpEnabled\"\xe9\x01\n" +
+	"\ftotp_enabled\x18\a \x01(\bR\vtotpEnabled\x12\x19\n" +
+	"\ball_apps\x18\b \x01(\bR\aallApps\"\xe9\x01\n" +
 	"\n" +
 	"UsrListReq\x127\n" +
 	"\vlist_params\x18\x01 \x01(\v2\x16.kusec_v1.ListParamsStR\n" +
@@ -984,17 +1037,18 @@ const file_kusec_v1_usr_proto_rawDesc = "" +
 	"\x0fpagination_info\x18\x01 \x01(\v2\x1a.kusec_v1.PaginationInfoStR\x0epaginationInfo\x12+\n" +
 	"\aresults\x18\x02 \x03(\v2\x11.kusec_v1.UsrMainR\aresults\"\x1b\n" +
 	"\tUsrGetReq\x12\x0e\n" +
-	"\x02id\x18\x01 \x01(\x03R\x02id\"\xb6\x01\n" +
+	"\x02id\x18\x01 \x01(\x03R\x02id\"\xd1\x01\n" +
 	"\fUsrCreateReq\x12\x1b\n" +
 	"\x06active\x18\x01 \x01(\bH\x00R\x06active\x88\x01\x01\x12\x19\n" +
 	"\bis_admin\x18\x02 \x01(\bR\aisAdmin\x12\x12\n" +
 	"\x04name\x18\x03 \x01(\tR\x04name\x12\x1a\n" +
 	"\busername\x18\x04 \x01(\tR\busername\x12\x1a\n" +
 	"\bpassword\x18\x05 \x01(\tR\bpassword\x12\x17\n" +
-	"\aapp_ids\x18\x06 \x03(\tR\x06appIdsB\t\n" +
+	"\aapp_ids\x18\x06 \x03(\tR\x06appIds\x12\x19\n" +
+	"\ball_apps\x18\a \x01(\bR\aallAppsB\t\n" +
 	"\a_active\"\x1e\n" +
 	"\fUsrCreateRep\x12\x0e\n" +
-	"\x02id\x18\x01 \x01(\x03R\x02id\"\x8a\x02\n" +
+	"\x02id\x18\x01 \x01(\x03R\x02id\"\xb7\x02\n" +
 	"\fUsrUpdateReq\x12\x0e\n" +
 	"\x02id\x18\x01 \x01(\x03R\x02id\x12\x1b\n" +
 	"\x06active\x18\x02 \x01(\bH\x00R\x06active\x88\x01\x01\x12\x1e\n" +
@@ -1002,12 +1056,14 @@ const file_kusec_v1_usr_proto_rawDesc = "" +
 	"\x04name\x18\x04 \x01(\tH\x02R\x04name\x88\x01\x01\x12\x1f\n" +
 	"\busername\x18\x05 \x01(\tH\x03R\busername\x88\x01\x01\x12\x1f\n" +
 	"\bpassword\x18\x06 \x01(\tH\x04R\bpassword\x88\x01\x01\x12\x17\n" +
-	"\aapp_ids\x18\a \x03(\tR\x06appIdsB\t\n" +
+	"\aapp_ids\x18\a \x03(\tR\x06appIds\x12\x1e\n" +
+	"\ball_apps\x18\b \x01(\bH\x05R\aallApps\x88\x01\x01B\t\n" +
 	"\a_activeB\v\n" +
 	"\t_is_adminB\a\n" +
 	"\x05_nameB\v\n" +
 	"\t_usernameB\v\n" +
-	"\t_password\"b\n" +
+	"\t_passwordB\v\n" +
+	"\t_all_apps\"b\n" +
 	"\vUsrLoginReq\x12\x1a\n" +
 	"\busername\x18\x01 \x01(\tR\busername\x12\x1a\n" +
 	"\bpassword\x18\x02 \x01(\tR\bpassword\x12\x1b\n" +
@@ -1019,15 +1075,18 @@ const file_kusec_v1_usr_proto_rawDesc = "" +
 	"\x12UsrRefreshTokenReq\x12#\n" +
 	"\rrefresh_token\x18\x01 \x01(\tR\frefreshToken\"L\n" +
 	"\x15UsrBootstrapStatusRep\x123\n" +
-	"\x16can_create_first_admin\x18\x01 \x01(\bR\x13canCreateFirstAdmin\"\x93\x01\n" +
+	"\x16can_create_first_admin\x18\x01 \x01(\bR\x13canCreateFirstAdmin\"\xd8\x01\n" +
 	"\x13UsrUpdateProfileReq\x12\x17\n" +
 	"\x04name\x18\x01 \x01(\tH\x00R\x04name\x88\x01\x01\x12\x1f\n" +
 	"\bpassword\x18\x02 \x01(\tH\x01R\bpassword\x88\x01\x01\x12\x1f\n" +
-	"\busername\x18\x03 \x01(\tH\x02R\busername\x88\x01\x01B\a\n" +
+	"\busername\x18\x03 \x01(\tH\x02R\busername\x88\x01\x01\x12.\n" +
+	"\x10current_password\x18\x04 \x01(\tH\x03R\x0fcurrentPassword\x88\x01\x01B\a\n" +
 	"\x05_nameB\v\n" +
 	"\t_passwordB\v\n" +
-	"\t_username\"%\n" +
-	"\x10UsrEnrollTotpReqJ\x04\b\x01\x10\x02R\vsetup_token\"K\n" +
+	"\t_usernameB\x13\n" +
+	"\x11_current_password\"P\n" +
+	"\x10UsrEnrollTotpReq\x12)\n" +
+	"\x10current_password\x18\x02 \x01(\tR\x0fcurrentPasswordJ\x04\b\x01\x10\x02R\vsetup_token\"K\n" +
 	"\x10UsrEnrollTotpRep\x12\x16\n" +
 	"\x06secret\x18\x01 \x01(\tR\x06secret\x12\x1f\n" +
 	"\votpauth_url\x18\x02 \x01(\tR\n" +
@@ -1035,7 +1094,8 @@ const file_kusec_v1_usr_proto_rawDesc = "" +
 	"\x11UsrConfirmTotpReq\x12\x12\n" +
 	"\x04code\x18\x02 \x01(\tR\x04codeJ\x04\b\x01\x10\x02R\vsetup_token\"'\n" +
 	"\x11UsrDisableTotpReq\x12\x12\n" +
-	"\x04code\x18\x01 \x01(\tR\x04code2\xb9\t\n" +
+	"\x04code\x18\x01 \x01(\tR\x04code2\x88\n" +
+	"\n" +
 	"\x03Usr\x12@\n" +
 	"\x04List\x12\x14.kusec_v1.UsrListReq\x1a\x14.kusec_v1.UsrListRep\"\f\x82\xd3\xe4\x93\x02\x06\x12\x04/usr\x12@\n" +
 	"\x03Get\x12\x13.kusec_v1.UsrGetReq\x1a\x11.kusec_v1.UsrMain\"\x11\x82\xd3\xe4\x93\x02\v\x12\t/usr/{id}\x12I\n" +
@@ -1044,7 +1104,8 @@ const file_kusec_v1_usr_proto_rawDesc = "" +
 	"\x06Delete\x12\x13.kusec_v1.UsrGetReq\x1a\x16.google.protobuf.Empty\"\x11\x82\xd3\xe4\x93\x02\v*\t/usr/{id}\x12L\n" +
 	"\x05Login\x12\x15.kusec_v1.UsrLoginReq\x1a\x15.kusec_v1.UsrLoginRep\"\x15\x82\xd3\xe4\x93\x02\x0f:\x01*\"\n" +
 	"/usr/login\x12b\n" +
-	"\fRefreshToken\x12\x1c.kusec_v1.UsrRefreshTokenReq\x1a\x15.kusec_v1.UsrLoginRep\"\x1d\x82\xd3\xe4\x93\x02\x17:\x01*\"\x12/usr/token/refresh\x12i\n" +
+	"\fRefreshToken\x12\x1c.kusec_v1.UsrRefreshTokenReq\x1a\x15.kusec_v1.UsrLoginRep\"\x1d\x82\xd3\xe4\x93\x02\x17:\x01*\"\x12/usr/token/refresh\x12M\n" +
+	"\x06Logout\x12\x16.google.protobuf.Empty\x1a\x16.google.protobuf.Empty\"\x13\x82\xd3\xe4\x93\x02\r\"\v/usr/logout\x12i\n" +
 	"\x0fBootstrapStatus\x12\x16.google.protobuf.Empty\x1a\x1f.kusec_v1.UsrBootstrapStatusRep\"\x1d\x82\xd3\xe4\x93\x02\x17\x12\x15/usr/bootstrap/status\x12M\n" +
 	"\n" +
 	"GetProfile\x12\x16.google.protobuf.Empty\x1a\x11.kusec_v1.UsrMain\"\x14\x82\xd3\xe4\x93\x02\x0e\x12\f/usr/profile\x12_\n" +
@@ -1100,29 +1161,31 @@ var file_kusec_v1_usr_proto_depIdxs = []int32{
 	3,  // 7: kusec_v1.Usr.Delete:input_type -> kusec_v1.UsrGetReq
 	7,  // 8: kusec_v1.Usr.Login:input_type -> kusec_v1.UsrLoginReq
 	9,  // 9: kusec_v1.Usr.RefreshToken:input_type -> kusec_v1.UsrRefreshTokenReq
-	18, // 10: kusec_v1.Usr.BootstrapStatus:input_type -> google.protobuf.Empty
-	18, // 11: kusec_v1.Usr.GetProfile:input_type -> google.protobuf.Empty
-	11, // 12: kusec_v1.Usr.UpdateProfile:input_type -> kusec_v1.UsrUpdateProfileReq
-	12, // 13: kusec_v1.Usr.EnrollTotp:input_type -> kusec_v1.UsrEnrollTotpReq
-	14, // 14: kusec_v1.Usr.ConfirmTotp:input_type -> kusec_v1.UsrConfirmTotpReq
-	15, // 15: kusec_v1.Usr.DisableTotp:input_type -> kusec_v1.UsrDisableTotpReq
-	3,  // 16: kusec_v1.Usr.ResetTotp:input_type -> kusec_v1.UsrGetReq
-	2,  // 17: kusec_v1.Usr.List:output_type -> kusec_v1.UsrListRep
-	0,  // 18: kusec_v1.Usr.Get:output_type -> kusec_v1.UsrMain
-	5,  // 19: kusec_v1.Usr.Create:output_type -> kusec_v1.UsrCreateRep
-	18, // 20: kusec_v1.Usr.Update:output_type -> google.protobuf.Empty
-	18, // 21: kusec_v1.Usr.Delete:output_type -> google.protobuf.Empty
-	8,  // 22: kusec_v1.Usr.Login:output_type -> kusec_v1.UsrLoginRep
-	8,  // 23: kusec_v1.Usr.RefreshToken:output_type -> kusec_v1.UsrLoginRep
-	10, // 24: kusec_v1.Usr.BootstrapStatus:output_type -> kusec_v1.UsrBootstrapStatusRep
-	0,  // 25: kusec_v1.Usr.GetProfile:output_type -> kusec_v1.UsrMain
-	18, // 26: kusec_v1.Usr.UpdateProfile:output_type -> google.protobuf.Empty
-	13, // 27: kusec_v1.Usr.EnrollTotp:output_type -> kusec_v1.UsrEnrollTotpRep
-	8,  // 28: kusec_v1.Usr.ConfirmTotp:output_type -> kusec_v1.UsrLoginRep
-	18, // 29: kusec_v1.Usr.DisableTotp:output_type -> google.protobuf.Empty
-	18, // 30: kusec_v1.Usr.ResetTotp:output_type -> google.protobuf.Empty
-	17, // [17:31] is the sub-list for method output_type
-	3,  // [3:17] is the sub-list for method input_type
+	18, // 10: kusec_v1.Usr.Logout:input_type -> google.protobuf.Empty
+	18, // 11: kusec_v1.Usr.BootstrapStatus:input_type -> google.protobuf.Empty
+	18, // 12: kusec_v1.Usr.GetProfile:input_type -> google.protobuf.Empty
+	11, // 13: kusec_v1.Usr.UpdateProfile:input_type -> kusec_v1.UsrUpdateProfileReq
+	12, // 14: kusec_v1.Usr.EnrollTotp:input_type -> kusec_v1.UsrEnrollTotpReq
+	14, // 15: kusec_v1.Usr.ConfirmTotp:input_type -> kusec_v1.UsrConfirmTotpReq
+	15, // 16: kusec_v1.Usr.DisableTotp:input_type -> kusec_v1.UsrDisableTotpReq
+	3,  // 17: kusec_v1.Usr.ResetTotp:input_type -> kusec_v1.UsrGetReq
+	2,  // 18: kusec_v1.Usr.List:output_type -> kusec_v1.UsrListRep
+	0,  // 19: kusec_v1.Usr.Get:output_type -> kusec_v1.UsrMain
+	5,  // 20: kusec_v1.Usr.Create:output_type -> kusec_v1.UsrCreateRep
+	18, // 21: kusec_v1.Usr.Update:output_type -> google.protobuf.Empty
+	18, // 22: kusec_v1.Usr.Delete:output_type -> google.protobuf.Empty
+	8,  // 23: kusec_v1.Usr.Login:output_type -> kusec_v1.UsrLoginRep
+	8,  // 24: kusec_v1.Usr.RefreshToken:output_type -> kusec_v1.UsrLoginRep
+	18, // 25: kusec_v1.Usr.Logout:output_type -> google.protobuf.Empty
+	10, // 26: kusec_v1.Usr.BootstrapStatus:output_type -> kusec_v1.UsrBootstrapStatusRep
+	0,  // 27: kusec_v1.Usr.GetProfile:output_type -> kusec_v1.UsrMain
+	18, // 28: kusec_v1.Usr.UpdateProfile:output_type -> google.protobuf.Empty
+	13, // 29: kusec_v1.Usr.EnrollTotp:output_type -> kusec_v1.UsrEnrollTotpRep
+	8,  // 30: kusec_v1.Usr.ConfirmTotp:output_type -> kusec_v1.UsrLoginRep
+	18, // 31: kusec_v1.Usr.DisableTotp:output_type -> google.protobuf.Empty
+	18, // 32: kusec_v1.Usr.ResetTotp:output_type -> google.protobuf.Empty
+	18, // [18:33] is the sub-list for method output_type
+	3,  // [3:18] is the sub-list for method input_type
 	3,  // [3:3] is the sub-list for extension type_name
 	3,  // [3:3] is the sub-list for extension extendee
 	0,  // [0:3] is the sub-list for field type_name

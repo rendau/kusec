@@ -17,6 +17,8 @@ import { apiErrorMessage } from '@/api/http'
 import { listUsers } from '@/api/usr'
 import type { UsrMain } from '@/api/types'
 import { useBreakpoint } from '@/composables/useBreakpoint'
+import { useAuthStore } from '@/stores/auth'
+import { usrAccessKind, usrAccessLabel } from '@/utils/usrAccess'
 
 import UsrDetailDrawer from '@/components/usr/UsrDetailDrawer.vue'
 
@@ -25,6 +27,7 @@ const props = defineProps<{
 }>()
 
 const message = useMessage()
+const authStore = useAuthStore()
 const { isMobile } = useBreakpoint()
 
 const rows = ref<UsrMain[]>([])
@@ -42,6 +45,9 @@ const detailId = ref<number | string | null>(null)
 const showDetail = ref(false)
 
 async function fetchUsers(): Promise<void> {
+  // `GET /usr` is admin-only; the tab is shown to admins, and the request is
+  // not sent for anyone else.
+  if (!authStore.isAdmin) return
   loading.value = true
   try {
     const rep = await listUsers({
@@ -87,13 +93,18 @@ function nameButton(row: UsrMain) {
   )
 }
 
-// Empty app_ids means no restriction: the user reaches every application.
+// How the user got here: `all_apps` (no restriction — highlighted) or this
+// application is on their list. The backend lists only users with access, so
+// "no access" cannot normally appear; it is still shown as such, never as "all".
 function scopeTag(row: UsrMain) {
-  const count = row.app_ids?.length ?? 0
+  const kind = usrAccessKind(row)
   return h(
     NTag,
-    { size: 'small', type: count === 0 ? 'warning' : 'default' },
-    { default: () => (count === 0 ? 'All apps' : `${count} app${count === 1 ? '' : 's'}`) },
+    {
+      size: 'small',
+      type: kind === 'all' ? 'warning' : kind === 'none' ? 'error' : 'default',
+    },
+    { default: () => usrAccessLabel(row) },
   )
 }
 
@@ -121,7 +132,8 @@ onMounted(() => {
   <NSpace vertical :size="12">
     <NText depth="3" style="font-size: 12px">
       Non-admin users who can open this application. Administrators are not listed: they
-      always have access. “All apps” means the user has no application restriction.
+      always have access. “All apps” means the user is allowed to open every
+      application, including ones created later.
     </NText>
 
     <!-- Mobile: card stack instead of a dense table. -->

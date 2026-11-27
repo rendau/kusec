@@ -3,10 +3,17 @@
  * authentication flow (see api/proto/kusec_v1/usr.proto).
  */
 
-/** Error body returned by the gRPC-gateway (`common.ErrorRep`). */
+/**
+ * Error body returned by the gRPC-gateway (`common.ErrorRep`).
+ *
+ * `message` is not user text: it repeats `code` for known errors and is an
+ * impersonal `internal error (request id: …)` for unexpected ones; only errors
+ * raised with a description carry it there. Build texts with `apiErrorMessage`.
+ */
 export interface ErrorRep {
   code: string
   message: string
+  /** Extra data of the error, e.g. `retry_after` (seconds) of `too_many_attempts`. */
   fields?: Record<string, string>
 }
 
@@ -18,8 +25,13 @@ export interface UsrMain {
   name: string
   username: string
   /**
-   * App ids the user may access. An empty list means *all* applications
-   * (the backend treats no scope as full access); admins always have all.
+   * Non-admin sees every application. When false, access is limited to
+   * `app_ids`. Admins see everything regardless of both fields.
+   */
+  all_apps: boolean
+  /**
+   * App ids the user may access when `all_apps` is false. An empty list means
+   * access to *nothing* — it is not a shortcut for "all" (see `usrAccess`).
    */
   app_ids?: string[]
   /** Whether the user has 2FA (TOTP) enabled. */
@@ -38,6 +50,11 @@ export interface UsrLoginRep {
   jwt: string
   refresh_token: string
   totp_required?: boolean
+}
+
+/** `UsrEnrollTotpReq` — starting 2FA setup is confirmed with the password. */
+export interface UsrEnrollTotpReq {
+  current_password: string
 }
 
 /** `UsrEnrollTotpRep` — secret + otpauth URL to bind in an authenticator app. */
@@ -63,7 +80,9 @@ export interface UsrCreateReq {
   name: string
   username: string
   password: string
-  /** App access scope; empty/omitted grants access to all applications. */
+  /** Access to every application (non-admins; admins have it anyway). */
+  all_apps?: boolean
+  /** App access scope when `all_apps` is false; empty = no access at all. */
   app_ids?: string[]
 }
 
@@ -77,6 +96,11 @@ export interface UsrUpdateProfileReq {
   name?: string
   username?: string
   password?: string
+  /**
+   * Required when `password` or `username` changes; a wrong or empty value is
+   * rejected with `current_password_invalid`.
+   */
+  current_password?: string
 }
 
 /**
@@ -88,7 +112,7 @@ export interface UsrListReq {
   active?: boolean
   is_admin?: boolean
   search?: string
-  /** Only users with access to this app (admins and empty `app_ids` included). */
+  /** Only users with access to this app (admins and `all_apps` users included). */
   app_id?: string
 }
 
@@ -105,7 +129,9 @@ export interface UsrUpdateReq {
   name?: string
   username?: string
   password?: string
-  /** App access scope; empty list grants access to all applications. */
+  /** Access to every application (non-admins; admins have it anyway). */
+  all_apps?: boolean
+  /** App access scope when `all_apps` is false; empty list = no access at all. */
   app_ids?: string[]
 }
 
@@ -297,6 +323,7 @@ export interface DashboardRep {
   app: DashboardCount
   secret: DashboardCount
   item: DashboardCount
+  /** Zeros for a non-admin: the number of users is admin-only. */
   usr: DashboardCount
   recent_secrets: DashboardRecentSecret[]
   /** Config-map counter (sibling of `secret`). */

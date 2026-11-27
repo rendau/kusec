@@ -60,6 +60,10 @@ Reloader перезапускает поды после изменения об�
 `actor_usr_id`, `key`, `batch_id`, `created_at_gte`, `created_at_lt`.
 Сортировка по умолчанию — новые первыми (`-created_at`).
 
+Записи без приложения (`usr`, `api_key`, подключения OAuth, общий sync)
+отдаются только ключу или сессии администратора; остальным — только записи
+приложений, к которым есть доступ.
+
 Пример: что менялось у сервиса за последние 6 часов:
 
 ```
@@ -98,7 +102,9 @@ GET /api/audit?app_id=<id>&created_at_gte=2026-09-17T04:00:00Z&list_params.page_
   create/delete);
 - значение item (secret) — только `old_hash/new_hash/old_size/new_size`;
 - значение config_item — целиком, но длиннее 4 КБ — отпечаток и
-  `truncated: true`;
+  `truncated: true`; ключу `read_only` значения config_item не отдаются и
+  здесь: вместо `old`/`new` — `old_hash/new_hash/old_size/new_size`, как у
+  значений секретов;
 - пароль/TOTP пользователя — маркер `***` (только факт смены);
 - `batch_id` группирует каскадное удаление, импорт и sync (для sync
   `batch_id` = id запуска).

@@ -57,9 +57,22 @@ func (u *Usecase) Get(ctx context.Context) (*Summary, error) {
 		return nil, errs.NotAuthorized
 	}
 
-	appScope, all := u.sessionSvc.FromContext(ctx).AccessibleAppIds()
+	session := u.sessionSvc.FromContext(ctx)
+	appScope, all := session.AccessibleAppIds()
 
 	var err error
+
+	// ни одного доступного приложения — по приложениям показывать нечего.
+	// Дальше идти нельзя: сервисы пустой список фильтром не считают и
+	// посчитали бы (и показали бы в «последних секретах») всё подряд
+	if !all && len(appScope) == 0 {
+		summary := &Summary{RecentSecrets: []*RecentSecret{}}
+		if summary.Usr, err = u.usrCount(ctx, session.IsAdmin()); err != nil {
+			return nil, err
+		}
+		return summary, nil
+	}
+
 	var secretScope, configMapScope []string
 	if !all {
 		secretScope, err = u.accessibleSecretIds(ctx, appScope)
@@ -89,7 +102,7 @@ func (u *Usecase) Get(ctx context.Context) (*Summary, error) {
 	if summary.ConfigItem, err = u.configItemCount(ctx, !all, configMapScope); err != nil {
 		return nil, err
 	}
-	if summary.Usr, err = u.usrCount(ctx); err != nil {
+	if summary.Usr, err = u.usrCount(ctx, session.IsAdmin()); err != nil {
 		return nil, err
 	}
 	if summary.RecentSecrets, err = u.recentSecrets(ctx, appScope); err != nil {
@@ -207,7 +220,14 @@ func (u *Usecase) configItemCount(ctx context.Context, scoped bool, configMapSco
 	return Count{Total: total, Active: active}, nil
 }
 
-func (u *Usecase) usrCount(ctx context.Context) (Count, error) {
+// usrCount — число пользователей; только админу. Остальным — нули: список
+// пользователей им закрыт (Usr.List), и размер команды через дашборд тоже
+// не раскрывается.
+func (u *Usecase) usrCount(ctx context.Context, admin bool) (Count, error) {
+	if !admin {
+		return Count{}, nil
+	}
+
 	_, total, err := u.usrSvc.List(ctx, &usrModel.ListReq{ListParams: countParams()})
 	if err != nil {
 		return Count{}, fmt.Errorf("usrSvc.List: %w", err)

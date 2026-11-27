@@ -20,7 +20,10 @@ RUN go mod download
 COPY . ./
 RUN CGO_ENABLED=0 go build -o /out/svc ./cmd/main.go
 
-FROM alpine:latest
+# Версия закреплена: с latest пересборка могла молча принести другой выпуск
+# alpine. Пользователь контейнера — root намеренно: порт по умолчанию 80, а
+# смена пользователя требует согласованной правки чарта.
+FROM alpine:3.22
 
 RUN apk add --no-cache --upgrade ca-certificates tzdata curl
 

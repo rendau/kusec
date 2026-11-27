@@ -113,6 +113,11 @@ func (u *Usecase) List(ctx context.Context, pars *model.ListReq) ([]*model.Main,
 				return nil, 0, errs.NoPermission
 			}
 		} else {
+			// пустой список — ни одного доступного приложения; репозиторий
+			// пустой срез фильтром не считает и вернул бы все configmap-ы
+			if len(appIds) == 0 {
+				return []*model.Main{}, 0, nil
+			}
 			pars.AppIds = appIds
 		}
 	}

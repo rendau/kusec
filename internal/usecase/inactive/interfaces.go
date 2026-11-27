@@ -44,6 +44,7 @@ type CascadeServiceI interface {
 }
 
 type SessionServiceI interface {
+	CtxIsAuthorized(ctx context.Context) bool
 	CtxIsAdmin(ctx context.Context) bool
 }
 

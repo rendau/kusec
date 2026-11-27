@@ -1,6 +1,7 @@
 package app
 
 import (
+	"crypto/tls"
 	"net/http"
 	"net/http/httptest"
 	"os"
@@ -113,6 +114,124 @@ func TestAdminSPAHandler_Precompressed(t *testing.T) {
 
 			assert.Equal(t, http.StatusNotModified, rec.Code)
 			assert.Empty(t, rec.Body.String())
+		})
+	}
+}
+
+// Защитные заголовки стоят на любом ответе админки: страница, маршрут SPA,
+// статика, сжатая копия, 304.
+func TestAdminSPAHandler_SecurityHeaders(t *testing.T) {
+	dist := t.TempDir()
+	require.NoError(t, os.MkdirAll(filepath.Join(dist, "assets"), 0o755))
+	files := map[string]string{
+		"index.html":             "<html>index</html>",
+		"assets/index-abc.js":    "console.log(1)",
+		"assets/index-abc.js.br": "js-br",
+		"favicon.svg":            "<svg/>",
+	}
+	for name, body := range files {
+		require.NoError(t, os.WriteFile(filepath.Join(dist, name), []byte(body), 0o644))
+	}
+
+	handler := newAdminSPAHandler(dist)
+
+	assertHeaders := func(t *testing.T, header http.Header) {
+		t.Helper()
+		assert.Equal(t, adminCSP, header.Get("Content-Security-Policy"))
+		assert.Equal(t, "DENY", header.Get("X-Frame-Options"))
+		assert.Equal(t, "nosniff", header.Get("X-Content-Type-Options"))
+		assert.Equal(t, "no-referrer", header.Get("Referrer-Policy"))
+		assert.Equal(t, "camera=(), microphone=(), geolocation=()", header.Get("Permissions-Policy"))
+	}
+
+	for _, path := range []string{"/", "/app/123", "/oauth/authorize", "/assets/index-abc.js", "/favicon.svg", "/missing.js"} {
+		t.Run(path, func(t *testing.T) {
+			req := httptest.NewRequest(http.MethodGet, path, nil)
+			req.Header.Set("Accept-Encoding", "br")
+			rec := httptest.NewRecorder()
+			handler.ServeHTTP(rec, req)
+
+			require.Equal(t, http.StatusOK, rec.Code)
+			assertHeaders(t, rec.Header())
+			// по http заголовок HSTS не отдаётся
+			assert.Empty(t, rec.Header().Get("Strict-Transport-Security"))
+
+			// 304 — с теми же заголовками
+			req = httptest.NewRequest(http.MethodGet, path, nil)
+			req.Header.Set("If-Modified-Since", rec.Header().Get("Last-Modified"))
+			rec = httptest.NewRecorder()
+			handler.ServeHTTP(rec, req)
+
+			require.Equal(t, http.StatusNotModified, rec.Code)
+			assertHeaders(t, rec.Header())
+		})
+	}
+}
+
+// Политика админки: скрипты — только свои файлы, без встроенных и без eval;
+// страницу нельзя показать во фрейме; запросы — только на свой хост.
+func TestAdminCSP(t *testing.T) {
+	directives := map[string]string{}
+	for part := range strings.SplitSeq(adminCSP, ";") {
+		name, value, _ := strings.Cut(strings.TrimSpace(part), " ")
+		directives[name] = value
+	}
+
+	assert.Equal(t, "'self'", directives["default-src"])
+	assert.Equal(t, "'self'", directives["script-src"])
+	assert.Equal(t, "'self'", directives["connect-src"])
+	assert.Equal(t, "'none'", directives["object-src"])
+	assert.Equal(t, "'self'", directives["base-uri"])
+	assert.Equal(t, "'self'", directives["form-action"])
+	assert.Equal(t, "'none'", directives["frame-ancestors"])
+
+	// послабление 'unsafe-inline' — только для стилей
+	assert.Equal(t, "'self' 'unsafe-inline'", directives["style-src"])
+	for name, value := range directives {
+		if name != "style-src" {
+			assert.NotContains(t, value, "unsafe-inline", name)
+		}
+		assert.NotContains(t, value, "unsafe-eval", name)
+		assert.NotContains(t, value, "*", name)
+		assert.NotContains(t, value, "http", name)
+	}
+}
+
+func TestAdminSPAHandler_HSTS(t *testing.T) {
+	dist := t.TempDir()
+	require.NoError(t, os.WriteFile(filepath.Join(dist, "index.html"), []byte("<html>index</html>"), 0o644))
+
+	handler := newAdminSPAHandler(dist)
+
+	tests := []struct {
+		name           string
+		forwardedProto string
+		tls            bool
+		want           string
+	}{
+		{name: "http", want: ""},
+		{name: "за прокси по http", forwardedProto: "http", want: ""},
+		{name: "за прокси по https", forwardedProto: "https", want: adminHSTS},
+		{name: "регистр", forwardedProto: "HTTPS", want: adminHSTS},
+		{name: "цепочка прокси", forwardedProto: "https, http", want: adminHSTS},
+		{name: "цепочка прокси, клиент по http", forwardedProto: "http, https", want: ""},
+		{name: "tls напрямую", tls: true, want: adminHSTS},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			req := httptest.NewRequest(http.MethodGet, "/", nil)
+			if tt.forwardedProto != "" {
+				req.Header.Set("X-Forwarded-Proto", tt.forwardedProto)
+			}
+			if tt.tls {
+				req.TLS = &tls.ConnectionState{}
+			}
+			rec := httptest.NewRecorder()
+			handler.ServeHTTP(rec, req)
+
+			require.Equal(t, http.StatusOK, rec.Code)
+			assert.Equal(t, tt.want, rec.Header().Get("Strict-Transport-Security"))
 		})
 	}
 }

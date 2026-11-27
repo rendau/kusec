@@ -14,4 +14,5 @@ type RepoDbI interface {
 	Create(ctx context.Context, obj *model.Edit) (int64, error)
 	Update(ctx context.Context, id int64, obj *model.Edit) error
 	Delete(ctx context.Context, id int64) error
+	ApplyValueEncryption(ctx context.Context) (int64, error)
 }

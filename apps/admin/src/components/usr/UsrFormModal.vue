@@ -1,6 +1,8 @@
 <script setup lang="ts">
 import { computed, onMounted, reactive, ref } from 'vue'
+import { RouterLink } from 'vue-router'
 import {
+  NAlert,
   NButton,
   NForm,
   NFormItem,
@@ -22,6 +24,7 @@ import type { UsrMain, UsrUpdateReq } from '@/api/types'
 import { useAppOptions } from '@/composables/useAppOptions'
 import { useClipboard } from '@/composables/useClipboard'
 import { useEntityForm } from '@/composables/useEntityForm'
+import { useAuthStore } from '@/stores/auth'
 import { generatePassword, passwordComplexityError } from '@/utils/password'
 
 const props = defineProps<{
@@ -35,12 +38,22 @@ const emit = defineEmits<{
   saved: []
 }>()
 
-const {
-  options: appOptions,
-  loading: appsLoading,
-  search,
-  ensure,
-} = useAppOptions()
+const { options: appOptions, loading: appsLoading, search, ensure } = useAppOptions()
+
+const authStore = useAuthStore()
+
+/**
+ * The admin is editing their own account. Their username and password cannot
+ * be changed from here — the backend refuses it (`no_permission`): those go
+ * through My profile, where the current password is asked. Both fields are
+ * locked and left out of the request; the rest is edited as for anyone.
+ */
+const isSelf = computed(
+  () =>
+    props.user !== null &&
+    authStore.profile !== null &&
+    String(props.user.id) === String(authStore.profile.id),
+)
 
 interface FormModel {
   name: string
@@ -48,7 +61,9 @@ interface FormModel {
   password: string
   is_admin: boolean
   active: boolean
-  /** Apps this user may access; empty = all applications (backend default). */
+  /** Non-admin sees every application; when off, access is `app_ids` only. */
+  all_apps: boolean
+  /** Apps the user may access while `all_apps` is off; empty = no access. */
   app_ids: string[]
 }
 
@@ -58,8 +73,28 @@ const model = reactive<FormModel>({
   password: '',
   is_admin: false,
   active: true,
+  all_apps: false,
   app_ids: [],
 })
+
+// The access choice applies to non-admins only: admins see everything.
+const showAccess = computed(() => !model.is_admin)
+// "All applications" is off and nothing is picked — the user will see nothing.
+// Allowed (an account can be prepared before its apps exist) but called out.
+const noAccess = computed(
+  () => showAccess.value && !model.all_apps && model.app_ids.length === 0,
+)
+
+/**
+ * Access part of the request. With "all applications" on, the picked list is
+ * not sent: one stored source of truth, no stale list resurfacing later.
+ */
+function accessPayload(): { all_apps: boolean; app_ids: string[] } {
+  return {
+    all_apps: model.all_apps,
+    app_ids: model.all_apps ? [] : model.app_ids,
+  }
+}
 
 const message = useMessage()
 const { write } = useClipboard()
@@ -79,6 +114,8 @@ const { formRef, submitting, isEdit, submit } = useEntityForm<UsrMain>({
     passwordRevealed.value = false
     model.is_admin = user?.is_admin ?? false
     model.active = user?.active ?? true
+    // A new user starts with no access: the admin grants it explicitly.
+    model.all_apps = user?.all_apps ?? false
     model.app_ids = [...(user?.app_ids ?? [])]
     // Resolve labels for any already-assigned apps not yet in the options list.
     await Promise.all(model.app_ids.map((id) => ensure(id)))
@@ -90,18 +127,21 @@ const { formRef, submitting, isEdit, submit } = useEntityForm<UsrMain>({
       password: model.password,
       is_admin: model.is_admin,
       active: model.active,
-      app_ids: model.app_ids,
+      ...accessPayload(),
     }),
   update: (user) => {
     const update: UsrUpdateReq = {
       name: model.name,
-      username: model.username,
       is_admin: model.is_admin,
       active: model.active,
-      app_ids: model.app_ids,
+      ...accessPayload(),
     }
-    // Only send the password when the admin actually typed a new one.
-    if (model.password) update.password = model.password
+    // Own username and password are not sent at all (see `isSelf`).
+    if (!isSelf.value) {
+      update.username = model.username
+      // Only send the password when the admin actually typed a new one.
+      if (model.password) update.password = model.password
+    }
     return updateUser(user.id, update)
   },
   messages: { created: 'User created', updated: 'User updated' },
@@ -125,7 +165,13 @@ const rules = computed<FormRules>(() => ({
   password: [
     ...(isEdit.value
       ? []
-      : [{ required: true, message: 'Password is required', trigger: ['blur', 'input'] }]),
+      : [
+          {
+            required: true,
+            message: 'Password is required',
+            trigger: ['blur', 'input'],
+          },
+        ]),
     {
       trigger: ['blur', 'input'],
       validator: (_rule: FormItemRule, value: string) => {
@@ -216,14 +262,33 @@ function close(): void {
         <NInput v-model:value="model.name" placeholder="Full name" clearable />
       </NFormItem>
       <NFormItem label="Username" path="username">
-        <NInput
-          v-model:value="model.username"
-          placeholder="Login username"
-          clearable
-          :input-props="{ autocomplete: 'off' }"
-        />
+        <NSpace vertical :size="4" style="width: 100%">
+          <NInput
+            v-model:value="model.username"
+            placeholder="Login username"
+            :disabled="isSelf"
+            :clearable="!isSelf"
+            :input-props="{ autocomplete: 'off' }"
+          />
+          <NText v-if="isSelf" depth="3" style="font-size: 12px">
+            Your own username is changed in
+            <RouterLink class="inline-link" :to="{ name: 'profile' }" @click="close"
+              >My profile</RouterLink
+            >.
+          </NText>
+        </NSpace>
+      </NFormItem>
+      <!-- Own password: not editable here, so no input at all — just where to go. -->
+      <NFormItem v-if="isSelf" label="Password">
+        <NText depth="3" style="font-size: 12px">
+          Your own password is changed in
+          <RouterLink class="inline-link" :to="{ name: 'profile' }" @click="close"
+            >My profile</RouterLink
+          >.
+        </NText>
       </NFormItem>
       <NFormItem
+        v-else
         ref="passwordItemRef"
         :label="isEdit ? 'New password (leave blank to keep)' : 'Password'"
         path="password"
@@ -250,25 +315,31 @@ function close(): void {
         <NSwitch v-model:value="model.is_admin" />
       </NFormItem>
       <NFormItem label="Application access" path="app_ids">
-        <NSpace vertical :size="4" style="width: 100%">
-          <NSelect
-            v-model:value="model.app_ids"
-            :options="appOptions"
-            :loading="appsLoading"
-            :disabled="model.is_admin"
-            multiple
-            filterable
-            clearable
-            :placeholder="
-              model.is_admin ? 'All applications' : 'All applications (leave empty)'
-            "
-          />
-          <NText depth="3" style="font-size: 12px">
-            {{
-              model.is_admin
-                ? 'Administrators always have access to all applications.'
-                : 'Leave empty to grant access to all applications.'
-            }}
+        <NText v-if="!showAccess" depth="3" style="font-size: 12px">
+          Administrators always have access to all applications.
+        </NText>
+        <NSpace v-else vertical :size="8" style="width: 100%">
+          <NSpace align="center" :size="8" :wrap-item="false">
+            <NSwitch v-model:value="model.all_apps" aria-label="All applications" />
+            <span>All applications</span>
+          </NSpace>
+          <template v-if="!model.all_apps">
+            <NSelect
+              v-model:value="model.app_ids"
+              :options="appOptions"
+              :loading="appsLoading"
+              multiple
+              filterable
+              clearable
+              placeholder="Select applications"
+            />
+            <NAlert v-if="noAccess" type="warning" title="No access">
+              This user will not have access to any application. Pick applications or
+              turn on “All applications”.
+            </NAlert>
+          </template>
+          <NText v-else depth="3" style="font-size: 12px">
+            Includes applications created later.
           </NText>
         </NSpace>
       </NFormItem>

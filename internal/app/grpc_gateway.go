@@ -3,16 +3,18 @@ package app
 import (
 	"bytes"
 	"context"
+	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
 	"log/slog"
 	"net/http"
 	"runtime/debug"
 	"slices"
+	"sync/atomic"
 
 	"github.com/rendau/kusec/internal/errs"
 
-	"github.com/goccy/go-json"
 	"github.com/grpc-ecosystem/grpc-gateway/v2/runtime"
 	"github.com/rs/cors"
 	"google.golang.org/grpc/codes"
@@ -21,6 +23,13 @@ import (
 
 	"github.com/rendau/kusec/internal/config"
 )
+
+// httpMaxBodyBytes — предел тела запроса на основном порту (раньше предела не
+// было: любой без входа мог слать гигантские тела на /api/usr/login и занять
+// всю память пода). Откуда число: самое большое осмысленное тело — значение
+// item-а, а объект Kubernetes (Secret, ConfigMap) целиком ограничен 1 МиБ;
+// остальное — запас на пакетные вставки и импорт.
+const httpMaxBodyBytes = 8 << 20
 
 func GrpcGatewayCreateHandler(muxHook func(*runtime.ServeMux) error) (http.Handler, error) {
 	mux := runtime.NewServeMux(
@@ -34,6 +43,13 @@ func GrpcGatewayCreateHandler(muxHook func(*runtime.ServeMux) error) (http.Handl
 			},
 		}),
 		runtime.WithErrorHandler(func(ctx context.Context, mux *runtime.ServeMux, marshaler runtime.Marshaler, w http.ResponseWriter, r *http.Request, err error) {
+			// тело оборвано на пределе при чтении (длина не была заявлена):
+			// шлюз видит это как ошибку разбора JSON — отвечаем тем же 413
+			if bodyLimitExceeded(r) {
+				writeBodyTooLarge(w, httpMaxBodyBytes)
+				return
+			}
+
 			var repBody []byte
 
 			if st, ok := status.FromError(err); ok {
@@ -85,7 +101,9 @@ func GrpcGatewayCreateHandler(muxHook func(*runtime.ServeMux) error) (http.Handl
 		}
 	}
 
-	handler := http.Handler(mux)
+	// ограничение тела запроса — под cors, чтобы отказ 413 тоже шёл с
+	// CORS-заголовками и браузер мог показать его текст
+	handler := withBodyLimit(mux, httpMaxBodyBytes)
 
 	// add cors middleware
 	if config.Conf.HttpCors {
@@ -139,4 +157,78 @@ func GrpcGatewayCreateHandler(muxHook func(*runtime.ServeMux) error) (http.Handl
 	}(handler)
 
 	return handler, nil
+}
+
+// ── Ограничение тела запроса ────────────────────────────
+
+type bodyLimitCtxKeyT int8
+
+const bodyLimitCtxKey = bodyLimitCtxKeyT(1)
+
+// bodyLimitState — отметка «тело запроса оборвано на пределе». Её ставит
+// limitedBody и читает обработчик ошибок шлюза.
+type bodyLimitState struct {
+	exceeded atomic.Bool
+}
+
+// withBodyLimit не даёт прочитать из тела запроса больше maxBytes. Заявленная
+// длина больше предела — отказ 413 сразу, до чтения; длина не заявлена
+// (chunked) — чтение обрывается на пределе, и 413 отдаёт обработчик ошибок
+// шлюза. В обоих случаях net/http закрывает соединение, не дочитывая остаток.
+func withBodyLimit(next http.Handler, maxBytes int64) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.ContentLength > maxBytes {
+			writeBodyTooLarge(w, maxBytes)
+			return
+		}
+
+		if r.Body != nil && r.Body != http.NoBody {
+			state := &bodyLimitState{}
+			r.Body = &limitedBody{
+				ReadCloser: http.MaxBytesReader(w, r.Body, maxBytes),
+				state:      state,
+			}
+			r = r.WithContext(context.WithValue(r.Context(), bodyLimitCtxKey, state))
+		}
+
+		next.ServeHTTP(w, r)
+	})
+}
+
+// limitedBody запоминает, что чтение тела упёрлось в предел.
+type limitedBody struct {
+	io.ReadCloser
+	state *bodyLimitState
+}
+
+func (b *limitedBody) Read(p []byte) (int, error) {
+	n, err := b.ReadCloser.Read(p)
+	if _, ok := errors.AsType[*http.MaxBytesError](err); ok {
+		b.state.exceeded.Store(true)
+	}
+	return n, err
+}
+
+func bodyLimitExceeded(r *http.Request) bool {
+	state, _ := r.Context().Value(bodyLimitCtxKey).(*bodyLimitState)
+	return state != nil && state.exceeded.Load()
+}
+
+// writeBodyTooLarge — отказ 413 в формате ошибок шлюза ({code, message}).
+func writeBodyTooLarge(w http.ResponseWriter, maxBytes int64) {
+	repBody, err := json.Marshal(map[string]string{
+		"code":    errs.InvalidRequest.Error(),
+		"message": fmt.Sprintf("request body is too large: the limit is %d MiB", maxBytes>>20),
+	})
+	if err != nil {
+		slog.Error("GRPC_GW: body limit: Failed to marshal", "error", err)
+		w.WriteHeader(http.StatusRequestEntityTooLarge)
+		return
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(http.StatusRequestEntityTooLarge)
+	if _, err = w.Write(repBody); err != nil {
+		slog.Error("GRPC_GW: body limit: Failed to write response", "error", err)
+	}
 }

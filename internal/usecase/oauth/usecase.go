@@ -203,6 +203,7 @@ func (u *Usecase) grantSession(ctx context.Context, grant *model.Grant) (*sessio
 	return &sessionModel.Session{
 		Id:         usr.Id,
 		Admin:      usr.IsAdmin,
+		AllApps:    usr.AllApps,
 		AppIds:     usr.AppIds,
 		Name:       usr.Name,
 		Scope:      constant.ApiKeyScopeMcpOnly,

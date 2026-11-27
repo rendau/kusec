@@ -84,8 +84,8 @@ func validScope(scope string) bool {
 // mcp_only; full и read_only выпускают только админы, mcp_only-ключи
 // принимает только MCP-эндпоинт.
 func (u *Usecase) Create(ctx context.Context, name string, usrId *int64, scope string) (string, string, error) {
-	if !u.sessionSvc.CtxIsAuthorized(ctx) {
-		return "", "", errs.NotAuthorized
+	if err := u.requireHuman(ctx); err != nil {
+		return "", "", err
 	}
 
 	if scope == "" {
@@ -211,10 +211,26 @@ func (u *Usecase) Delete(ctx context.Context, id string) error {
 	})
 }
 
-// requireOwnership: не-админ управляет только своими ключами.
+// requireHuman — выпуск, изменение и удаление ключей доступны только из входа
+// в админку. Сессия по API-ключу или OAuth-подключению ключами не управляет:
+// иначе утёкший ключ выпускал бы себе новые (в том числе с более широким
+// scope) и переживал бы собственный отзыв.
+func (u *Usecase) requireHuman(ctx context.Context) error {
+	session := u.sessionSvc.FromContext(ctx)
+	if !session.IsAuthorized() {
+		return errs.NotAuthorized
+	}
+	if session.ApiKeyId != "" {
+		return errs.NoPermission
+	}
+	return nil
+}
+
+// requireOwnership: ключами управляют только из входа в админку, не-админ —
+// только своими.
 func (u *Usecase) requireOwnership(ctx context.Context, id string) (*model.Main, error) {
-	if !u.sessionSvc.CtxIsAuthorized(ctx) {
-		return nil, errs.NotAuthorized
+	if err := u.requireHuman(ctx); err != nil {
+		return nil, err
 	}
 	if id == "" {
 		return nil, errs.IdRequired
@@ -292,6 +308,7 @@ func (u *Usecase) sessionFromKey(ctx context.Context, key string, allowMcpOnly b
 	return &sessionModel.Session{
 		Id:         usr.Id,
 		Admin:      usr.IsAdmin,
+		AllApps:    usr.AllApps,
 		AppIds:     usr.AppIds,
 		Name:       usr.Name,
 		Scope:      scope,

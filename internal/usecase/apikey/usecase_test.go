@@ -271,3 +271,83 @@ func TestUpdate_ScopePermissions(t *testing.T) {
 	require.NoError(t, err)
 	require.Len(t, svcAdmin.updated, 1)
 }
+
+// Сессия по API-ключу или OAuth-подключению ключами не управляет: утёкший
+// ключ не выпускает себе новые, не меняет scope и не удаляет ключи. Читать
+// список ключей может.
+func TestKeySession_CannotManageKeys(t *testing.T) {
+	t.Parallel()
+
+	usrSvc := &usrSvcMock{usrs: map[int64]*usrModel.Main{
+		1: {Id: 1, Active: true, IsAdmin: true},
+	}}
+	svc := &svcMock{byId: map[string]*model.Main{
+		"k-own": {Id: "k-own", UsrId: 1, Active: true, Scope: constant.ApiKeyScopeFull},
+	}}
+
+	// ключ админа: права владельца, но это не вход в админку
+	keySession := &sessionModel.Session{
+		Id: 1, Admin: true, Source: constant.SourceApi, ApiKeyId: "k-own", ApiKeyName: "ci",
+	}
+	u := New(svc, usrSvc, &sessionSvcMock{session: keySession}, txmStub{}, auditRecStub{})
+
+	for _, scope := range []string{constant.ApiKeyScopeFull, constant.ApiKeyScopeReadOnly, constant.ApiKeyScopeMcpOnly} {
+		_, _, err := u.Create(context.Background(), "new", nil, scope)
+		assert.ErrorIs(t, err, errs.NoPermission, scope)
+	}
+	assert.Empty(t, svc.created)
+
+	err := u.Update(context.Background(), "k-own", new(false), nil, nil)
+	assert.ErrorIs(t, err, errs.NoPermission)
+	assert.Empty(t, svc.updated)
+
+	err = u.Delete(context.Background(), "k-own")
+	assert.ErrorIs(t, err, errs.NoPermission)
+
+	// чтение оставлено
+	listReq := &model.ListReq{}
+	listReq.PageSize = 10
+	_, _, err = u.List(context.Background(), listReq)
+	require.NoError(t, err)
+
+	// тот же пользователь из входа в админку ключами управляет
+	uHuman := New(svc, usrSvc, &sessionSvcMock{session: &sessionModel.Session{Id: 1, Admin: true}}, txmStub{}, auditRecStub{})
+	_, _, err = uHuman.Create(context.Background(), "new", nil, constant.ApiKeyScopeFull)
+	require.NoError(t, err)
+	require.NoError(t, uHuman.Update(context.Background(), "k-own", new(false), nil, nil))
+	require.NoError(t, uHuman.Delete(context.Background(), "k-own"))
+}
+
+// Сессия по ключу наследует доступ владельца к приложениям, включая all_apps;
+// владелец без приложений и без all_apps не получает ничего.
+func TestSessionFromKey_AppAccess(t *testing.T) {
+	t.Parallel()
+
+	allKey, allHash, _, err := apikeyService.GenerateKey()
+	require.NoError(t, err)
+	noneKey, noneHash, _, err := apikeyService.GenerateKey()
+	require.NoError(t, err)
+
+	svc := &svcMock{byHash: map[string]*model.Main{
+		allHash:  {Id: "k-all", UsrId: 10, Active: true},
+		noneHash: {Id: "k-none", UsrId: 11, Active: true},
+	}}
+	usrSvc := &usrSvcMock{usrs: map[int64]*usrModel.Main{
+		10: {Id: 10, Active: true, AllApps: true},
+		11: {Id: 11, Active: true, AppIds: []string{}},
+	}}
+	u := New(svc, usrSvc, &sessionSvcMock{}, txmStub{}, auditRecStub{})
+
+	session, err := u.SessionFromKey(context.Background(), allKey)
+	require.NoError(t, err)
+	assert.True(t, session.AllApps)
+	assert.True(t, session.HasAppAccess("any-app"))
+
+	session, err = u.SessionFromKey(context.Background(), noneKey)
+	require.NoError(t, err)
+	assert.False(t, session.AllApps)
+	assert.False(t, session.HasAppAccess("any-app"))
+	ids, all := session.AccessibleAppIds()
+	assert.False(t, all)
+	assert.Empty(t, ids)
+}

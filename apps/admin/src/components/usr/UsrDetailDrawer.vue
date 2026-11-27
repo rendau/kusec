@@ -1,6 +1,8 @@
 <script setup lang="ts">
-import { ref, watch } from 'vue'
+import { computed, ref, watch } from 'vue'
+import { RouterLink } from 'vue-router'
 import {
+  NAlert,
   NDescriptions,
   NDescriptionsItem,
   NDivider,
@@ -14,10 +16,12 @@ import {
 
 import { listApiKeys } from '@/api/apikey'
 import { getUser } from '@/api/usr'
-import type { ApiKeyMain } from '@/api/types'
+import type { ApiKeyMain, UsrMain } from '@/api/types'
 import { useAppOptions } from '@/composables/useAppOptions'
 import { useDrawerResource } from '@/composables/useDrawerResource'
+import { useAuthStore } from '@/stores/auth'
 import { formatDate } from '@/utils/format'
+import { usrAccessKind } from '@/utils/usrAccess'
 
 const props = defineProps<{
   show: boolean
@@ -30,15 +34,41 @@ const emit = defineEmits<{
 }>()
 
 const { ensure, nameOf } = useAppOptions()
+const authStore = useAuthStore()
+
+/**
+ * `GET /usr/{id}` is admin-only. The drawer is opened from admin screens, but
+ * it must not send that request for anyone else: a non-admin can only ever
+ * look at themselves, and that comes from the already loaded profile.
+ */
+async function fetchUser(id: number | string): Promise<UsrMain> {
+  if (authStore.isAdmin) return getUser(id)
+  const own = authStore.profile
+  if (own && String(own.id) === String(id)) return own
+  throw new Error('user details are available to administrators only')
+}
 
 const { loading, item: user } = useDrawerResource({
   show: () => props.show,
   id: () => props.userId,
-  fetch: getUser,
+  fetch: fetchUser,
   onError: () => emit('update:show', false),
 })
 
-// The user's API keys (the drawer is admin-only, so the owner filter is allowed).
+// All applications / the listed ones / none — see `usrAccessKind`.
+const access = computed(() => (user.value ? usrAccessKind(user.value) : null))
+
+// Looking at one's own account: say where its sign-in settings are changed
+// (the Users page cannot change the own username, password or 2FA).
+const isSelf = computed(
+  () =>
+    user.value !== null &&
+    authStore.profile !== null &&
+    String(user.value.id) === String(authStore.profile.id),
+)
+
+// The user's API keys. The owner filter is admin-only; a non-admin gets their
+// own keys without it.
 const apiKeys = ref<ApiKeyMain[]>([])
 const apiKeysLoading = ref(false)
 
@@ -52,7 +82,7 @@ watch(user, async (value) => {
   try {
     const rep = await listApiKeys({
       list_params: { page: 0, page_size: 100 },
-      usr_id: String(value.id),
+      ...(authStore.isAdmin ? { usr_id: String(value.id) } : {}),
     })
     apiKeys.value = rep.results ?? []
   } catch {
@@ -72,6 +102,20 @@ watch(user, async (value) => {
   >
     <NDrawerContent title="User details" closable>
       <NSpin :show="loading">
+        <NAlert
+          v-if="isSelf"
+          type="info"
+          :show-icon="false"
+          style="margin-bottom: 12px"
+        >
+          This is your account. Your username, password and 2FA are changed in
+          <RouterLink
+            class="inline-link"
+            :to="{ name: 'profile' }"
+            @click="emit('update:show', false)"
+            >My profile</RouterLink
+          >.
+        </NAlert>
         <NDescriptions
           v-if="user"
           :column="1"
@@ -104,13 +148,21 @@ watch(user, async (value) => {
             </NTag>
           </NDescriptionsItem>
           <NDescriptionsItem label="Application access">
-            <NText v-if="user.is_admin || !user.app_ids?.length" :depth="3">
-              All applications
+            <NText v-if="access === 'all'" :depth="3">
+              {{
+                user.is_admin ? 'All applications (administrator)' : 'All applications'
+              }}
             </NText>
-            <NSpace v-else :size="4">
+            <NSpace v-else-if="access === 'listed'" :size="4">
               <NTag v-for="id in user.app_ids" :key="id" size="small">
                 {{ nameOf(id) }}
               </NTag>
+            </NSpace>
+            <NSpace v-else vertical :size="4">
+              <NTag type="error" size="small">No access</NTag>
+              <NText :depth="3" style="font-size: 12px">
+                No application is assigned — the user cannot open any.
+              </NText>
             </NSpace>
           </NDescriptionsItem>
         </NDescriptions>

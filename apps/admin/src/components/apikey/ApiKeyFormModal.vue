@@ -138,6 +138,8 @@ const usrOptions = ref<SelectOption[]>([])
 const usrLoading = ref(false)
 
 async function searchUsers(query: string): Promise<void> {
+  // `GET /usr` is admin-only; the owner picker is not shown to anyone else.
+  if (!authStore.isAdmin) return
   usrLoading.value = true
   try {
     const rep = await listUsers({

@@ -40,6 +40,13 @@ const (
 	TotpAlreadyOn  = Err("totp_already_enabled")
 	TotpNotEnabled = Err("totp_not_enabled")
 
+	// слишком много неудачных попыток (вход, код 2FA, текущий пароль):
+	// отдаётся как ErrFull с Fields["retry_after"] — через сколько секунд
+	// можно повторить
+	TooManyAttempts = Err("too_many_attempts")
+	// смена пароля или логина в профиле без верного текущего пароля
+	CurrentPasswordInvalid = Err("current_password_invalid")
+
 	OAuthNotEnabled     = Err("oauth_not_enabled")
 	OAuthInvalidRequest = Err("oauth_invalid_request")
 

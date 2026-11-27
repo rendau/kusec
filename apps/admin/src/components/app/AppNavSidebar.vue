@@ -28,7 +28,7 @@ const appsStore = useAppsStore()
 const { apps, loading } = storeToRefs(appsStore)
 
 // Only admins may create/modify applications (backend: app usecase is admin-only).
-const { isAdmin } = storeToRefs(useAuthStore())
+const { isAdmin, appAccess } = storeToRefs(useAuthStore())
 
 const search = ref('')
 
@@ -43,6 +43,14 @@ const filtered = computed<AppMain[]>(() => {
     (a) => a.name.toLowerCase().includes(q) || a.namespace.toLowerCase().includes(q),
   )
 })
+
+// An empty list means "no access at all" for a non-admin with nothing
+// assigned — say so, rather than a bare "No applications".
+const emptyText = computed(() =>
+  appAccess.value === 'none' && !search.value.trim()
+    ? 'No access to any application yet — ask an administrator'
+    : 'No applications',
+)
 
 const showForm = ref(false)
 
@@ -95,7 +103,7 @@ onMounted(() => {
     <NScrollbar class="app-nav__list">
       <NSpin :show="loading">
         <div v-if="filtered.length === 0" class="app-nav__empty">
-          <NEmpty size="small" description="No applications" />
+          <NEmpty size="small" :description="emptyText" />
         </div>
         <button
           v-for="app in filtered"

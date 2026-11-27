@@ -1,6 +1,8 @@
 package model
 
 import (
+	sq "github.com/Masterminds/squirrel"
+
 	domainModel "github.com/rendau/kusec/internal/domain/usr/model"
 )
 
@@ -15,7 +17,11 @@ type Upsert struct {
 	Password    *string
 	TotpSecret  *string
 	TotpEnabled *bool
+	AllApps     *bool
 	AppIds      []string
+
+	// SessionVersionInc — session_version = session_version + 1 (только Update).
+	SessionVersionInc bool
 }
 
 func (m *Upsert) CreateColumnMap() map[string]any {
@@ -41,6 +47,9 @@ func (m *Upsert) CreateColumnMap() map[string]any {
 	if m.TotpEnabled != nil {
 		result["totp_enabled"] = *m.TotpEnabled
 	}
+	if m.AllApps != nil {
+		result["all_apps"] = *m.AllApps
+	}
 	if m.AppIds != nil {
 		result["app_ids"] = m.AppIds
 	}
@@ -48,7 +57,13 @@ func (m *Upsert) CreateColumnMap() map[string]any {
 }
 
 func (m *Upsert) UpdateColumnMap() map[string]any {
-	return m.CreateColumnMap()
+	result := m.CreateColumnMap()
+	if m.SessionVersionInc {
+		// тем же запросом, что и остальные поля: смена пароля и отзыв
+		// токенов не расходятся даже вне транзакции
+		result["session_version"] = sq.Expr("session_version + 1")
+	}
+	return result
 }
 
 func (m *Upsert) PKColumnMap() map[string]any {
@@ -63,13 +78,15 @@ func (m *Upsert) ReturningColumnMap() map[string]any {
 
 func DecodeUpsert(v *domainModel.Edit) *Upsert {
 	return &Upsert{
-		Active:      v.Active,
-		IsAdmin:     v.IsAdmin,
-		Name:        v.Name,
-		Username:    v.Username,
-		Password:    v.Password,
-		TotpSecret:  v.TotpSecret,
-		TotpEnabled: v.TotpEnabled,
-		AppIds:      v.AppIds,
+		Active:            v.Active,
+		IsAdmin:           v.IsAdmin,
+		Name:              v.Name,
+		Username:          v.Username,
+		Password:          v.Password,
+		TotpSecret:        v.TotpSecret,
+		TotpEnabled:       v.TotpEnabled,
+		AllApps:           v.AllApps,
+		AppIds:            v.AppIds,
+		SessionVersionInc: v.SessionVersionInc,
 	}
 }

@@ -3,6 +3,7 @@ package item
 import (
 	"context"
 	"fmt"
+	"unicode/utf8"
 
 	"github.com/rendau/kusec/internal/config"
 	"github.com/rendau/kusec/internal/domain/item/model"
@@ -10,6 +11,13 @@ import (
 	"github.com/rendau/kusec/internal/errs"
 	"github.com/rendau/kusec/internal/util"
 )
+
+// searchMaxLen — предел длины строки поиска item-ов (в символах). При
+// включённом шифровании поиск по значению идёт в памяти: шаблон с % и _
+// сверяется с каждым расшифрованным значением, и длинный шаблон против
+// большого значения занимал бы ядро на десятки секунд. Осмысленный поиск
+// (имя ключа, кусок значения или описания) короче в разы.
+const searchMaxLen = 200
 
 type Usecase struct {
 	svc        ServiceI
@@ -99,6 +107,12 @@ func (u *Usecase) validateEdit(obj *model.Edit, forCreate bool) error {
 func (u *Usecase) List(ctx context.Context, pars *model.ListReq) ([]*model.Main, int64, error) {
 	if !u.sessionSvc.CtxIsAuthorized(ctx) {
 		return nil, 0, errs.NotAuthorized
+	}
+	if pars.Search != nil && utf8.RuneCountInString(*pars.Search) > searchMaxLen {
+		return nil, 0, errs.ErrFull{
+			Err:  errs.InvalidRequest,
+			Desc: fmt.Sprintf("search is too long: at most %d characters", searchMaxLen),
+		}
 	}
 	// Запрос считается узким (без обязательной пагинации), если ограничен
 	// одним секретом, набором секретов или приложением.

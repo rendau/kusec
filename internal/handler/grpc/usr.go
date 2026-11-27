@@ -71,11 +71,18 @@ func (h *Usr) Delete(ctx context.Context, req *proto.UsrGetReq) (*emptypb.Empty,
 }
 
 func (h *Usr) Login(ctx context.Context, req *proto.UsrLoginReq) (*proto.UsrLoginRep, error) {
-	res, err := h.usecase.Login(ctx, req.Username, req.Password, req.TotpCode)
+	res, err := h.usecase.Login(ctx, dto.DecodeUsrLoginReq(req, clientIp(ctx)))
 	if err != nil {
 		return nil, err
 	}
 	return dto.EncodeUsrLoginResult(res), nil
+}
+
+func (h *Usr) Logout(ctx context.Context, _ *emptypb.Empty) (*emptypb.Empty, error) {
+	if err := h.usecase.Logout(ctx); err != nil {
+		return nil, err
+	}
+	return &emptypb.Empty{}, nil
 }
 
 func (h *Usr) RefreshToken(ctx context.Context, req *proto.UsrRefreshTokenReq) (*proto.UsrLoginRep, error) {
@@ -110,7 +117,7 @@ func (h *Usr) UpdateProfile(ctx context.Context, req *proto.UsrUpdateProfileReq)
 }
 
 func (h *Usr) EnrollTotp(ctx context.Context, req *proto.UsrEnrollTotpReq) (*proto.UsrEnrollTotpRep, error) {
-	secret, url, err := h.usecase.EnrollTotp(ctx)
+	secret, url, err := h.usecase.EnrollTotp(ctx, req.CurrentPassword)
 	if err != nil {
 		return nil, err
 	}

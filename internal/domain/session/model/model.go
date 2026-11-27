@@ -4,15 +4,19 @@ import (
 	"github.com/rendau/kusec/internal/constant"
 )
 
-// Session — данные авторизованного пользователя, извлечённые из JWT-токена
-// или построенные по API-ключу. Это stateless-сессия: в БД не хранится.
+// Session — данные авторизованного пользователя. Строится на каждый запрос
+// по живой записи пользователя: по id из JWT-токена входа либо по API-ключу /
+// OAuth-подключению. Права в самом токене не хранятся, в БД сессия не лежит.
 type Session struct {
-	Id     int64
-	Admin  bool
-	AppIds []string
+	Id    int64
+	Admin bool
+	// AllApps — не-админ с доступом ко всем приложениям. Иначе доступны
+	// только AppIds; пустой список = не доступно ничего.
+	AllApps bool
+	AppIds  []string
 
-	// Name — имя пользователя (для аудита); заполняется при аутентификации
-	// по API-ключу. Для JWT-сессий пусто — аудит резолвит имя сам.
+	// Name — имя пользователя (для аудита). Если пусто — аудит резолвит имя
+	// сам по Id.
 	Name string
 
 	// Scope доступа: constant.ApiKeyScope*. Пусто = full (JWT-сессии
@@ -60,14 +64,18 @@ func (s *Session) ConfigValuesHidden() bool {
 	return s != nil && s.IsReadOnly()
 }
 
+// AccessibleAppIds — к каким приложениям у сессии есть доступ: (nil, true) —
+// ко всем (админ или AllApps); (список, false) — только к перечисленным.
+//
+// ВАЖНО: (пустой список, false) значит «ни к одному», а не «ко всем».
+// Репозитории пустой срез фильтром не считают, поэтому вызывающий обязан
+// сам вернуть пустой результат или отказ и не передавать пустой список
+// дальше как фильтр.
 func (s *Session) AccessibleAppIds() ([]string, bool) {
-	if s == nil {
+	if s == nil || !s.IsAuthorized() {
 		return nil, false
 	}
-	if s.Admin {
-		return nil, true
-	}
-	if len(s.AppIds) == 0 {
+	if s.Admin || s.AllApps {
 		return nil, true
 	}
 	return s.AppIds, false

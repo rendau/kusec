@@ -21,6 +21,7 @@ import (
 
 	"github.com/rendau/kusec/internal/config"
 	"github.com/rendau/kusec/internal/constant"
+	"github.com/rendau/kusec/internal/infra/secretbox"
 
 	apikeyDb "github.com/rendau/kusec/internal/domain/apikey/repo/db"
 	apikeyService "github.com/rendau/kusec/internal/domain/apikey/service"
@@ -73,6 +74,10 @@ import (
 	proto "github.com/rendau/kusec/pkg/proto/kusec_v1"
 )
 
+// jwtSecretMinLen — короче этого JWT_SECRET считается слабым (256 бит — длина
+// ключа HS256; см. предупреждение в Init).
+const jwtSecretMinLen = 32
+
 type App struct {
 	globalTracerCloser io.Closer
 
@@ -108,6 +113,23 @@ func (a *App) Init() {
 	// журнале sync и read-only ответах.
 	if strings.TrimSpace(config.Conf.AuditHashKey) == "" {
 		errCheck(errors.New("AUDIT_HASH_KEY is required"), "config")
+	}
+
+	// шифрование значений в базе: пустой DATA_ENCRYPTION_KEY — выключено,
+	// неверный формат ключа — не стартуем
+	dataBox, err := secretbox.New(config.Conf.DataEncryptionKey)
+	errCheck(err, "config")
+
+	// Короткий JWT_SECRET подбирается перебором: подпись токена (HS256)
+	// проверяется без обращения к серверу, достаточно одного перехваченного
+	// токена. Только предупреждение, а не отказ запуска: сервис выкатывается
+	// автоматически, и отказ положил бы работающий прод.
+	if len(config.Conf.JWTSecret) < jwtSecretMinLen {
+		slog.Warn(
+			"JWT_SECRET is too short: it can be brute-forced offline from any intercepted token, and then tokens of any user can be forged; set a random value of at least 32 characters (changing it signs everyone out and disconnects MCP OAuth clients)",
+			slog.Int("length", len(config.Conf.JWTSecret)),
+			slog.Int("min_length", jwtSecretMinLen),
+		)
 	}
 
 	if config.Conf.McpOAuthEnabled {
@@ -146,16 +168,20 @@ func (a *App) Init() {
 	txm := mobone.NewTransactionManager(a.pgpool)
 
 	// dependency graph
-	usrSvc := usrService.New(usrDb.New(a.pgpool))
+	usrSvc := usrService.New(usrDb.New(a.pgpool, dataBox))
 	a.usrSvc = usrSvc
 	appSvc := appService.New(appDb.New(a.pgpool))
 	secretSvc := secretService.New(secretDb.New(a.pgpool))
-	itemSvc := itemService.New(itemDb.New(a.pgpool))
+	itemSvc := itemService.New(itemDb.New(a.pgpool, dataBox))
 	configMapSvc := configmapService.New(configmapDb.New(a.pgpool))
 	configItemSvc := configitemService.New(configitemDb.New(a.pgpool))
 	apikeySvc := apikeyService.New(apikeyDb.New(a.pgpool))
 	auditSvc := auditService.New(auditDb.New(a.pgpool))
 	syncRunSvc := syncrunService.New(syncrunDb.New(a.pgpool))
+
+	// перевод значений в базе на шифрование: после миграций, до запуска серверов
+	errCheck(applyValueEncryption(a.ctx, dataBox, "item.value", itemSvc), "data encryption")
+	errCheck(applyValueEncryption(a.ctx, dataBox, "usr.totp_secret", usrSvc), "data encryption")
 
 	// регистратор аудита: пишется usecase-ами внутри транзакции мутации
 	auditRec := auditRecorder.New(auditSvc, usrSvc, appSvc, secretSvc, configMapSvc, sessionSvc, config.Conf.AuditHashKey)
@@ -193,7 +219,11 @@ func (a *App) Init() {
 		appSvc, secretSvc, itemSvc, configMapSvc, configItemSvc, auditSvc, kubeSvc, sessionSvc,
 	)
 
-	usrHandler := grpcHandler.NewUsr(usrUsc.New(usrSvc, sessionSvc, txm, auditRec))
+	// usr usecase используется и хендлером, и session-интерсептором (сессия
+	// по access-токену строится по живой записи пользователя); экземпляр
+	// один на процесс — в нём живёт ограничитель перебора пароля
+	usrUsecase := usrUsc.New(usrSvc, sessionSvc, txm, auditRec)
+	usrHandler := grpcHandler.NewUsr(usrUsecase)
 	appHandler := grpcHandler.NewApp(
 		appUsc.New(appSvc, cascadeSvc, sessionSvc, txm, auditRec),
 		monitoringUsecase,
@@ -230,7 +260,7 @@ func (a *App) Init() {
 
 	// grpc server
 	{
-		a.grpcServer = NewGrpcServer("main", sessionSvc, apikeyUsecase, func(server *grpc.Server) {
+		a.grpcServer = NewGrpcServer("main", sessionSvc, apikeyUsecase, usrUsecase, func(server *grpc.Server) {
 			proto.RegisterUsrServer(server, usrHandler)
 			proto.RegisterAppServer(server, appHandler)
 			proto.RegisterSecretServer(server, secretHandler)
@@ -288,14 +318,7 @@ func (a *App) Init() {
 				method  string
 				path    string
 				handler runtime.HandlerFunc
-			}{
-				{
-					"GET", "/tst",
-					func(w http.ResponseWriter, r *http.Request, _ map[string]string) {
-						slog.Info("test error", "error", errors.New("test error"))
-					},
-				},
-			}
+			}{}
 			for _, h := range httpHandlers {
 				err = mux.HandlePath(h.method, h.path, h.handler)
 				if err != nil {
@@ -318,7 +341,14 @@ func (a *App) Init() {
 			Handler:           handler,
 			ReadHeaderTimeout: 2 * time.Second,
 			ReadTimeout:       time.Minute,
-			MaxHeaderBytes:    300 * 1024,
+			// WriteTimeout не ставим намеренно: он ограничивает всё время
+			// ответа и оборвал бы долгие запросы — sync идёт до 5 минут.
+			// Размер тела ограничивает шлюз (httpMaxBodyBytes).
+			//
+			// IdleTimeout — сколько живёт простаивающее keep-alive соединение
+			// (без явного значения брался бы ReadTimeout)
+			IdleTimeout:    2 * time.Minute,
+			MaxHeaderBytes: 300 * 1024,
 		}
 	}
 

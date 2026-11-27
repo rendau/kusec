@@ -66,11 +66,24 @@ func New(
 	}
 }
 
+// requireAdmin — действие администратора. Без входа (нет токена либо он
+// истёк) — not_authorized, а не no_permission: по этому коду клиент обновляет
+// токен и повторяет запрос.
+func (u *Usecase) requireAdmin(ctx context.Context) error {
+	if !u.sessionSvc.CtxIsAuthorized(ctx) {
+		return errs.NotAuthorized
+	}
+	if !u.sessionSvc.CtxIsAdmin(ctx) {
+		return errs.NoPermission
+	}
+	return nil
+}
+
 // List отдаёт элементы с active=false. Потомки деактивированного родителя, у
 // которых флаг не снят, в список не входят — их показывает ChildCount родителя.
 func (u *Usecase) List(ctx context.Context, appId *string) ([]*Element, error) {
-	if !u.sessionSvc.CtxIsAdmin(ctx) {
-		return nil, errs.NoPermission
+	if err := u.requireAdmin(ctx); err != nil {
+		return nil, err
 	}
 
 	apps, _, err := u.appSvc.List(ctx, &appModel.ListReq{})
@@ -323,8 +336,8 @@ func (u *Usecase) listConfigItems(ctx context.Context, appId *string, appNames m
 // Активные потомки выключенного родителя удалению не мешают: в кластер они и
 // так не попадают.
 func (u *Usecase) Delete(ctx context.Context, refs []Ref) error {
-	if !u.sessionSvc.CtxIsAdmin(ctx) {
-		return errs.NoPermission
+	if err := u.requireAdmin(ctx); err != nil {
+		return err
 	}
 	if len(refs) == 0 {
 		return errs.InvalidRequest

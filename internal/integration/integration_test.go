@@ -48,6 +48,7 @@ import (
 	usrDb "github.com/rendau/kusec/internal/domain/usr/repo/db"
 	usrService "github.com/rendau/kusec/internal/domain/usr/service"
 	"github.com/rendau/kusec/internal/errs"
+	"github.com/rendau/kusec/internal/infra/secretbox"
 	auditRecorder "github.com/rendau/kusec/internal/service/audit"
 	cascadeService "github.com/rendau/kusec/internal/service/cascade"
 	appUsc "github.com/rendau/kusec/internal/usecase/app"
@@ -63,6 +64,8 @@ const testHashKey = "integration-hash-key"
 type stack struct {
 	pool *pgxpool.Pool
 	txm  *mobone.TransactionManager
+	// box — шифрование значений этого стека (выключенный, если ключ не задан)
+	box *secretbox.Box
 
 	sessionSvc *sessionService.Service
 
@@ -81,13 +84,34 @@ type stack struct {
 	inactiveUsecase *inactiveUsc.Usecase
 }
 
+// newStack — стек в общей схеме тестовой базы. Шифрование значений включается
+// переменной TEST_DATA_ENCRYPTION_KEY (формат как у DATA_ENCRYPTION_KEY): без
+// неё тесты идут с открытыми значениями, с ней — те же тесты поверх
+// зашифрованных.
 func newStack(t *testing.T) *stack {
+	t.Helper()
+
+	dsn := testDSN(t)
+
+	box, err := secretbox.New(os.Getenv("TEST_DATA_ENCRYPTION_KEY"))
+	require.NoError(t, err)
+
+	return newStackWith(t, dsn, box)
+}
+
+func testDSN(t *testing.T) string {
 	t.Helper()
 
 	dsn := os.Getenv("TEST_PG_DSN")
 	if dsn == "" {
 		t.Skip("TEST_PG_DSN is not set; integration tests need a docker Postgres (see CLAUDE.md)")
 	}
+	return dsn
+}
+
+// newStackWith — стек поверх базы dsn с заданным шифрованием значений.
+func newStackWith(t *testing.T, dsn string, box *secretbox.Box) *stack {
+	t.Helper()
 
 	// миграции — из каталога репозитория (путь от этого файла)
 	_, thisFile, _, ok := runtime.Caller(0)
@@ -99,6 +123,11 @@ func newStack(t *testing.T) *stack {
 	if err = m.Up(); err != nil && !errors.Is(err, migrate.ErrNoChange) {
 		t.Fatalf("migrate up: %v", err)
 	}
+	// соединения мигратора закрываем сразу: стеков в прогоне десятки, а лимит
+	// соединений тестового Postgres общий
+	srcErr, dbErr := m.Close()
+	require.NoError(t, srcErr)
+	require.NoError(t, dbErr)
 
 	pool, err := pgxpool.New(context.Background(), dsn)
 	require.NoError(t, err)
@@ -106,14 +135,15 @@ func newStack(t *testing.T) *stack {
 
 	s := &stack{
 		pool:       pool,
+		box:        box,
 		txm:        mobone.NewTransactionManager(pool),
 		sessionSvc: sessionService.New("integration-test"),
 	}
 
-	usrSvc := usrService.New(usrDb.New(pool))
+	usrSvc := usrService.New(usrDb.New(pool, box))
 	s.appSvc = appService.New(appDb.New(pool))
 	s.secretSvc = secretService.New(secretDb.New(pool))
-	s.itemSvc = itemService.New(itemDb.New(pool))
+	s.itemSvc = itemService.New(itemDb.New(pool, box))
 	s.configMapSvc = configmapService.New(configmapDb.New(pool))
 	s.configItemSvc = configitemService.New(configitemDb.New(pool))
 	s.auditSvc = auditService.New(auditDb.New(pool))
@@ -134,11 +164,17 @@ func newStack(t *testing.T) *stack {
 	return s
 }
 
+// stackAdminId — id «админа» из adminCtx. Такой учётки в базе нет, и номер
+// заведомо не совпадает с учётками, которые создают тесты: через adminCtx
+// они правят чужие учётки (пароль, 2FA), а собственные пароль, логин и 2FA
+// админ через управление пользователями не меняет.
+const stackAdminId = 1_000_000_000
+
 // adminCtx — сессия админа с именем (имя в сессии избавляет аудит от
 // обращения к таблице usr).
 func (s *stack) adminCtx() context.Context {
 	return s.sessionSvc.WithContext(context.Background(), &sessionModel.Session{
-		Id:     1,
+		Id:     stackAdminId,
 		Admin:  true,
 		Name:   "Integration Tester",
 		Source: "api",

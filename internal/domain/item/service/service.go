@@ -64,3 +64,14 @@ func (s *Service) Delete(ctx context.Context, id string) error {
 	}
 	return nil
 }
+
+// ApplyValueEncryption приводит хранимые значения к текущему режиму
+// шифрования (см. repo): шаг запуска сервиса, после миграций и до приёма
+// запросов. Возвращает число строк, зашифрованных этим вызовом.
+func (s *Service) ApplyValueEncryption(ctx context.Context) (int64, error) {
+	sealedCount, err := s.repoDb.ApplyValueEncryption(ctx)
+	if err != nil {
+		return sealedCount, fmt.Errorf("repoDb.ApplyValueEncryption: %w", err)
+	}
+	return sealedCount, nil
+}

@@ -36,8 +36,9 @@ func (r *Repo) getConditions(pars *model.ListReq) (map[string]any, map[string][]
 		conditionExps["(name ILIKE ? OR username ILIKE ?)"] = []any{"%" + *pars.Search + "%", "%" + *pars.Search + "%"}
 	}
 	if pars.AppId != nil {
-		// та же логика, что в session.AccessibleAppIds: админ и пустой app_ids — доступ ко всем
-		conditionExps["(is_admin OR app_ids = '[]'::jsonb OR app_ids @> to_jsonb(?::text))"] = []any{*pars.AppId}
+		// та же логика, что в session.AccessibleAppIds: админ и all_apps —
+		// доступ ко всем, иначе только к перечисленным в app_ids
+		conditionExps["(is_admin OR all_apps OR app_ids @> to_jsonb(?::text))"] = []any{*pars.AppId}
 	}
 
 	return conditions, conditionExps
@@ -70,6 +71,10 @@ func (r *Repo) GetByUsername(ctx context.Context, username string) (*model.Main,
 			return nil, false, nil
 		}
 		return nil, false, fmt.Errorf("GetByUsername: %w", err)
+	}
+
+	if err = r.openTotpSecret(m); err != nil {
+		return nil, false, err
 	}
 
 	return repoModel.EncodeSelect(m, 0), true, nil

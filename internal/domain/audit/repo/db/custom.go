@@ -27,6 +27,9 @@ func (r *Repo) getConditions(pars *model.ListReq) (map[string]any, map[string][]
 	if len(pars.AppIds) > 0 {
 		conditions["app_id"] = pars.AppIds
 	}
+	if pars.OnlyWithApp {
+		conditionExps["app_id IS NOT NULL"] = []any{}
+	}
 	if pars.Namespace != nil {
 		conditions["namespace"] = *pars.Namespace
 	}

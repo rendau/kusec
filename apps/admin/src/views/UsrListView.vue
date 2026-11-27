@@ -1,5 +1,7 @@
 <script setup lang="ts">
 import { computed, h, onBeforeUnmount, onMounted, reactive, ref, watch } from 'vue'
+import type { VNodeChild } from 'vue'
+import { RouterLink } from 'vue-router'
 import {
   NButton,
   NCard,
@@ -25,6 +27,8 @@ import { deleteUser, listUsers, resetUserTotp } from '@/api/usr'
 import type { UsrListReq, UsrMain } from '@/api/types'
 import { useBreakpoint } from '@/composables/useBreakpoint'
 import { useAuthStore } from '@/stores/auth'
+import { usrAccessKind, usrAccessLabel } from '@/utils/usrAccess'
+import type { UsrAccessKind } from '@/utils/usrAccess'
 
 import UsrDetailDrawer from '@/components/usr/UsrDetailDrawer.vue'
 import UsrFormModal from '@/components/usr/UsrFormModal.vue'
@@ -35,9 +39,16 @@ const message = useMessage()
 const authStore = useAuthStore()
 const { isMobile } = useBreakpoint()
 
-function accessLabel(row: UsrMain): string {
-  const count = row.is_admin ? 0 : (row.app_ids?.length ?? 0)
-  return count === 0 ? 'All apps' : `${count} app${count === 1 ? '' : 's'}`
+// Access tag colour per state: all apps — neutral, a list — info, and
+// "no access" stands out, since such a user cannot open anything.
+const ACCESS_TAG_TYPE: Record<UsrAccessKind, 'default' | 'info' | 'error'> = {
+  all: 'default',
+  listed: 'info',
+  none: 'error',
+}
+
+function accessTagType(row: UsrMain): 'default' | 'info' | 'error' {
+  return ACCESS_TAG_TYPE[usrAccessKind(row)]
 }
 
 const currentUserId = computed(() =>
@@ -84,6 +95,9 @@ const editing = ref<UsrMain | null>(null)
 const showForm = ref(false)
 
 async function fetchUsers(): Promise<void> {
+  // `GET /usr` is admin-only. The route is `requiresAdmin`; this keeps the
+  // request from going out if the page is ever reached otherwise.
+  if (!authStore.isAdmin) return
   loading.value = true
   try {
     const req: UsrListReq = {
@@ -183,8 +197,25 @@ async function removeUser(row: UsrMain): Promise<void> {
   }
 }
 
+// An admin cannot reset their own 2FA from this list (the backend answers
+// `no_permission`): it is turned off in My profile, with a current code.
+const SELF_2FA_HINT = 'Your own 2FA is managed in My profile'
+
+/** The same hint for a tooltip, with "My profile" as a link. */
+function self2faHint(): VNodeChild {
+  return [
+    'Your own 2FA is managed in ',
+    h(
+      RouterLink,
+      { to: { name: 'profile' }, style: 'color: inherit; text-decoration: underline' },
+      { default: () => 'My profile' },
+    ),
+  ]
+}
+
 // Admin-reset: clear another user's 2FA when they lost their authenticator.
 async function resetTotp(row: UsrMain): Promise<void> {
+  if (isSelf(row)) return
   try {
     await resetUserTotp(row.id)
     message.success(`2FA reset for "${row.username}"`)
@@ -198,7 +229,12 @@ function iconButton(
   icon: typeof Pencil,
   tooltip: string,
   onClick: () => void,
-  options: { type?: 'error'; disabled?: boolean } = {},
+  options: {
+    type?: 'error' | 'warning'
+    disabled?: boolean
+    /** Rich tooltip content; `tooltip` stays the plain-text `aria-label`. */
+    hint?: () => VNodeChild
+  } = {},
 ) {
   return h(
     NTooltip,
@@ -218,7 +254,7 @@ function iconButton(
           },
           { icon: () => h(NIcon, { component: icon }) },
         ),
-      default: () => tooltip,
+      default: options.hint ?? (() => tooltip),
     },
   )
 }
@@ -261,17 +297,13 @@ const columns: DataTableColumns<UsrMain> = [
     title: 'Access',
     key: 'app_ids',
     width: 130,
-    // Admins and users with no scope reach all apps; otherwise it's limited.
-    render: (row) => {
-      const count = row.is_admin ? 0 : (row.app_ids?.length ?? 0)
-      return count === 0
-        ? h(NTag, { size: 'small' }, { default: () => 'All apps' })
-        : h(
-            NTag,
-            { type: 'info', size: 'small' },
-            { default: () => `${count} app${count === 1 ? '' : 's'}` },
-          )
-    },
+    // Three states: all apps (admins, `all_apps`), a list, or no access.
+    render: (row) =>
+      h(
+        NTag,
+        { type: accessTagType(row), size: 'small' },
+        { default: () => usrAccessLabel(row) },
+      ),
   },
   {
     title: '2FA',
@@ -292,27 +324,33 @@ const columns: DataTableColumns<UsrMain> = [
       h(NSpace, { size: 4, wrapItem: false }, () => [
         iconButton(InfoCircle, 'Details', () => openDetail(row)),
         iconButton(Pencil, 'Edit', () => openEdit(row)),
-        row.totp_enabled
-          ? h(
-              NPopconfirm,
-              { onPositiveClick: () => resetTotp(row) },
-              {
-                trigger: () =>
-                  h(
-                    NButton,
-                    {
-                      quaternary: true,
-                      circle: true,
-                      size: 'small',
-                      type: 'warning',
-                      'aria-label': 'Reset 2FA',
-                    },
-                    { icon: () => h(NIcon, { component: ShieldOff }) },
-                  ),
-                default: () => `Reset 2FA for "${row.username}"?`,
-              },
-            )
-          : null,
+        !row.totp_enabled
+          ? null
+          : isSelf(row)
+            ? iconButton(ShieldOff, SELF_2FA_HINT, () => {}, {
+                type: 'warning',
+                disabled: true,
+                hint: self2faHint,
+              })
+            : h(
+                NPopconfirm,
+                { onPositiveClick: () => resetTotp(row) },
+                {
+                  trigger: () =>
+                    h(
+                      NButton,
+                      {
+                        quaternary: true,
+                        circle: true,
+                        size: 'small',
+                        type: 'warning',
+                        'aria-label': 'Reset 2FA',
+                      },
+                      { icon: () => h(NIcon, { component: ShieldOff }) },
+                    ),
+                  default: () => `Reset 2FA for "${row.username}"?`,
+                },
+              ),
         isSelf(row)
           ? iconButton(Trash, 'You cannot delete yourself', () => {}, {
               type: 'error',
@@ -400,11 +438,8 @@ onMounted(fetchUsers)
               <NTag :type="row.is_admin ? 'success' : 'default'" size="small">
                 {{ row.is_admin ? 'Administrator' : 'User' }}
               </NTag>
-              <NTag
-                :type="accessLabel(row) === 'All apps' ? 'default' : 'info'"
-                size="small"
-              >
-                {{ accessLabel(row) }}
+              <NTag :type="accessTagType(row)" size="small">
+                {{ usrAccessLabel(row) }}
               </NTag>
               <NTag v-if="row.totp_enabled" type="success" size="small"> 2FA </NTag>
             </NSpace>
@@ -432,7 +467,23 @@ onMounted(fetchUsers)
                     <NIcon :component="Pencil" />
                   </template>
                 </NButton>
-                <NPopconfirm v-if="row.totp_enabled" @positive-click="resetTotp(row)">
+                <NButton
+                  v-if="row.totp_enabled && isSelf(row)"
+                  quaternary
+                  circle
+                  size="small"
+                  type="warning"
+                  disabled
+                  :aria-label="SELF_2FA_HINT"
+                >
+                  <template #icon>
+                    <NIcon :component="ShieldOff" />
+                  </template>
+                </NButton>
+                <NPopconfirm
+                  v-else-if="row.totp_enabled"
+                  @positive-click="resetTotp(row)"
+                >
                   <template #trigger>
                     <NButton
                       quaternary

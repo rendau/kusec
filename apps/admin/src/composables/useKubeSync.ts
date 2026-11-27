@@ -1,18 +1,29 @@
 import { h, ref } from 'vue'
 import { useDialog, useNotification } from 'naive-ui'
 
+import { apiErrorRequestId } from '@/api/errors'
 import { ApiError, apiErrorMessage } from '@/api/http'
 import { syncKube } from '@/api/kube'
 import type { KubeSyncConfigMapsRep, KubeSyncSecretsRep } from '@/api/types'
 
-/** Human-readable hints for the sentinel error codes the sync may return. */
+/**
+ * Sync-specific wording for error codes; the rest (`not_in_cluster`,
+ * `sync_in_progress`, …) reads the same as anywhere via `apiErrorMessage`.
+ */
 const SYNC_ERROR_HINTS: Record<string, string> = {
-  not_in_cluster: 'The service is not running inside a Kubernetes cluster',
-  sync_in_progress: 'A sync is already in progress, try again in a moment',
   no_permission: 'You do not have access to the requested application',
-  // Returned by the API layer when no response arrives in time (proxy timeout).
+  // Set by the API layer when no answer came from kusec itself (proxy timeout).
   service_not_available:
     'No response received in time — the deploy is likely still running on the server',
+}
+
+function syncErrorText(error: unknown): string {
+  const fallback = 'Kubernetes sync failed'
+  if (!(error instanceof ApiError)) return fallback
+  // A request id means kusec did answer — with an unexpected failure of its
+  // own, so the "no response in time" hint would point the wrong way.
+  if (apiErrorRequestId(error)) return apiErrorMessage(error, fallback)
+  return SYNC_ERROR_HINTS[error.code] ?? apiErrorMessage(error, fallback)
 }
 
 interface SyncOptions {
@@ -81,9 +92,7 @@ export function useKubeSync() {
       }
       reportVisible.value = true
     } catch (error) {
-      const hint =
-        error instanceof ApiError ? SYNC_ERROR_HINTS[error.code] : undefined
-      const detail = hint ?? apiErrorMessage(error, 'Kubernetes sync failed')
+      const detail = syncErrorText(error)
       // Persistent (duration: 0) so a one-shot toast can't be missed — and the
       // sync is idempotent, so re-running is always safe.
       notification.error({

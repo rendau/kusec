@@ -11,7 +11,9 @@ var allowedSortFields = map[string]string{
 	"key":        "key",
 }
 
-func (r *Repo) getConditions(pars *model.ListReq) (map[string]any, map[string][]any) {
+// getConditions собирает условия выборки. searchInSQL=false оставляет поиск
+// (pars.Search) вызывающему — так делает поиск по значению в памяти.
+func (r *Repo) getConditions(pars *model.ListReq, searchInSQL bool) (map[string]any, map[string][]any) {
 	conditions := make(map[string]any, 10)
 	conditionExps := make(map[string][]any, 10)
 
@@ -31,8 +33,8 @@ func (r *Repo) getConditions(pars *model.ListReq) (map[string]any, map[string][]
 	if pars.Active != nil {
 		conditions["active"] = *pars.Active
 	}
-	if pars.Search != nil {
-		pattern := "%" + *pars.Search + "%"
+	if pars.Search != nil && searchInSQL {
+		pattern := searchPattern(*pars.Search)
 		if pars.SearchValue {
 			conditionExps["(key ILIKE ? OR value ILIKE ? OR description ILIKE ?)"] = []any{pattern, pattern, pattern}
 		} else {

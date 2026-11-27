@@ -39,7 +39,18 @@ const appsStore = useAppsStore()
 
 // Creating/editing/deleting applications is admin-only on the backend; regular
 // users still browse apps and manage secrets/items within their access scope.
-const { isAdmin } = storeToRefs(useAuthStore())
+const { isAdmin, appAccess } = storeToRefs(useAuthStore())
+
+// Nothing selected: say what to do next. A non-admin with no application
+// assigned has nothing to select — tell them so instead of pointing at an
+// empty sidebar.
+const emptyHint = computed(() => {
+  if (isAdmin.value) return 'Select an application from the sidebar, or create one.'
+  if (appAccess.value === 'none') {
+    return 'You do not have access to any application yet. Ask an administrator to grant it.'
+  }
+  return 'Select an application from the sidebar.'
+})
 
 // Syncing this app's secrets to the cluster is allowed for anyone with access.
 const { syncing, confirmSync } = useKubeSync()
@@ -113,13 +124,7 @@ watch(
 
 <template>
   <div v-if="!appId" class="workspace-empty">
-    <NEmpty
-      :description="
-        isAdmin
-          ? 'Select an application from the sidebar, or create one.'
-          : 'Select an application from the sidebar.'
-      "
-    >
+    <NEmpty :description="emptyHint">
       <template #extra>
         <NSpace vertical :size="12" align="center">
           <NText depth="3">Applications hold secrets, and secrets hold items.</NText>

@@ -102,57 +102,50 @@ func tokenType(claims jwtv5.MapClaims) string {
 	return ""
 }
 
-// FromToken парсит и валидирует access-токен, возвращая сессию.
+// ParseAccessToken парсит и валидирует access-токен и возвращает id
+// пользователя и номер поколения сессий (claim "ver"). Прав в токене нет:
+// сессию по живой записи пользователя строит вызывающий (usr usecase), он же
+// сверяет ver с usr.session_version.
 // Refresh-токены здесь отвергаются: они годятся только для RefreshToken.
-func (s *Service) FromToken(tokenStr string) (*sessionModel.Session, error) {
+func (s *Service) ParseAccessToken(tokenStr string) (usrId, ver int64, err error) {
 	claims, err := s.parseClaims(tokenStr)
 	if err != nil {
-		return nil, err
+		return 0, 0, err
 	}
 
 	// Токены без "typ" выданы до введения refresh-flow — принимаем как access.
 	if typ := tokenType(claims); typ != "" && typ != tokenTypeAccess {
-		return nil, fmt.Errorf("not an access token")
+		return 0, 0, fmt.Errorf("not an access token")
 	}
 
 	usrRaw, ok := claims["id"]
 	if !ok {
-		return nil, fmt.Errorf("missing user id claim in token")
+		return 0, 0, fmt.Errorf("missing user id claim in token")
 	}
-	usrId, err := usrIDFromClaim(usrRaw)
+	usrId, err = usrIDFromClaim(usrRaw)
 	if err != nil {
-		return nil, err
+		return 0, 0, err
 	}
 
-	isAdminRaw, ok := claims["is_admin"]
-	if !ok {
-		return nil, fmt.Errorf("missing is_admin claim in token")
-	}
-	isAdmin, err := boolFromClaim(isAdminRaw)
+	ver, err = versionFromClaims(claims)
 	if err != nil {
-		return nil, err
+		return 0, 0, err
 	}
 
-	return &sessionModel.Session{
-		Id:     usrId,
-		Admin:  isAdmin,
-		AppIds: stringSliceFromClaim(claims["app_ids"]),
-	}, nil
+	return usrId, ver, nil
 }
 
-// CreateToken подписывает короткоживущий access-токен с данными пользователя.
-func (s *Service) CreateToken(usrId int64, isAdmin bool, appIds []string) (string, error) {
+// CreateToken подписывает короткоживущий access-токен: id пользователя и
+// номер поколения его сессий (usr.session_version). Права в токен не
+// зашиваются — они берутся из записи пользователя на каждый запрос.
+func (s *Service) CreateToken(usrId, ver int64) (string, error) {
 	now := time.Now().UTC()
-	if appIds == nil {
-		appIds = []string{}
-	}
 	return s.signClaims(jwtv5.MapClaims{
-		"typ":      tokenTypeAccess,
-		"id":       usrId,
-		"is_admin": isAdmin,
-		"app_ids":  appIds,
-		"iat":      now.Unix(),
-		"exp":      now.Add(accessTokenTTL).Unix(),
+		"typ": tokenTypeAccess,
+		"id":  usrId,
+		"ver": ver,
+		"iat": now.Unix(),
+		"exp": now.Add(accessTokenTTL).Unix(),
 	})
 }
 
@@ -164,40 +157,67 @@ func passwordFingerprint(passwordHash string) string {
 }
 
 // CreateRefreshToken подписывает долгоживущий refresh-токен.
-func (s *Service) CreateRefreshToken(usrId int64, passwordHash string) (string, error) {
+func (s *Service) CreateRefreshToken(usrId int64, passwordHash string, ver int64) (string, error) {
 	now := time.Now().UTC()
 	return s.signClaims(jwtv5.MapClaims{
 		"typ": tokenTypeRefresh,
 		"id":  usrId,
+		"ver": ver,
 		"pwd": passwordFingerprint(passwordHash),
 		"iat": now.Unix(),
 		"exp": now.Add(refreshTokenTTL).Unix(),
 	})
 }
 
-// ParseRefreshToken валидирует refresh-токен и возвращает id пользователя.
-// Отпечаток пароля сверяется с актуальным хешем — после смены пароля токен
-// считается отозванным.
-func (s *Service) ParseRefreshToken(tokenStr, currentPasswordHash string) (int64, error) {
+// ParseRefreshToken валидирует refresh-токен и возвращает id пользователя и
+// номер поколения сессий (claim "ver" — вызывающий сверяет его с
+// usr.session_version). Отпечаток пароля сверяется с актуальным хешем —
+// после смены пароля токен считается отозванным.
+func (s *Service) ParseRefreshToken(tokenStr, currentPasswordHash string) (usrId, ver int64, err error) {
 	claims, err := s.parseClaims(tokenStr)
 	if err != nil {
-		return 0, err
+		return 0, 0, err
 	}
 
 	if tokenType(claims) != tokenTypeRefresh {
-		return 0, fmt.Errorf("not a refresh token")
+		return 0, 0, fmt.Errorf("not a refresh token")
 	}
 
 	fp, _ := claims["pwd"].(string)
 	if fp == "" || fp != passwordFingerprint(currentPasswordHash) {
-		return 0, fmt.Errorf("refresh token revoked by password change")
+		return 0, 0, fmt.Errorf("refresh token revoked by password change")
 	}
 
 	usrRaw, ok := claims["id"]
 	if !ok {
-		return 0, fmt.Errorf("missing user id claim in token")
+		return 0, 0, fmt.Errorf("missing user id claim in token")
 	}
-	return usrIDFromClaim(usrRaw)
+	usrId, err = usrIDFromClaim(usrRaw)
+	if err != nil {
+		return 0, 0, err
+	}
+
+	ver, err = versionFromClaims(claims)
+	if err != nil {
+		return 0, 0, err
+	}
+
+	return usrId, ver, nil
+}
+
+// versionFromClaims — claim "ver". Токены без него выданы до введения
+// session_version и считаются поколением 0: они работают, пока пользователь
+// не сменил пароль и не вышел.
+func versionFromClaims(claims jwtv5.MapClaims) (int64, error) {
+	raw, ok := claims["ver"]
+	if !ok {
+		return 0, nil
+	}
+	ver, err := usrIDFromClaim(raw)
+	if err != nil {
+		return 0, fmt.Errorf("invalid ver claim in token")
+	}
+	return ver, nil
 }
 
 // RefreshTokenUserId извлекает id пользователя из refresh-токена (после
@@ -230,44 +250,6 @@ func (s *Service) signClaims(claims jwtv5.MapClaims) (string, error) {
 	}
 
 	return tokenStr, nil
-}
-
-func boolFromClaim(v any) (bool, error) {
-	switch x := v.(type) {
-	case bool:
-		return x, nil
-	case string:
-		parsed, err := strconv.ParseBool(x)
-		if err != nil {
-			return false, fmt.Errorf("strconv.ParseBool: %w", err)
-		}
-		return parsed, nil
-	case float64:
-		switch x {
-		case 1:
-			return true, nil
-		case 0:
-			return false, nil
-		default:
-			return false, fmt.Errorf("invalid bool claim")
-		}
-	default:
-		return false, fmt.Errorf("invalid bool claim")
-	}
-}
-
-func stringSliceFromClaim(v any) []string {
-	raw, ok := v.([]any)
-	if !ok {
-		return nil
-	}
-	result := make([]string, 0, len(raw))
-	for _, item := range raw {
-		if str, ok := item.(string); ok {
-			result = append(result, str)
-		}
-	}
-	return result
 }
 
 func usrIDFromClaim(v any) (int64, error) {

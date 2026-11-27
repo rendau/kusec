@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { reactive, ref, watch } from 'vue'
+import { computed, reactive, ref, watch } from 'vue'
 import { useRouter } from 'vue-router'
 import {
   NButton,
@@ -12,10 +12,10 @@ import {
   NText,
   useMessage,
 } from 'naive-ui'
-import type { FormInst, FormItemRule, FormRules } from 'naive-ui'
+import type { FormInst, FormItemInst, FormItemRule, FormRules } from 'naive-ui'
 import { storeToRefs } from 'pinia'
 
-import { apiErrorMessage } from '@/api/http'
+import { ApiError, apiErrorMessage } from '@/api/http'
 import { disableTotp } from '@/api/usr'
 import type { UsrUpdateProfileReq } from '@/api/types'
 import { useAuthStore } from '@/stores/auth'
@@ -37,10 +37,19 @@ const enrolling = ref(false)
 const disabling = ref(false)
 const disableCode = ref('')
 
+// Enabling 2FA replaces the session: the new token pair is already stored by
+// the time this runs (`confirmTotp`), so the profile is re-read with it.
 async function onTotpEnabled(): Promise<void> {
   enrolling.value = false
-  await authStore.refreshProfile()
   message.success('Two-factor authentication enabled')
+  try {
+    await authStore.refreshProfile()
+  } catch (error) {
+    // 2FA is on regardless; only this page still shows the old state.
+    message.error(
+      apiErrorMessage(error, 'Could not reload the profile — reload the page'),
+    )
+  }
 }
 
 async function submitDisable(): Promise<void> {
@@ -67,6 +76,7 @@ interface FormModel {
   username: string
   password: string
   passwordConfirm: string
+  currentPassword: string
 }
 
 const model = reactive<FormModel>({
@@ -74,7 +84,20 @@ const model = reactive<FormModel>({
   username: '',
   password: '',
   passwordConfirm: '',
+  currentPassword: '',
 })
+
+const currentPasswordItemRef = ref<FormItemInst | null>(null)
+// "Current password is incorrect" comes from the server, not from the form
+// rules, so it is shown through the field's controlled status + feedback.
+// While there is no such error the props are absent (not `undefined`) and the
+// form rules drive the field.
+const currentPasswordError = ref('')
+const currentPasswordFeedback = computed(() =>
+  currentPasswordError.value
+    ? { validationStatus: 'error' as const, feedback: currentPasswordError.value }
+    : {},
+)
 
 // Seed (and re-seed) the form from the loaded profile.
 watch(
@@ -84,12 +107,31 @@ watch(
     model.username = value?.username ?? ''
     model.password = ''
     model.passwordConfirm = ''
+    model.currentPassword = ''
+    currentPasswordError.value = ''
     formRef.value?.restoreValidation()
   },
   { immediate: true },
 )
 
-const rules: FormRules = {
+const usernameChanged = computed(
+  () => model.username.trim() !== (profile.value?.username ?? ''),
+)
+
+// The backend asks for the current password whenever the password or the
+// username changes; a new display name alone does not need it.
+const needsCurrentPassword = computed(
+  () => Boolean(model.password) || usernameChanged.value,
+)
+
+// No longer needed (the change was undone) — drop a leftover error on it.
+watch(needsCurrentPassword, (needed) => {
+  if (needed) return
+  currentPasswordError.value = ''
+  currentPasswordItemRef.value?.restoreValidation()
+})
+
+const rules = computed<FormRules>(() => ({
   name: [{ required: true, message: 'Name is required', trigger: ['blur', 'input'] }],
   username: [
     { required: true, message: 'Username is required', trigger: ['blur', 'input'] },
@@ -111,7 +153,16 @@ const rules: FormRules = {
         value === model.password ? true : new Error('Passwords do not match'),
     },
   ],
-}
+  currentPassword: needsCurrentPassword.value
+    ? [
+        {
+          required: true,
+          message: 'Enter your current password to confirm the change',
+          trigger: ['blur', 'input'],
+        },
+      ]
+    : [],
+}))
 
 async function submit(): Promise<void> {
   try {
@@ -121,21 +172,34 @@ async function submit(): Promise<void> {
   }
 
   submitting.value = true
+  currentPasswordError.value = ''
   try {
-    const payload: UsrUpdateProfileReq = {
-      name: model.name,
-      username: model.username,
-    }
-    // Only send the password when the user actually typed a new one.
+    const payload: UsrUpdateProfileReq = { name: model.name }
+    // Username and password go out only when they actually change: each of
+    // them makes the backend require `current_password`.
+    if (usernameChanged.value) payload.username = model.username.trim()
     if (model.password) payload.password = model.password
-    await authStore.updateProfile(payload)
+    if (needsCurrentPassword.value) payload.current_password = model.currentPassword
+
+    const sessionEnded = await authStore.updateProfile(payload)
+    if (sessionEnded) {
+      // A new password signs the user out everywhere, here included: the
+      // store has dropped the session, the login page explains why.
+      await router.replace({ name: 'login' })
+      return
+    }
     model.password = ''
     model.passwordConfirm = ''
+    model.currentPassword = ''
     message.success('Profile updated')
     // Возврат туда, откуда пришли (профиль — модальный по смыслу экран).
     router.back()
   } catch (error) {
-    message.error(apiErrorMessage(error, 'Unexpected error, please try again'))
+    if (error instanceof ApiError && error.code === 'current_password_invalid') {
+      currentPasswordError.value = 'Current password is incorrect'
+    } else {
+      message.error(apiErrorMessage(error, 'Unexpected error, please try again'))
+    }
   } finally {
     submitting.value = false
   }
@@ -165,6 +229,7 @@ async function submit(): Promise<void> {
             v-model:value="model.username"
             placeholder="Login username"
             clearable
+            :input-props="{ autocomplete: 'username' }"
           />
         </NFormItem>
         <NFormItem label="New password (leave blank to keep)" path="password">
@@ -173,6 +238,7 @@ async function submit(): Promise<void> {
             type="password"
             show-password-on="click"
             placeholder="Unchanged"
+            :input-props="{ autocomplete: 'new-password' }"
           />
         </NFormItem>
         <NFormItem label="Confirm new password" path="passwordConfirm">
@@ -182,7 +248,32 @@ async function submit(): Promise<void> {
             show-password-on="click"
             placeholder="Repeat new password"
             :disabled="submitting || !model.password"
+            :input-props="{ autocomplete: 'new-password' }"
           />
+        </NFormItem>
+        <NFormItem
+          ref="currentPasswordItemRef"
+          label="Current password"
+          path="currentPassword"
+          v-bind="currentPasswordFeedback"
+        >
+          <NSpace vertical :size="4" style="width: 100%">
+            <NInput
+              v-model:value="model.currentPassword"
+              type="password"
+              show-password-on="click"
+              placeholder="Current password"
+              :input-props="{ autocomplete: 'current-password' }"
+              @update:value="currentPasswordError = ''"
+            />
+            <NText depth="3" style="font-size: 12px">
+              {{
+                model.password
+                  ? 'Needed to change the password. You will be signed out on all devices and sign in again with the new one.'
+                  : 'Needed only to change your username or password.'
+              }}
+            </NText>
+          </NSpace>
         </NFormItem>
         <NFormItem>
           <NButton type="primary" :loading="submitting" @click="submit">
@@ -226,7 +317,11 @@ async function submit(): Promise<void> {
 
       <!-- Disabled: start the enrolment flow. -->
       <template v-else>
-        <TotpSetupCard v-if="enrolling" @confirmed="onTotpEnabled" />
+        <TotpSetupCard
+          v-if="enrolling"
+          @confirmed="onTotpEnabled"
+          @cancel="enrolling = false"
+        />
         <NButton v-else type="primary" @click="enrolling = true"> Enable 2FA </NButton>
       </template>
     </NCard>

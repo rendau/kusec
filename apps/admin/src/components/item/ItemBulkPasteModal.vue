@@ -12,7 +12,7 @@ import {
   useMessage,
 } from 'naive-ui'
 
-import { ApiError } from '@/api/http'
+import { ApiError, apiErrorMessage } from '@/api/http'
 import { createItem, updateItem } from '@/api/item'
 import type { ItemMain } from '@/api/types'
 import { useClipboard } from '@/composables/useClipboard'
@@ -129,7 +129,12 @@ async function submit(): Promise<void> {
         created++
       }
     } catch (error) {
-      failed.push(error instanceof ApiError ? `${row.key}: ${error.message}` : row.key)
+      // The reason is built from the error code, not from the raw `message`.
+      failed.push(
+        error instanceof ApiError
+          ? `${row.key}: ${apiErrorMessage(error, 'request failed')}`
+          : row.key,
+      )
     }
   }
   submitting.value = false

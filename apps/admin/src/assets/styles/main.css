@@ -106,3 +106,17 @@ body,
     transform: none;
   }
 }
+
+/*
+ * A link inside hint text: inherits the text color (readable in both the
+ * light and the dark theme) and is marked by an underline. A bare <a> gets
+ * the browser's default blue, which is unreadable on the dark background.
+ */
+.inline-link {
+  color: inherit;
+  text-decoration: underline;
+}
+
+.inline-link:hover {
+  opacity: 0.8;
+}

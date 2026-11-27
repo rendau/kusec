@@ -20,6 +20,7 @@ func EncodeUsrMain(v *domainModel.Main, _ int) *proto.UsrMain {
 		Username:    v.Username,
 		AppIds:      v.AppIds,
 		TotpEnabled: v.TotpEnabled,
+		AllApps:     v.AllApps,
 	}
 }
 
@@ -59,6 +60,7 @@ func DecodeUsrCreateReq(v *proto.UsrCreateReq) *domainModel.Edit {
 		Name:     &v.Name,
 		Username: &v.Username,
 		Password: &v.Password,
+		AllApps:  &v.AllApps,
 		AppIds:   v.AppIds,
 	}
 }
@@ -73,7 +75,22 @@ func DecodeUsrUpdateReq(v *proto.UsrUpdateReq) *domainModel.Edit {
 		Name:     v.Name,
 		Username: v.Username,
 		Password: v.Password,
+		AllApps:  v.AllApps,
 		AppIds:   v.AppIds,
+	}
+}
+
+// DecodeUsrLoginReq — clientIp берётся транспортом (не из тела запроса) и
+// нужен только для журнала входов.
+func DecodeUsrLoginReq(v *proto.UsrLoginReq, clientIp string) *usecase.LoginReq {
+	if v == nil {
+		return &usecase.LoginReq{ClientIp: clientIp}
+	}
+	return &usecase.LoginReq{
+		Username: v.Username,
+		Password: v.Password,
+		TotpCode: v.TotpCode,
+		ClientIp: clientIp,
 	}
 }
 
@@ -82,8 +99,9 @@ func DecodeUsrUpdateProfileReq(v *proto.UsrUpdateProfileReq) *usecase.UpdateProf
 		return nil
 	}
 	return &usecase.UpdateProfileReq{
-		Name:     v.Name,
-		Username: v.Username,
-		Password: v.Password,
+		Name:            v.Name,
+		Username:        v.Username,
+		Password:        v.Password,
+		CurrentPassword: v.CurrentPassword,
 	}
 }

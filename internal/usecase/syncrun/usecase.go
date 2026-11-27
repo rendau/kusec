@@ -44,6 +44,12 @@ func (u *Usecase) List(ctx context.Context, pars *syncrunModel.ListReq) ([]*sync
 				return nil, 0, errs.NoPermission
 			}
 		} else {
+			// пустой список — ни одного доступного приложения: не видны и
+			// глобальные запуски. Репозиторий пустой срез фильтром не
+			// считает и вернул бы весь журнал
+			if len(appIds) == 0 {
+				return []*syncrunModel.Main{}, 0, nil
+			}
 			pars.AppIds = appIds
 		}
 	}
@@ -76,6 +82,12 @@ func (u *Usecase) Get(ctx context.Context, id string) (*syncrunModel.Main, error
 		return result, nil
 	}
 
+	// без единого доступного приложения запуск не виден вовсе: appSvc.List с
+	// пустым списком id вернул бы все приложения, и фильтр объектов ниже
+	// пропустил бы всё
+	if len(appIds) == 0 {
+		return nil, errs.NoPermission
+	}
 	if result.AppId != nil && !session.HasAppAccess(*result.AppId) {
 		return nil, errs.NoPermission
 	}

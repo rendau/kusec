@@ -87,8 +87,13 @@ type Main struct {
 type ListReq struct {
 	commonModel.ListParams
 
-	AppId      *string
-	AppIds     []string // ограничение доступа сессии (не-админ)
+	AppId  *string
+	AppIds []string // ограничение доступа сессии (не-админ)
+	// OnlyWithApp — только записи, привязанные к приложению (app_id задан).
+	// Записи без приложения — учётки, ключи, OAuth-подключения, общий sync —
+	// показываются только админу.
+	OnlyWithApp bool
+
 	Namespace  *string
 	AppSlug    *string
 	KubeName   *string

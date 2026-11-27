@@ -3,6 +3,7 @@ package service
 import (
 	"context"
 	"fmt"
+	"time"
 
 	"github.com/rendau/kusec/internal/domain/usr/model"
 	"github.com/rendau/kusec/internal/errs"
@@ -10,10 +11,23 @@ import (
 
 type Service struct {
 	repoDb RepoDbI
+
+	// totpGuard — защита от повторного использования кода 2FA (в памяти
+	// процесса, общая для входа, подтверждения и отключения 2FA).
+	totpGuard *totpReplayGuard
+	// now — часы; подменяются в тестах.
+	now func() time.Time
 }
 
 func New(repoDb RepoDbI) *Service {
-	return &Service{repoDb: repoDb}
+	// хэш для холостого сравнения считаем заранее, а не на первом запросе
+	dummyPasswordHash()
+
+	return &Service{
+		repoDb:    repoDb,
+		totpGuard: newTotpReplayGuard(),
+		now:       time.Now,
+	}
 }
 
 func (s *Service) List(ctx context.Context, pars *model.ListReq) ([]*model.Main, int64, error) {
@@ -38,8 +52,9 @@ func (s *Service) Get(ctx context.Context, id int64, errNE bool) (*model.Main, b
 	return result, found, nil
 }
 
-// AuthByUsernamePassword проверяет логин/пароль и возвращает пользователя при успехе.
-func (s *Service) AuthByUsernamePassword(ctx context.Context, username, password string) (*model.Main, bool, error) {
+// GetByUsername — пользователь по логину. Логин сравнивается так же, как в
+// базе: точно, с учётом регистра (admin и Admin — разные учётки).
+func (s *Service) GetByUsername(ctx context.Context, username string) (*model.Main, bool, error) {
 	result, found, err := s.repoDb.GetByUsername(ctx, username)
 	if err != nil {
 		return nil, false, fmt.Errorf("repoDb.GetByUsername: %w", err)
@@ -47,16 +62,24 @@ func (s *Service) AuthByUsernamePassword(ctx context.Context, username, password
 	if !found {
 		return nil, false, nil
 	}
+	return result, true, nil
+}
 
-	ok, err := comparePassword(result.Password, password)
+// BurnPasswordCheck — «холостое» сравнение пароля для логина, которого нет:
+// выполняется такое же bcrypt-сравнение (с фиктивным хэшем), что и для
+// существующего пользователя, — по времени ответа их не отличить.
+func (s *Service) BurnPasswordCheck(password string) {
+	_, _ = comparePassword(dummyPasswordHash(), password)
+}
+
+// PasswordMatches сверяет пароль с сохранённым хэшем (вход, подтверждение
+// смены пароля/логина и привязки 2FA текущим паролем).
+func (s *Service) PasswordMatches(passwordHash, password string) (bool, error) {
+	ok, err := comparePassword(passwordHash, password)
 	if err != nil {
-		return nil, false, fmt.Errorf("comparePassword: %w", err)
+		return false, fmt.Errorf("comparePassword: %w", err)
 	}
-	if ok {
-		return result, true, nil
-	}
-
-	return nil, false, nil
+	return ok, nil
 }
 
 func (s *Service) HasAny(ctx context.Context) (bool, error) {
@@ -83,6 +106,10 @@ func (s *Service) Create(ctx context.Context, obj *model.Edit) (int64, error) {
 	return newId, nil
 }
 
+// Update меняет пользователя. Смена пароля и выключение пользователя
+// отзывают все выданные ему токены (session_version + 1): чужой, знавший
+// старый пароль, теряет сессию сразу, а повторное включение не оживляет
+// старые refresh-токены.
 func (s *Service) Update(ctx context.Context, id int64, obj *model.Edit) error {
 	if obj != nil && obj.Password != nil {
 		passwordHash, err := hashPassword(*obj.Password)
@@ -90,9 +117,23 @@ func (s *Service) Update(ctx context.Context, id int64, obj *model.Edit) error {
 			return fmt.Errorf("hashPassword: %w", err)
 		}
 		obj.Password = &passwordHash
+		obj.SessionVersionInc = true
+	}
+	if obj != nil && obj.Active != nil && !*obj.Active {
+		obj.SessionVersionInc = true
 	}
 
 	if err := s.repoDb.Update(ctx, id, obj); err != nil {
+		return fmt.Errorf("repoDb.Update: %w", err)
+	}
+	return nil
+}
+
+// RevokeSessions отзывает все выданные пользователю токены (выход):
+// session_version + 1, access- и refresh-токены с прежним номером больше не
+// принимаются.
+func (s *Service) RevokeSessions(ctx context.Context, id int64) error {
+	if err := s.repoDb.Update(ctx, id, &model.Edit{SessionVersionInc: true}); err != nil {
 		return fmt.Errorf("repoDb.Update: %w", err)
 	}
 	return nil
@@ -103,4 +144,15 @@ func (s *Service) Delete(ctx context.Context, id int64) error {
 		return fmt.Errorf("repoDb.Delete: %w", err)
 	}
 	return nil
+}
+
+// ApplyValueEncryption приводит хранимые ключи 2FA к текущему режиму
+// шифрования (см. repo): шаг запуска сервиса, после миграций и до приёма
+// запросов. Возвращает число строк, зашифрованных этим вызовом.
+func (s *Service) ApplyValueEncryption(ctx context.Context) (int64, error) {
+	sealedCount, err := s.repoDb.ApplyValueEncryption(ctx)
+	if err != nil {
+		return sealedCount, fmt.Errorf("repoDb.ApplyValueEncryption: %w", err)
+	}
+	return sealedCount, nil
 }

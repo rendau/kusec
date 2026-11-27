@@ -2387,7 +2387,7 @@
           },
           {
             "name": "app_id",
-            "description": "app_id — только пользователи с доступом к этому приложению: админы,\nпользователи с ним в app_ids и пользователи с пустым app_ids (доступ ко всем).",
+            "description": "app_id — только пользователи с доступом к этому приложению: админы,\nпользователи с all_apps=true и пользователи с ним в app_ids.",
             "in": "query",
             "required": false,
             "type": "string"
@@ -2477,6 +2477,30 @@
             }
           }
         ],
+        "tags": [
+          "Usr"
+        ]
+      }
+    },
+    "/usr/logout": {
+      "post": {
+        "summary": "Logout — выход: гасит все выданные текущему пользователю токены\n(access и refresh, на всех устройствах).",
+        "operationId": "Usr_Logout",
+        "responses": {
+          "200": {
+            "description": "A successful response.",
+            "schema": {
+              "type": "object",
+              "properties": {}
+            }
+          },
+          "default": {
+            "description": "An unexpected error response.",
+            "schema": {
+              "$ref": "#/definitions/rpcStatus"
+            }
+          }
+        },
         "tags": [
           "Usr"
         ]
@@ -4741,6 +4765,9 @@
           "items": {
             "type": "string"
           }
+        },
+        "all_apps": {
+          "type": "boolean"
         }
       }
     },
@@ -4764,7 +4791,13 @@
       }
     },
     "kusec_v1UsrEnrollTotpReq": {
-      "type": "object"
+      "type": "object",
+      "properties": {
+        "current_password": {
+          "type": "string",
+          "description": "current_password — текущий пароль; обязателен. Неверный или пустой —\nошибка current_password_invalid (попытки ограничены так же, как текущий\nпароль в профиле)."
+        }
+      }
     },
     "kusec_v1UsrListRep": {
       "type": "object",
@@ -4833,10 +4866,15 @@
           "type": "array",
           "items": {
             "type": "string"
-          }
+          },
+          "description": "app_ids — приложения, доступные не-админу при all_apps=false.\nПустой список = не доступно ни одно."
         },
         "totp_enabled": {
           "type": "boolean"
+        },
+        "all_apps": {
+          "type": "boolean",
+          "description": "all_apps — не-админ видит все приложения (app_ids не учитывается).\nУ админа доступ ко всему всегда."
         }
       }
     },
@@ -4870,7 +4908,12 @@
           "type": "array",
           "items": {
             "type": "string"
-          }
+          },
+          "description": "app_ids заменяется целиком на каждый Update (пустой список = ни одного\nприложения)."
+        },
+        "all_apps": {
+          "type": "boolean",
+          "description": "all_apps — не передан: флаг не меняется."
         }
       }
     },
@@ -4885,6 +4928,10 @@
         },
         "username": {
           "type": "string"
+        },
+        "current_password": {
+          "type": "string",
+          "description": "current_password — текущий пароль; обязателен, если меняется password\nили username. Неверный или пустой — ошибка current_password_invalid."
         }
       }
     },

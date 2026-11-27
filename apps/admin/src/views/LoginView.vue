@@ -4,10 +4,9 @@ import { useRoute, useRouter } from 'vue-router'
 import { NAlert, NButton, NCard, NForm, NFormItem, NInput, NSpin } from 'naive-ui'
 import type { FormInst, FormRules } from 'naive-ui'
 
-import { apiErrorMessage } from '@/api/http'
+import { ApiError, apiErrorMessage } from '@/api/http'
 import { createUser, getBootstrapStatus } from '@/api/usr'
 import { useAuthStore } from '@/stores/auth'
-
 
 const authStore = useAuthStore()
 const route = useRoute()
@@ -24,8 +23,32 @@ const model = reactive({
   totpCode: '',
 })
 
-const errorMessage = ref('')
-const successMessage = ref('')
+// Why the user landed here, when the app itself sent them (shown once).
+const notice = authStore.takeLoginNotice()
+
+const errorMessage = ref(
+  notice === 'session_unavailable'
+    ? 'The server could not be reached, so your session was not restored. It is still valid — reload the page to try again.'
+    : '',
+)
+const successMessage = ref(
+  notice === 'password_changed'
+    ? 'Password changed. Sign in with your new password.'
+    : '',
+)
+
+/**
+ * Text for a failed sign-in. On this endpoint `not_authorized` means wrong
+ * credentials (or a disabled account), not an expired session; everything
+ * else — `totp_invalid`, `too_many_attempts` with its wait time, an
+ * unexpected failure — reads the same as anywhere.
+ */
+function loginErrorText(error: unknown, fallback: string): string {
+  if (error instanceof ApiError && error.code === 'not_authorized') {
+    return 'Invalid username or password'
+  }
+  return apiErrorMessage(error, fallback)
+}
 
 const statusLoading = ref(true)
 const bootstrapAvailable = ref(false)
@@ -73,7 +96,7 @@ async function submitLogin(): Promise<void> {
       step.value = 'totp'
     }
   } catch (error) {
-    errorMessage.value = apiErrorMessage(error, 'Unable to sign in')
+    errorMessage.value = loginErrorText(error, 'Unable to sign in')
   }
 }
 
@@ -97,7 +120,7 @@ async function submitTotp(): Promise<void> {
       model.totpCode = ''
     }
   } catch (error) {
-    errorMessage.value = apiErrorMessage(error, 'Invalid code, try again')
+    errorMessage.value = loginErrorText(error, 'Unable to verify the code, try again')
     model.totpCode = ''
   }
 }

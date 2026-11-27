@@ -24,9 +24,11 @@ const router = useRouter()
 const authStore = useAuthStore()
 
 // Dispatched by the API layer when a request fails auth and silent
-// renewal is impossible — drop the session and return to login.
+// renewal is impossible — drop the session and return to login. The tokens
+// are already dead on the server, so this is a local drop, not `logout()`
+// (which would call the server with the very token it has just refused).
 function onAuthRequired(): void {
-  authStore.logout()
+  authStore.dropSession()
   void router.push({ name: 'login' })
 }
 
