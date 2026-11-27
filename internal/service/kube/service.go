@@ -138,7 +138,7 @@ func (s *Service) ListNamespaces(ctx context.Context) ([]string, bool, error) {
 // Sync выполняет общую синхронизацию: и секреты, и configmap-ы за один проход
 // под единой блокировкой, чтобы между двумя видами объектов не было гонки и
 // чтобы параллельный sync не стартовал в середине.
-func (s *Service) Sync(ctx context.Context, appIds []string) (*SyncResult, *SyncResult, error) {
+func (s *Service) Sync(ctx context.Context, appIds []string, adoptForeign bool) (*SyncResult, *SyncResult, error) {
 	if !s.mu.TryLock() {
 		return nil, nil, errs.SyncInProgress
 	}
@@ -153,7 +153,7 @@ func (s *Service) Sync(ctx context.Context, appIds []string) (*SyncResult, *Sync
 	}
 
 	// общий запуск журнала: секреты и configmap-ы — объекты одной записи
-	runId, meta, err := s.startSyncRun(ctx, appIds)
+	runId, meta, err := s.startSyncRun(ctx, appIds, adoptForeign)
 	if err != nil {
 		return nil, nil, err
 	}

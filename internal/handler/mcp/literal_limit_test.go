@@ -373,6 +373,7 @@ func newLimitEnv(t *testing.T) *limitEnv {
 		nil,
 		txmStub{},
 		auditRecStub{},
+		nil,
 	)
 
 	items := &itemStoreMock{items: map[string]*itemModel.Main{

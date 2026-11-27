@@ -19,13 +19,18 @@ import (
 // Поэтому агенту уходит только:
 //   - текст ошибок MCP-слоя (agentError) — сервер собирает его сам, без
 //     ввода агента;
-//   - коды семантических ошибок (errs.Err) и их описания (errs.ErrFull);
+//   - коды семантических ошибок (errs.Err) и их описания (errs.ErrFull) —
+//     в описаниях бывают ключи, slug-и и имена, но никогда значения;
 //   - вместо остального (ошибки БД, k8s, сети) — общий текст, подробности —
 //     в логе сервера.
 //
-// Если в итоговом тексте всё же оказалось значение секрета, увиденное
-// сессией, текст заменяется целиком: частичная вычистка снова показала бы
-// место совпадения.
+// Тексты не проверяются на «увиденные» значения и не заменяются при
+// совпадении: замена сама — ответ «угадал / не угадал». Агент кладёт в ключ
+// item-а тысячи вариантов PIN, ловит ошибку «ключ уже есть» (в ней повторён
+// ключ) и по тому, скрыт ли текст, делит варианты пополам. Поэтому значения
+// не попадают в тексты по построению: описания ErrFull их не содержат, а
+// ошибки sync сведены к значение-независимому виду (kube.kubeErrText, ошибка
+// base64 без позиции).
 
 // agentError — ошибка MCP-слоя с текстом, который можно показать агенту.
 // В msg не подставляется ничего из запроса агента.
@@ -50,10 +55,7 @@ func agentErr(msg string) error { return &agentError{msg: msg} }
 // правилам publicErrText.
 func agentWrap(msg string, err error) error { return &agentError{msg: msg, err: err} }
 
-const (
-	internalErrText = "internal_error: внутренняя ошибка kusec (подробности — в логе сервера)"
-	secretInErrText = "текст ошибки скрыт: в нём оказалось значение секрета (подробности — в логе сервера)"
-)
+const internalErrText = "internal_error: внутренняя ошибка kusec (подробности — в логе сервера)"
 
 // publicErrText — текст ошибки, который можно показать агенту (см. выше).
 func publicErrText(err error) string {
@@ -82,23 +84,14 @@ func publicErrText(err error) string {
 	return internalErrText
 }
 
-// toolErr готовит ошибку к выдаче агенту: только безопасный текст, без
-// значений секретов. Полный текст (с вычисткой значений) уходит в лог.
+// toolErr готовит ошибку к выдаче агенту: только безопасный текст (см.
+// выше). Полный текст внутренних ошибок (с вычисткой значений) — в лог.
 func (s *sessionServer) toolErr(err error) error {
-	text := s.safeText(publicErrText(err))
-	if text == internalErrText || text == secretInErrText {
+	text := publicErrText(err)
+	if text == internalErrText {
 		slog.Warn("mcp tool error",
 			slog.String("principal", s.principal),
 			slog.String("error", s.vault.scrub(err.Error())))
 	}
 	return errors.New(text)
-}
-
-// safeText заменяет текст целиком, если в нём есть значение секрета,
-// увиденное сессией.
-func (s *sessionServer) safeText(text string) string {
-	if s.vault.containsSeen(text) {
-		return secretInErrText
-	}
-	return text
 }

@@ -94,6 +94,9 @@ message ApiKeyCreateReq {
   // full | read_only | mcp_only; пусто = full. full и read_only выпускают
   // только админы; mcp_only может выпустить себе любой пользователь.
   optional string scope = 4;
+  // Текущий пароль выпускающего — обязателен: ключ живёт до удаления и
+  // переживает выход и смену пароля.
+  string current_password = 5;
 }
 
 message ApiKeyCreateRep {

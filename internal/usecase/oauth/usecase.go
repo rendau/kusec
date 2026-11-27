@@ -50,6 +50,7 @@ type Usecase struct {
 	sessionSvc  SessionServiceI
 	txm         TransactionManagerI
 	auditRec    AuditRecorderI
+	passwords   PasswordConfirmerI
 
 	touchMu   sync.Mutex
 	lastTouch map[string]time.Time
@@ -63,8 +64,10 @@ func New(
 	sessionSvc SessionServiceI,
 	txm TransactionManagerI,
 	auditRec AuditRecorderI,
+	passwords PasswordConfirmerI,
 ) *Usecase {
 	return &Usecase{
+		passwords:   passwords,
 		conf:        conf,
 		svc:         svc,
 		clientCodec: clientCodec,

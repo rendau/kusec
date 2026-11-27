@@ -241,8 +241,8 @@ type SyncRunListOut struct {
 	Results        []SyncRunOut  `json:"results"`
 }
 
-// syncRunObjectToOut — ошибки объектов в журнале sync проходят ту же
-// проверку, что и ответ инструмента sync (см. errors.go).
+// syncRunObjectToOut — ошибки объектов в журнале sync значений не содержат
+// по построению, как и ответ инструмента sync (см. errors.go).
 func (s *sessionServer) syncRunObjectToOut(v *syncrunModel.Object, _ int) SyncRunObjectOut {
 	changedKeys := v.ChangedKeys
 	if changedKeys == nil {
@@ -253,7 +253,7 @@ func (s *sessionServer) syncRunObjectToOut(v *syncrunModel.Object, _ int) SyncRu
 		KubeKind:    v.KubeKind,
 		KubeName:    v.KubeName,
 		Op:          v.Op,
-		Error:       s.safeText(v.Error),
+		Error:       v.Error,
 		ChangedKeys: changedKeys,
 	}
 }
@@ -264,7 +264,7 @@ func (s *sessionServer) syncRunToOut(v *syncrunModel.Main, _ int) SyncRunOut {
 		StartedAt:     timeOut(v.StartedAt),
 		FinishedAt:    optTimeOut(v.FinishedAt),
 		Status:        v.Status,
-		Error:         s.safeText(v.Error),
+		Error:         v.Error,
 		ActorUsrId:    v.ActorUsrId,
 		ActorApiKeyId: v.ActorApiKeyId,
 		ActorName:     v.ActorName,

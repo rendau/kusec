@@ -216,6 +216,9 @@ domain service → repo
 - **Ручки мониторинга** (контракт для pulse — `docs/monitoring-api.md`):
   `GET /audit`, `GET /sync-run[/{id}]`, `GET /app/resolve`, `GET /app/{id}/keys`,
   `GET /app/{id}/drift`; фильтры `updated_at_gte/lt` во всех List-методах.
+  Drift, как и просмотр живого объекта, не-админу не сравнивает объект
+  кластера, записанный kusec не для этой записи (`foreign=true`, списки
+  ключей пусты); sync не-админа не усыновляет объект без лейбла kusec.
 - **Env**: `AUDIT_HASH_KEY` обязателен (сервис не стартует без него; менять
   нельзя — сломается сравнимость отпечатков), `AUDIT_RETENTION_DAYS`.
 
@@ -256,6 +259,11 @@ domain service → repo
 - `PUT /usr/profile`: `current_password` обязателен при смене пароля или
   логина, иначе `current_password_invalid`. Смена пароля гасит все сессии,
   включая текущую. `POST /usr/totp/enroll` тоже требует `current_password`.
+- Выпуск API-ключа (`POST /api-key`) и согласие на OAuth-подключение MCP
+  (`POST /oauth/authorize` с `approve=true`) требуют `current_password`
+  (`usr.Usecase.ConfirmPassword`, ограничитель общий с профилем): ключ и
+  подключение живут до удаления и переживают выход и смену пароля, поэтому
+  украденная сессия не должна превращаться в бессрочный доступ.
   Свои пароль, логин и 2FA админ меняет только в профиле: `PUT /usr/{id}` и
   `POST /usr/{id}/totp/reset` для самого себя — `no_permission`.
 - Сессия по API-ключу или OAuth-подключению (`Session.ApiKeyId != ""`) не
@@ -372,7 +380,7 @@ docker stop kusec-dev-pg              # стенд сносится вместе
   MCP_OAUTH_ADMIN_URL=http://127.0.0.1:5199`. Клиента регистрировать с адресом возврата
   `http://localhost:18099/callback` (loopback разрешён по умолчанию; там никто не слушает —
   код берётся из адресной строки после «Allow»), страница согласия —
-  `http://127.0.0.1:5199/oauth/authorize?...`.
+  `http://127.0.0.1:5199/oauth/authorize?...`; «Allow» — с паролем `admin12345`.
 - вход в админку: `admin` / `admin12345`, без 2FA. Проверить 2FA: включить её в
   профиле и брать код через `python3 scripts/devstand/totp.py <ключ из профиля>`.
 - креды только для этого одноразового стенда, нигде больше не использовать.

@@ -780,6 +780,11 @@ export interface ApiKeyCreateReq {
   usr_id?: number | string
   /** `full` and `read_only` are admin-only; defaults to `full`. */
   scope?: ApiKeyScope
+  /**
+   * Current password of the issuer — required: a key lives until deleted and
+   * outlives sign-out and a password change (`current_password_invalid`).
+   */
+  current_password: string
 }
 
 /** `ApiKeyCreateRep` — `key` is revealed once and cannot be fetched again. */

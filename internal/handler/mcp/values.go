@@ -167,23 +167,9 @@ func (v *vault) markSeen(value string) {
 	v.seen[value] = struct{}{}
 }
 
-// containsSeen сообщает, есть ли в тексте значение секрета, увиденное сессией.
-func (v *vault) containsSeen(s string) bool {
-	v.mu.Lock()
-	defer v.mu.Unlock()
-
-	for value := range v.seen {
-		if strings.Contains(s, value) {
-			return true
-		}
-	}
-
-	return false
-}
-
 // scrub вычищает из текста все известные значения секретов. Только для
 // логов сервера: агенту такой текст отдавать нельзя — место вычистки
-// показывает совпадение (см. errors.go, safeText).
+// показывает совпадение (см. errors.go).
 func (v *vault) scrub(s string) string {
 	v.mu.Lock()
 	defer v.mu.Unlock()

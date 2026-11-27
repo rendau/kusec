@@ -173,7 +173,12 @@ func (u *Usecase) DescribeAuthorization(ctx context.Context, req *AuthorizeReq) 
 // Authorize записывает решение пользователя на странице согласия и
 // возвращает адрес, куда вернуть браузер клиенту: с кодом при согласии, иначе
 // с error=access_denied.
-func (u *Usecase) Authorize(ctx context.Context, req *AuthorizeReq, approve bool) (string, error) {
+//
+// Согласие — только с верным текущим паролем: подключение живёт до удаления
+// (refresh-токен продлевается) и переживает выход и смену пароля, поэтому
+// чужой с живой сессией не должен выдать его своему клиенту. Отказ пароля
+// не требует.
+func (u *Usecase) Authorize(ctx context.Context, req *AuthorizeReq, approve bool, currentPassword string) (string, error) {
 	session, err := u.requireHuman(ctx)
 	if err != nil {
 		return "", err
@@ -183,6 +188,12 @@ func (u *Usecase) Authorize(ctx context.Context, req *AuthorizeReq, approve bool
 	if err != nil {
 		slog.Warn("oauth: authorization request rejected", "usr_id", session.Id, "error", err)
 		return "", err
+	}
+
+	if approve {
+		if err = u.passwords.ConfirmPassword(ctx, currentPassword); err != nil {
+			return "", err
+		}
 	}
 
 	slog.Info("oauth: consent", "approve", approve, "client_name", client.Name, "redirect_uri", req.RedirectUri, "usr_id", session.Id)

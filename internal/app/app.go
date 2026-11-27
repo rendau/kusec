@@ -189,8 +189,14 @@ func (a *App) Init() {
 	// удаление с потомками и аудитом: общее для usecase-ов сущностей и inactive
 	cascadeSvc := cascadeService.New(appSvc, secretSvc, itemSvc, configMapSvc, configItemSvc, auditRec)
 
-	// api-key usecase используется и хендлером, и session-интерсептором
-	apikeyUsecase := apikeyUsc.New(apikeySvc, usrSvc, sessionSvc, txm, auditRec)
+	// usr usecase используется и хендлером, и session-интерсептором (сессия
+	// по access-токену строится по живой записи пользователя); экземпляр
+	// один на процесс — в нём живёт ограничитель перебора пароля
+	usrUsecase := usrUsc.New(usrSvc, sessionSvc, txm, auditRec)
+
+	// api-key usecase используется и хендлером, и session-интерсептором;
+	// выпуск ключа подтверждается текущим паролем через usr usecase
+	apikeyUsecase := apikeyUsc.New(apikeySvc, usrSvc, sessionSvc, txm, auditRec, usrUsecase)
 
 	// OAuth-вход MCP-клиентов по адресу (коннекторы Claude): страница согласия
 	// в админке (gRPC), OAuth-адреса — на MCP-порту
@@ -210,6 +216,7 @@ func (a *App) Init() {
 		sessionSvc,
 		txm,
 		auditRec,
+		usrUsecase,
 	)
 
 	kubeSvc := kubeService.New(appSvc, secretSvc, itemSvc, configMapSvc, configItemSvc, txm, auditRec, syncRunSvc)
@@ -219,10 +226,6 @@ func (a *App) Init() {
 		appSvc, secretSvc, itemSvc, configMapSvc, configItemSvc, auditSvc, kubeSvc, sessionSvc,
 	)
 
-	// usr usecase используется и хендлером, и session-интерсептором (сессия
-	// по access-токену строится по живой записи пользователя); экземпляр
-	// один на процесс — в нём живёт ограничитель перебора пароля
-	usrUsecase := usrUsc.New(usrSvc, sessionSvc, txm, auditRec)
 	usrHandler := grpcHandler.NewUsr(usrUsecase)
 	appHandler := grpcHandler.NewApp(
 		appUsc.New(appSvc, cascadeSvc, sessionSvc, txm, auditRec),

@@ -26,6 +26,7 @@ type Usecase struct {
 	sessionSvc SessionServiceI
 	txm        TransactionManagerI
 	auditRec   AuditRecorderI
+	passwords  PasswordConfirmerI
 
 	touchMu   sync.Mutex
 	lastTouch map[string]time.Time
@@ -37,6 +38,7 @@ func New(
 	sessionSvc SessionServiceI,
 	txm TransactionManagerI,
 	auditRec AuditRecorderI,
+	passwords PasswordConfirmerI,
 ) *Usecase {
 	return &Usecase{
 		svc:        svc,
@@ -44,6 +46,7 @@ func New(
 		sessionSvc: sessionSvc,
 		txm:        txm,
 		auditRec:   auditRec,
+		passwords:  passwords,
 		lastTouch:  map[string]time.Time{},
 	}
 }
@@ -83,7 +86,11 @@ func validScope(scope string) bool {
 // показывается только один раз, в БД хранится хэш. scope: full | read_only |
 // mcp_only; full и read_only выпускают только админы, mcp_only-ключи
 // принимает только MCP-эндпоинт.
-func (u *Usecase) Create(ctx context.Context, name string, usrId *int64, scope string) (string, string, error) {
+//
+// Только с верным текущим паролем выпускающего: ключ живёт до удаления и
+// переживает выход и смену пароля, поэтому чужой с живой сессией не должен
+// превратить её в бессрочный доступ.
+func (u *Usecase) Create(ctx context.Context, name string, usrId *int64, scope, currentPassword string) (string, string, error) {
 	if err := u.requireHuman(ctx); err != nil {
 		return "", "", err
 	}
@@ -110,6 +117,10 @@ func (u *Usecase) Create(ctx context.Context, name string, usrId *int64, scope s
 			return "", "", errs.NoPermission
 		}
 		targetUsrId = *usrId
+	}
+
+	if err := u.passwords.ConfirmPassword(ctx, currentPassword); err != nil {
+		return "", "", err
 	}
 
 	usr, _, err := u.usrSvc.Get(ctx, targetUsrId, true)

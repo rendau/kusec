@@ -757,8 +757,13 @@ type AppDriftObjectSt struct {
 	// время последнего изменения в kusec, ещё не применённого в кластер
 	// (null — изменений после последнего sync нет)
 	NotSyncedSince *timestamppb.Timestamp `protobuf:"bytes,10,opt,name=not_synced_since,json=notSyncedSince,proto3,oneof" json:"not_synced_since,omitempty"`
-	unknownFields  protoimpl.UnknownFields
-	sizeCache      protoimpl.SizeCache
+	// объект с этим именем есть в кластере, но kusec записал его не для этой
+	// записи (другое приложение того же namespace или объект вне kusec).
+	// Не-админу ключи такого объекта не сравниваются и не показываются:
+	// missing_in_cluster, extra_in_cluster и value_differs пусты
+	Foreign       bool `protobuf:"varint,11,opt,name=foreign,proto3" json:"foreign,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
 }
 
 func (x *AppDriftObjectSt) Reset() {
@@ -859,6 +864,13 @@ func (x *AppDriftObjectSt) GetNotSyncedSince() *timestamppb.Timestamp {
 		return x.NotSyncedSince
 	}
 	return nil
+}
+
+func (x *AppDriftObjectSt) GetForeign() bool {
+	if x != nil {
+		return x.Foreign
+	}
+	return false
 }
 
 type AppDriftRep struct {
@@ -1074,7 +1086,7 @@ const file_kusec_v1_app_proto_rawDesc = "" +
 	"\tparent_id\x18\f \x01(\tR\bparentId\"4\n" +
 	"\n" +
 	"AppKeysRep\x12&\n" +
-	"\x04keys\x18\x01 \x03(\v2\x12.kusec_v1.AppKeyStR\x04keys\"\xaa\x03\n" +
+	"\x04keys\x18\x01 \x03(\v2\x12.kusec_v1.AppKeyStR\x04keys\"\xc4\x03\n" +
 	"\x10AppDriftObjectSt\x12\x1b\n" +
 	"\tkube_kind\x18\x01 \x01(\tR\bkubeKind\x12\x1b\n" +
 	"\tkube_name\x18\x02 \x01(\tR\bkubeName\x12\x1c\n" +
@@ -1086,7 +1098,8 @@ const file_kusec_v1_app_proto_rawDesc = "" +
 	"\x10extra_in_cluster\x18\b \x03(\tR\x0eextraInCluster\x12#\n" +
 	"\rvalue_differs\x18\t \x03(\tR\fvalueDiffers\x12I\n" +
 	"\x10not_synced_since\x18\n" +
-	" \x01(\v2\x1a.google.protobuf.TimestampH\x00R\x0enotSyncedSince\x88\x01\x01B\x13\n" +
+	" \x01(\v2\x1a.google.protobuf.TimestampH\x00R\x0enotSyncedSince\x88\x01\x01\x12\x18\n" +
+	"\aforeign\x18\v \x01(\bR\aforeignB\x13\n" +
 	"\x11_not_synced_since\"b\n" +
 	"\vAppDriftRep\x12\x1d\n" +
 	"\n" +

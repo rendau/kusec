@@ -109,7 +109,7 @@ func newAccessStack(t *testing.T) *accessStack {
 		s.appSvc, s.secretSvc, s.itemSvc, s.configMapSvc, s.configItemSvc, s.auditSvc, kubeSvc, s.sessionSvc,
 	)
 	a.kubeUsecase = kubeUsc.New(kubeSvc, s.appSvc, s.secretSvc, s.configMapSvc, s.sessionSvc)
-	a.apikeyUsecase = apikeyUsc.New(apikeySvc, a.usrSvc, s.sessionSvc, s.txm, s.auditRec)
+	a.apikeyUsecase = apikeyUsc.New(apikeySvc, a.usrSvc, s.sessionSvc, s.txm, s.auditRec, s.usrUsecase)
 
 	return a
 }
@@ -447,7 +447,7 @@ func TestUserWithoutAppsSeesNothing(t *testing.T) {
 	require.ErrorIs(t, err, errs.NoPermission)
 
 	// то же — по API-ключу такого пользователя (mcp_only он выпускает себе сам)
-	_, key, err := a.apikeyUsecase.Create(ctx, "own key", nil, constant.ApiKeyScopeMcpOnly)
+	_, key, err := a.apikeyUsecase.Create(ctx, "own key", nil, constant.ApiKeyScopeMcpOnly, accessPassword)
 	require.NoError(t, err)
 	keySession, err := a.apikeyUsecase.McpSessionFromKey(context.Background(), key)
 	require.NoError(t, err)
@@ -562,7 +562,7 @@ func TestAllAppsUserSeesEverything(t *testing.T) {
 
 	// аудит: записи всех приложений, но не весь аудит — записи без
 	// приложения (учётки, ключи, общий sync) видит только админ
-	_, key, err := a.apikeyUsecase.Create(ctx, "allapps key", nil, constant.ApiKeyScopeMcpOnly)
+	_, key, err := a.apikeyUsecase.Create(ctx, "allapps key", nil, constant.ApiKeyScopeMcpOnly, accessPassword)
 	require.NoError(t, err)
 	mcpSession, err := a.apikeyUsecase.McpSessionFromKey(context.Background(), key)
 	require.NoError(t, err)
@@ -1148,7 +1148,7 @@ func TestApiKeySessionCannotManageAccounts(t *testing.T) {
 	victimId, _ := a.newUser(t, "key-victim", usrModel.Edit{})
 	humanCtx := a.loginCtx(t, adminUsername)
 
-	keyId, key, err := a.apikeyUsecase.Create(humanCtx, "ci", nil, constant.ApiKeyScopeFull)
+	keyId, key, err := a.apikeyUsecase.Create(humanCtx, "ci", nil, constant.ApiKeyScopeFull, accessPassword)
 	require.NoError(t, err)
 
 	keySession, err := a.apikeyUsecase.SessionFromKey(context.Background(), key)
@@ -1187,11 +1187,11 @@ func TestApiKeySessionCannotManageAccounts(t *testing.T) {
 		"Usr.Delete":    func() error { return a.usrUsecase.Delete(keyCtx, victimId) },
 		"Usr.ResetTotp": func() error { return a.usrUsecase.ResetTotp(keyCtx, victimId) },
 		"ApiKey.Create": func() error {
-			_, _, err := a.apikeyUsecase.Create(keyCtx, "more", nil, constant.ApiKeyScopeFull)
+			_, _, err := a.apikeyUsecase.Create(keyCtx, "more", nil, constant.ApiKeyScopeFull, accessPassword)
 			return err
 		},
 		"ApiKey.Create (mcp_only)": func() error {
-			_, _, err := a.apikeyUsecase.Create(keyCtx, "more", nil, constant.ApiKeyScopeMcpOnly)
+			_, _, err := a.apikeyUsecase.Create(keyCtx, "more", nil, constant.ApiKeyScopeMcpOnly, accessPassword)
 			return err
 		},
 		"ApiKey.Update": func() error { return a.apikeyUsecase.Update(keyCtx, keyId, nil, new("renamed"), nil) },

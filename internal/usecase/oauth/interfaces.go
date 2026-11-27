@@ -47,3 +47,9 @@ type TransactionManagerI interface {
 type AuditRecorderI interface {
 	RecordOAuthGrant(ctx context.Context, old, cur *model.Grant, batchId *string) error
 }
+
+// PasswordConfirmerI подтверждает действие текущим паролем вошедшего
+// пользователя (usr usecase: ограничитель перебора общий с профилем).
+type PasswordConfirmerI interface {
+	ConfirmPassword(ctx context.Context, currentPassword string) error
+}

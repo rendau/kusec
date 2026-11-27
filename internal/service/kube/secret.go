@@ -28,7 +28,7 @@ import (
 // Управляются только секреты с лейблом app.kubernetes.io/managed-by=kusec —
 // чужие секреты кластера не трогаются. Ошибки отдельных секретов собираются
 // в результат, не прерывая синхронизацию остальных.
-func (s *Service) SyncSecrets(ctx context.Context, appIds []string) (*SyncResult, error) {
+func (s *Service) SyncSecrets(ctx context.Context, appIds []string, adoptForeign bool) (*SyncResult, error) {
 	if !s.mu.TryLock() {
 		return nil, errs.SyncInProgress
 	}
@@ -42,7 +42,7 @@ func (s *Service) SyncSecrets(ctx context.Context, appIds []string) (*SyncResult
 		return nil, err
 	}
 
-	runId, meta, err := s.startSyncRun(ctx, appIds)
+	runId, meta, err := s.startSyncRun(ctx, appIds, adoptForeign)
 	if err != nil {
 		return nil, err
 	}
@@ -105,8 +105,8 @@ func (s *Service) syncSecretsLocked(ctx context.Context, client kubernetes.Inter
 
 		if !found {
 			if err = s.ensureNamespace(ctx, client, want.namespace, ensuredNamespaces); err != nil {
-				result.Errors = append(result.Errors, fmt.Sprintf("%s: %v", key, err))
-				journal.addError(kubeKindSecret, want.namespace, want.name, err.Error())
+				result.Errors = append(result.Errors, fmt.Sprintf("%s: %s", key, kubeErrText(err)))
+				journal.addError(kubeKindSecret, want.namespace, want.name, kubeErrText(err))
 				continue
 			}
 			contentHash := contentFingerprint(want.data)
@@ -118,8 +118,8 @@ func (s *Service) syncSecretsLocked(ctx context.Context, client kubernetes.Inter
 				continue
 			}
 			if !k8serrors.IsAlreadyExists(err) {
-				result.Errors = append(result.Errors, fmt.Sprintf("%s: create: %v", key, err))
-				journal.addError(kubeKindSecret, want.namespace, want.name, "create: "+err.Error())
+				result.Errors = append(result.Errors, fmt.Sprintf("%s: create: %s", key, kubeErrText(err)))
+				journal.addError(kubeKindSecret, want.namespace, want.name, "create: "+kubeErrText(err))
 				continue
 			}
 			// Секрет уже есть, но без нашего лейбла (создан вне kusec/старой
@@ -127,11 +127,11 @@ func (s *Service) syncSecretsLocked(ctx context.Context, client kubernetes.Inter
 			// объект не усыновляется, если при этом потеряются его данные.
 			current, err = client.CoreV1().Secrets(want.namespace).Get(ctx, want.name, metav1.GetOptions{})
 			if err != nil {
-				result.Errors = append(result.Errors, fmt.Sprintf("%s: adopt: %v", key, err))
-				journal.addError(kubeKindSecret, want.namespace, want.name, "adopt: "+err.Error())
+				result.Errors = append(result.Errors, fmt.Sprintf("%s: adopt: %s", key, kubeErrText(err)))
+				journal.addError(kubeKindSecret, want.namespace, want.name, "adopt: "+kubeErrText(err))
 				continue
 			}
-			if reason := adoptionRefusal(current.Labels, secretContent(current), want.data); reason != "" {
+			if reason := adoptionRefusal(current.Labels, secretContent(current), want.data, meta.canAdoptForeign()); reason != "" {
 				result.Errors = append(result.Errors, fmt.Sprintf("%s: adopt: %s", key, reason))
 				journal.addError(kubeKindSecret, want.namespace, want.name, "adopt: "+reason)
 				continue
@@ -145,8 +145,8 @@ func (s *Service) syncSecretsLocked(ctx context.Context, client kubernetes.Inter
 	for key, stale := range existing {
 		err = client.CoreV1().Secrets(stale.Namespace).Delete(ctx, stale.Name, metav1.DeleteOptions{})
 		if err != nil && !k8serrors.IsNotFound(err) {
-			result.Errors = append(result.Errors, fmt.Sprintf("%s: delete: %v", key, err))
-			journal.addError(kubeKindSecret, stale.Namespace, stale.Name, "delete: "+err.Error())
+			result.Errors = append(result.Errors, fmt.Sprintf("%s: delete: %s", key, kubeErrText(err)))
+			journal.addError(kubeKindSecret, stale.Namespace, stale.Name, "delete: "+kubeErrText(err))
 			continue
 		}
 		result.Deleted = append(result.Deleted, key)
@@ -196,13 +196,13 @@ func (s *Service) reconcileExistingSecret(
 	// Тип k8s-секрета immutable: при его смене секрет пересоздаётся.
 	if current.Type != desiredSecretType(want) {
 		if err := client.CoreV1().Secrets(want.namespace).Delete(ctx, want.name, metav1.DeleteOptions{}); err != nil && !k8serrors.IsNotFound(err) {
-			result.Errors = append(result.Errors, fmt.Sprintf("%s: recreate (delete): %v", key, err))
-			journal.addError(kubeKindSecret, want.namespace, want.name, "recreate (delete): "+err.Error())
+			result.Errors = append(result.Errors, fmt.Sprintf("%s: recreate (delete): %s", key, kubeErrText(err)))
+			journal.addError(kubeKindSecret, want.namespace, want.name, "recreate (delete): "+kubeErrText(err))
 			return
 		}
 		if _, err := client.CoreV1().Secrets(want.namespace).Create(ctx, buildSecret(want, meta, contentHash), metav1.CreateOptions{}); err != nil {
-			result.Errors = append(result.Errors, fmt.Sprintf("%s: recreate (create): %v", key, err))
-			journal.addError(kubeKindSecret, want.namespace, want.name, "recreate (create): "+err.Error())
+			result.Errors = append(result.Errors, fmt.Sprintf("%s: recreate (create): %s", key, kubeErrText(err)))
+			journal.addError(kubeKindSecret, want.namespace, want.name, "recreate (create): "+kubeErrText(err))
 			return
 		}
 		result.Updated = append(result.Updated, key)
@@ -226,8 +226,8 @@ func (s *Service) reconcileExistingSecret(
 	meta.annotate(updated.Annotations, contentHash)
 
 	if _, err := client.CoreV1().Secrets(want.namespace).Update(ctx, updated, metav1.UpdateOptions{}); err != nil {
-		result.Errors = append(result.Errors, fmt.Sprintf("%s: update: %v", key, err))
-		journal.addError(kubeKindSecret, want.namespace, want.name, "update: "+err.Error())
+		result.Errors = append(result.Errors, fmt.Sprintf("%s: update: %s", key, kubeErrText(err)))
+		journal.addError(kubeKindSecret, want.namespace, want.name, "update: "+kubeErrText(err))
 		return
 	}
 	result.Updated = append(result.Updated, key)
@@ -277,7 +277,7 @@ func (s *Service) buildDesired(ctx context.Context, result *SyncResult, appIds [
 
 			data, err := s.buildSecretData(ctx, secret.Id)
 			if err != nil {
-				result.Errors = append(result.Errors, fmt.Sprintf("%s: %v", key, err))
+				result.Errors = append(result.Errors, fmt.Sprintf("%s: %s", key, kubeErrText(err)))
 				continue
 			}
 
@@ -318,7 +318,7 @@ func (s *Service) buildSecretData(ctx context.Context, secretId string) (map[str
 		if item.Encoding == "base64" {
 			raw, err := base64.StdEncoding.DecodeString(strings.TrimSpace(item.Value))
 			if err != nil {
-				return nil, fmt.Errorf("key %q: invalid base64 value: %w", item.Key, err)
+				return nil, fmt.Errorf("key %q: invalid base64 value", clipName(item.Key))
 			}
 			data[item.Key] = raw
 			continue

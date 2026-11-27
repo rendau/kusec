@@ -35,3 +35,9 @@ type TransactionManagerI interface {
 type AuditRecorderI interface {
 	RecordApiKey(ctx context.Context, old, cur *model.Main, batchId *string) error
 }
+
+// PasswordConfirmerI подтверждает действие текущим паролем вошедшего
+// пользователя (usr usecase: ограничитель перебора общий с профилем).
+type PasswordConfirmerI interface {
+	ConfirmPassword(ctx context.Context, currentPassword string) error
+}

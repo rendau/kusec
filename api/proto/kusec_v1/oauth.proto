@@ -51,6 +51,9 @@ message OAuthAuthorizeReq {
   string scope = 7;
   string resource = 8;
   bool approve = 9; // только Authorize
+  // Текущий пароль — обязателен при approve=true (только Authorize):
+  // подключение живёт до удаления и переживает выход и смену пароля.
+  string current_password = 10;
 }
 
 message OAuthAuthorizeInfoRep {

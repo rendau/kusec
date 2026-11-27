@@ -34,6 +34,16 @@ const (
 type runMeta struct {
 	id string
 	at string // RFC3339
+	// adoptForeign — можно усыновить объект без лейбла kusec (запуск админа).
+	// Не-админ так перезаписал бы чужой объект namespace (helm, другой
+	// команды): отказ подсказывал бы недостающие ключи, а заведя их с
+	// любыми значениями, он прошёл бы проверку adoptionRefusal.
+	adoptForeign bool
+}
+
+// canAdoptForeign — nil-безопасно: без метаданных запуска усыновление закрыто.
+func (m *runMeta) canAdoptForeign() bool {
+	return m != nil && m.adoptForeign
 }
 
 // annotate проставляет аннотации запуска sync и отпечатка содержимого.
@@ -159,7 +169,7 @@ func allKeys(data map[string][]byte) []string {
 // ── Жизненный цикл запуска ──────────────────────────────
 
 // startSyncRun создаёт запись запуска в журнале sync (status=running).
-func (s *Service) startSyncRun(ctx context.Context, appIds []string) (string, *runMeta, error) {
+func (s *Service) startSyncRun(ctx context.Context, appIds []string, adoptForeign bool) (string, *runMeta, error) {
 	run := s.auditRec.NewSyncRun(ctx, runScopeAppId(appIds))
 
 	runId, err := s.syncRunSvc.Start(ctx, run)
@@ -167,7 +177,7 @@ func (s *Service) startSyncRun(ctx context.Context, appIds []string) (string, *r
 		return "", nil, fmt.Errorf("syncRunSvc.Start: %w", err)
 	}
 
-	return runId, &runMeta{id: runId, at: time.Now().UTC().Format(time.RFC3339)}, nil
+	return runId, &runMeta{id: runId, at: time.Now().UTC().Format(time.RFC3339), adoptForeign: adoptForeign}, nil
 }
 
 // finishSyncRun финализирует запуск: объекты журнала, статус и запись аудита

@@ -29,7 +29,7 @@ func (h *OAuth) DescribeAuthorization(ctx context.Context, req *proto.OAuthAutho
 }
 
 func (h *OAuth) Authorize(ctx context.Context, req *proto.OAuthAuthorizeReq) (*proto.OAuthAuthorizeRep, error) {
-	redirectUrl, err := h.usecase.Authorize(ctx, dto.DecodeOAuthAuthorizeReq(req), req.Approve)
+	redirectUrl, err := h.usecase.Authorize(ctx, dto.DecodeOAuthAuthorizeReq(req), req.Approve, req.CurrentPassword)
 	if err != nil {
 		return nil, err
 	}

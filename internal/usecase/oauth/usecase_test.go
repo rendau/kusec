@@ -203,6 +203,18 @@ func (t *testTxm) TxFn(ctx context.Context, f func(context.Context) error) error
 }
 
 // testAudit запоминает записи аудита подключений: действие и актор.
+// testPasswords принимает только testPassword.
+type testPasswords struct{}
+
+const testPassword = "current-pw"
+
+func (testPasswords) ConfirmPassword(_ context.Context, currentPassword string) error {
+	if currentPassword != testPassword {
+		return errs.CurrentPasswordInvalid
+	}
+	return nil
+}
+
 type testAudit struct {
 	mu      sync.Mutex
 	records []string
@@ -254,6 +266,7 @@ func newTestEnv(t *testing.T) *testEnv {
 		&testSessionService{},
 		&testTxm{},
 		audit,
+		testPasswords{},
 	)
 	admin := context.WithValue(context.Background(), ctxSessionKey{}, &sessionModel.Session{Id: 1, Admin: true, Source: "ui"})
 	return &testEnv{uc: uc, repo: repo, usrs: usrs, audit: audit, admin: admin}
@@ -297,7 +310,7 @@ func (e *testEnv) authorizeReq(clientId string) *AuthorizeReq {
 // approve проходит страницу согласия и возвращает код из адреса возврата.
 func (e *testEnv) approve(t *testing.T, clientId string) string {
 	t.Helper()
-	redirect, err := e.uc.Authorize(e.admin, e.authorizeReq(clientId), true)
+	redirect, err := e.uc.Authorize(e.admin, e.authorizeReq(clientId), true, testPassword)
 	require.NoError(t, err)
 	parsed, err := url.Parse(redirect)
 	require.NoError(t, err)
@@ -364,7 +377,7 @@ func TestAuthorize(t *testing.T) {
 
 	t.Run("agent session", func(t *testing.T) {
 		agent := context.WithValue(context.Background(), ctxSessionKey{}, &sessionModel.Session{Id: 1, Admin: true, ApiKeyId: "k"})
-		_, err := env.uc.Authorize(agent, env.authorizeReq(client.ClientId), true)
+		_, err := env.uc.Authorize(agent, env.authorizeReq(client.ClientId), true, testPassword)
 		assert.ErrorIs(t, err, errs.NoPermission)
 	})
 
@@ -394,8 +407,18 @@ func TestAuthorize(t *testing.T) {
 		assertErrCode(t, err, errs.OAuthInvalidRequest)
 	})
 
+	t.Run("approve requires current password", func(t *testing.T) {
+		// подключение переживает выход и смену пароля: чужой с живой
+		// сессией не должен выдать его своему клиенту
+		for _, pw := range []string{"", "wrong"} {
+			redirect, err := env.uc.Authorize(env.admin, env.authorizeReq(client.ClientId), true, pw)
+			assert.ErrorIs(t, err, errs.CurrentPasswordInvalid)
+			assert.Empty(t, redirect)
+		}
+	})
+
 	t.Run("deny", func(t *testing.T) {
-		redirect, err := env.uc.Authorize(env.admin, env.authorizeReq(client.ClientId), false)
+		redirect, err := env.uc.Authorize(env.admin, env.authorizeReq(client.ClientId), false, "")
 		require.NoError(t, err)
 		assert.True(t, strings.HasPrefix(redirect, testRedirect+"?"))
 		assert.Contains(t, redirect, "error=access_denied")

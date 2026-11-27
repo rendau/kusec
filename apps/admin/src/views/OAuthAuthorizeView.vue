@@ -1,11 +1,11 @@
 <script setup lang="ts">
 import { computed, onMounted, ref } from 'vue'
 import { useRoute } from 'vue-router'
-import { NAlert, NButton, NCard, NIcon, NSpin } from 'naive-ui'
+import { NAlert, NButton, NCard, NFormItem, NIcon, NInput, NSpin } from 'naive-ui'
 import { EyeOff, Pencil } from '@vicons/tabler'
 import { storeToRefs } from 'pinia'
 
-import { apiErrorMessage } from '@/api/http'
+import { ApiError, apiErrorMessage } from '@/api/http'
 import { authorize, describeAuthorization } from '@/api/oauth'
 import type { OAuthAuthorizeInfoRep, OAuthAuthorizeReq } from '@/api/types'
 import { useAuthStore } from '@/stores/auth'
@@ -36,16 +36,42 @@ const loading = ref(true)
 const errorMessage = ref('')
 const deciding = ref<'' | 'allow' | 'deny'>('')
 const redirecting = ref(false)
+// Allowing is confirmed with the current password: the connection outlives
+// sign-out and a password change, so an open session alone must not grant it.
+const password = ref('')
+const passwordError = ref('')
+
+/** Codes of `POST /oauth/authorize` that belong to the password field. */
+const PASSWORD_FIELD_CODES = new Set(['current_password_invalid', 'too_many_attempts'])
+
+// Absent (not `undefined`) while there is no error — see ProfileView.
+const passwordFeedback = computed(() =>
+  passwordError.value
+    ? { validationStatus: 'error' as const, feedback: passwordError.value }
+    : {},
+)
 
 async function decide(approve: boolean): Promise<void> {
-  deciding.value = approve ? 'allow' : 'deny'
+  if (deciding.value) return
   errorMessage.value = ''
+  passwordError.value = ''
+  if (approve && !password.value) {
+    passwordError.value = 'Enter your current password to allow'
+    return
+  }
+  deciding.value = approve ? 'allow' : 'deny'
   try {
-    const rep = await authorize(request.value, approve)
+    const rep = await authorize(request.value, approve, password.value)
     redirecting.value = true
     window.location.assign(rep.redirect_url)
   } catch (error) {
-    errorMessage.value = apiErrorMessage(error, 'Unable to complete the authorization')
+    const text = apiErrorMessage(error, 'Unable to complete the authorization')
+    if (error instanceof ApiError && PASSWORD_FIELD_CODES.has(error.code)) {
+      passwordError.value = text
+      password.value = ''
+    } else {
+      errorMessage.value = text
+    }
     deciding.value = ''
   }
 }
@@ -105,6 +131,23 @@ onMounted(async () => {
           >. Allow only if you started connecting this app yourself. You can disconnect
           it any time in My profile.
         </p>
+
+        <NFormItem
+          class="consent-password"
+          label="Confirm with your password"
+          v-bind="passwordFeedback"
+        >
+          <NInput
+            v-model:value="password"
+            type="password"
+            show-password-on="click"
+            :disabled="Boolean(deciding)"
+            :input-props="{ autocomplete: 'current-password' }"
+            placeholder="Current password"
+            @update:value="passwordError = ''"
+            @keyup.enter="decide(true)"
+          />
+        </NFormItem>
 
         <div class="consent-actions">
           <NButton
@@ -223,6 +266,10 @@ onMounted(async () => {
   font-size: 12.5px;
   line-height: 1.5;
   overflow-wrap: anywhere;
+}
+
+.consent-password {
+  margin-bottom: 4px;
 }
 
 .consent-actions {

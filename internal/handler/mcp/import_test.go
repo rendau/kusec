@@ -139,6 +139,7 @@ func newImportEnv(t *testing.T) *importEnv {
 		nil,
 		txmStub{},
 		auditRecStub{},
+		nil,
 	)
 
 	appSvc := &appSvcMock{apps: map[string]*appModel.Main{

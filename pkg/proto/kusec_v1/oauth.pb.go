@@ -35,8 +35,11 @@ type OAuthAuthorizeReq struct {
 	Scope               string                 `protobuf:"bytes,7,opt,name=scope,proto3" json:"scope,omitempty"`
 	Resource            string                 `protobuf:"bytes,8,opt,name=resource,proto3" json:"resource,omitempty"`
 	Approve             bool                   `protobuf:"varint,9,opt,name=approve,proto3" json:"approve,omitempty"` // только Authorize
-	unknownFields       protoimpl.UnknownFields
-	sizeCache           protoimpl.SizeCache
+	// Текущий пароль — обязателен при approve=true (только Authorize):
+	// подключение живёт до удаления и переживает выход и смену пароля.
+	CurrentPassword string `protobuf:"bytes,10,opt,name=current_password,json=currentPassword,proto3" json:"current_password,omitempty"`
+	unknownFields   protoimpl.UnknownFields
+	sizeCache       protoimpl.SizeCache
 }
 
 func (x *OAuthAuthorizeReq) Reset() {
@@ -130,6 +133,13 @@ func (x *OAuthAuthorizeReq) GetApprove() bool {
 		return x.Approve
 	}
 	return false
+}
+
+func (x *OAuthAuthorizeReq) GetCurrentPassword() string {
+	if x != nil {
+		return x.CurrentPassword
+	}
+	return ""
 }
 
 type OAuthAuthorizeInfoRep struct {
@@ -412,7 +422,7 @@ var File_kusec_v1_oauth_proto protoreflect.FileDescriptor
 
 const file_kusec_v1_oauth_proto_rawDesc = "" +
 	"\n" +
-	"\x14kusec_v1/oauth.proto\x12\bkusec_v1\x1a\x1cgoogle/api/annotations.proto\x1a\x1bgoogle/protobuf/empty.proto\"\xb5\x02\n" +
+	"\x14kusec_v1/oauth.proto\x12\bkusec_v1\x1a\x1cgoogle/api/annotations.proto\x1a\x1bgoogle/protobuf/empty.proto\"\xe0\x02\n" +
 	"\x11OAuthAuthorizeReq\x12#\n" +
 	"\rresponse_type\x18\x01 \x01(\tR\fresponseType\x12\x1b\n" +
 	"\tclient_id\x18\x02 \x01(\tR\bclientId\x12!\n" +
@@ -422,7 +432,9 @@ const file_kusec_v1_oauth_proto_rawDesc = "" +
 	"\x15code_challenge_method\x18\x06 \x01(\tR\x13codeChallengeMethod\x12\x14\n" +
 	"\x05scope\x18\a \x01(\tR\x05scope\x12\x1a\n" +
 	"\bresource\x18\b \x01(\tR\bresource\x12\x18\n" +
-	"\aapprove\x18\t \x01(\bR\aapprove\"\x80\x01\n" +
+	"\aapprove\x18\t \x01(\bR\aapprove\x12)\n" +
+	"\x10current_password\x18\n" +
+	" \x01(\tR\x0fcurrentPassword\"\x80\x01\n" +
 	"\x15OAuthAuthorizeInfoRep\x12\x1f\n" +
 	"\vclient_name\x18\x01 \x01(\tR\n" +
 	"clientName\x12!\n" +

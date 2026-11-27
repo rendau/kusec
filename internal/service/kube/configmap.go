@@ -28,7 +28,7 @@ import (
 // configmap-ы с лейблом app.kubernetes.io/managed-by=kusec — чужие объекты
 // кластера не трогаются. Ошибки отдельных configmap-ов собираются в результат,
 // не прерывая синхронизацию остальных.
-func (s *Service) SyncConfigMaps(ctx context.Context, appIds []string) (*SyncResult, error) {
+func (s *Service) SyncConfigMaps(ctx context.Context, appIds []string, adoptForeign bool) (*SyncResult, error) {
 	if !s.mu.TryLock() {
 		return nil, errs.SyncInProgress
 	}
@@ -42,7 +42,7 @@ func (s *Service) SyncConfigMaps(ctx context.Context, appIds []string) (*SyncRes
 		return nil, err
 	}
 
-	runId, meta, err := s.startSyncRun(ctx, appIds)
+	runId, meta, err := s.startSyncRun(ctx, appIds, adoptForeign)
 	if err != nil {
 		return nil, err
 	}
@@ -94,8 +94,8 @@ func (s *Service) syncConfigMapsLocked(ctx context.Context, client kubernetes.In
 
 		if !found {
 			if err = s.ensureNamespace(ctx, client, want.namespace, ensuredNamespaces); err != nil {
-				result.Errors = append(result.Errors, fmt.Sprintf("%s: %v", key, err))
-				journal.addError(kubeKindConfigMap, want.namespace, want.name, err.Error())
+				result.Errors = append(result.Errors, fmt.Sprintf("%s: %s", key, kubeErrText(err)))
+				journal.addError(kubeKindConfigMap, want.namespace, want.name, kubeErrText(err))
 				continue
 			}
 			contentHash := contentFingerprint(configMapContent(want.data, want.binaryData))
@@ -108,8 +108,8 @@ func (s *Service) syncConfigMapsLocked(ctx context.Context, client kubernetes.In
 				continue
 			}
 			if !k8serrors.IsAlreadyExists(err) {
-				result.Errors = append(result.Errors, fmt.Sprintf("%s: create: %v", key, err))
-				journal.addError(kubeKindConfigMap, want.namespace, want.name, "create: "+err.Error())
+				result.Errors = append(result.Errors, fmt.Sprintf("%s: create: %s", key, kubeErrText(err)))
+				journal.addError(kubeKindConfigMap, want.namespace, want.name, "create: "+kubeErrText(err))
 				continue
 			}
 			// ConfigMap уже есть, но без нашего лейбла (создан вне kusec/старой
@@ -117,12 +117,12 @@ func (s *Service) syncConfigMapsLocked(ctx context.Context, client kubernetes.In
 			// объект не усыновляется, если при этом потеряются его данные.
 			current, err = client.CoreV1().ConfigMaps(want.namespace).Get(ctx, want.name, metav1.GetOptions{})
 			if err != nil {
-				result.Errors = append(result.Errors, fmt.Sprintf("%s: adopt: %v", key, err))
-				journal.addError(kubeKindConfigMap, want.namespace, want.name, "adopt: "+err.Error())
+				result.Errors = append(result.Errors, fmt.Sprintf("%s: adopt: %s", key, kubeErrText(err)))
+				journal.addError(kubeKindConfigMap, want.namespace, want.name, "adopt: "+kubeErrText(err))
 				continue
 			}
 			wantContent := configMapContent(want.data, want.binaryData)
-			if reason := adoptionRefusal(current.Labels, liveConfigMapContent(current), wantContent); reason != "" {
+			if reason := adoptionRefusal(current.Labels, liveConfigMapContent(current), wantContent, meta.canAdoptForeign()); reason != "" {
 				result.Errors = append(result.Errors, fmt.Sprintf("%s: adopt: %s", key, reason))
 				journal.addError(kubeKindConfigMap, want.namespace, want.name, "adopt: "+reason)
 				continue
@@ -136,8 +136,8 @@ func (s *Service) syncConfigMapsLocked(ctx context.Context, client kubernetes.In
 	for key, stale := range existing {
 		err = client.CoreV1().ConfigMaps(stale.Namespace).Delete(ctx, stale.Name, metav1.DeleteOptions{})
 		if err != nil && !k8serrors.IsNotFound(err) {
-			result.Errors = append(result.Errors, fmt.Sprintf("%s: delete: %v", key, err))
-			journal.addError(kubeKindConfigMap, stale.Namespace, stale.Name, "delete: "+err.Error())
+			result.Errors = append(result.Errors, fmt.Sprintf("%s: delete: %s", key, kubeErrText(err)))
+			journal.addError(kubeKindConfigMap, stale.Namespace, stale.Name, "delete: "+kubeErrText(err))
 			continue
 		}
 		result.Deleted = append(result.Deleted, key)
@@ -202,8 +202,8 @@ func (s *Service) reconcileExistingConfigMap(
 	meta.annotate(updated.Annotations, contentHash)
 
 	if _, err := client.CoreV1().ConfigMaps(want.namespace).Update(ctx, updated, metav1.UpdateOptions{}); err != nil {
-		result.Errors = append(result.Errors, fmt.Sprintf("%s: update: %v", key, err))
-		journal.addError(kubeKindConfigMap, want.namespace, want.name, "update: "+err.Error())
+		result.Errors = append(result.Errors, fmt.Sprintf("%s: update: %s", key, kubeErrText(err)))
+		journal.addError(kubeKindConfigMap, want.namespace, want.name, "update: "+kubeErrText(err))
 		return
 	}
 	result.Updated = append(result.Updated, key)
@@ -254,7 +254,7 @@ func (s *Service) buildDesiredConfigMaps(ctx context.Context, result *SyncResult
 
 			data, binaryData, err := s.buildConfigMapData(ctx, configMap.Id)
 			if err != nil {
-				result.Errors = append(result.Errors, fmt.Sprintf("%s: %v", key, err))
+				result.Errors = append(result.Errors, fmt.Sprintf("%s: %s", key, kubeErrText(err)))
 				continue
 			}
 
@@ -295,7 +295,7 @@ func (s *Service) buildConfigMapData(ctx context.Context, configMapId string) (m
 		if item.Encoding == "base64" {
 			raw, err := base64.StdEncoding.DecodeString(strings.TrimSpace(item.Value))
 			if err != nil {
-				return nil, nil, fmt.Errorf("key %q: invalid base64 value: %w", item.Key, err)
+				return nil, nil, fmt.Errorf("key %q: invalid base64 value", clipName(item.Key))
 			}
 			if binaryData == nil {
 				binaryData = make(map[string][]byte, len(items))

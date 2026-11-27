@@ -47,6 +47,11 @@ interface FormModel {
   active: boolean
   /** Owner user id as a string (admin-only); `null` = the current user. */
   usr_id: string | null
+  /**
+   * Current password of the issuer, create only: a key outlives sign-out and
+   * a password change, so a stolen session must not mint one.
+   */
+  current_password: string
 }
 
 const model = reactive<FormModel>({
@@ -54,6 +59,7 @@ const model = reactive<FormModel>({
   scope: 'mcp_only',
   active: true,
   usr_id: null,
+  current_password: '',
 })
 
 // full and read_only keys are issued by admins only; non-admins can create
@@ -103,6 +109,7 @@ const { formRef, submitting, isEdit, submit } = useEntityForm<
     model.scope = apiKey?.scope ?? 'mcp_only'
     model.active = apiKey?.active ?? true
     model.usr_id = null
+    model.current_password = ''
     createdKey.value = ''
     if (!isEdit.value && authStore.isAdmin) void searchUsers('')
   },
@@ -110,6 +117,7 @@ const { formRef, submitting, isEdit, submit } = useEntityForm<
     createApiKey({
       name: model.name,
       scope: model.scope,
+      current_password: model.current_password,
       ...(model.usr_id ? { usr_id: model.usr_id } : {}),
     }),
   update: (apiKey) => {
@@ -159,6 +167,9 @@ async function searchUsers(query: string): Promise<void> {
 
 const rules = computed<FormRules>(() => ({
   name: [{ required: true, message: 'Name is required', trigger: ['blur', 'input'] }],
+  current_password: isEdit.value
+    ? []
+    : [{ required: true, message: 'Enter your current password', trigger: ['blur'] }],
 }))
 
 // Reset the reveal screen whenever the modal is closed.
@@ -240,6 +251,22 @@ function close(): void {
           <NText depth="3" style="font-size: 12px">{{ scopeHint }}</NText>
           <NText v-if="!authStore.isAdmin" depth="3" style="font-size: 12px">
             Only administrators can issue full or read-only API keys.
+          </NText>
+        </NSpace>
+      </NFormItem>
+      <NFormItem v-if="!isEdit" label="Your current password" path="current_password">
+        <NSpace vertical :size="4" style="width: 100%">
+          <NInput
+            v-model:value="model.current_password"
+            type="password"
+            show-password-on="click"
+            :input-props="{ autocomplete: 'current-password' }"
+            placeholder="Confirm it is you"
+            @keyup.enter="submit"
+          />
+          <NText depth="3" style="font-size: 12px">
+            The key keeps working after you sign out or change the password — delete it
+            to revoke.
           </NText>
         </NSpace>
       </NFormItem>

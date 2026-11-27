@@ -40,16 +40,16 @@ type kubeSvcMock struct {
 	gotNamespace      string
 }
 
-func (m *kubeSvcMock) Sync(_ context.Context, appIds []string) (*kubeSvc.SyncResult, *kubeSvc.SyncResult, error) {
+func (m *kubeSvcMock) Sync(_ context.Context, appIds []string, _ bool) (*kubeSvc.SyncResult, *kubeSvc.SyncResult, error) {
 	m.gotAppIds = appIds
 	return m.secretsResult, m.configMaps, nil
 }
 
-func (m *kubeSvcMock) SyncSecrets(_ context.Context, _ []string) (*kubeSvc.SyncResult, error) {
+func (m *kubeSvcMock) SyncSecrets(_ context.Context, _ []string, _ bool) (*kubeSvc.SyncResult, error) {
 	return nil, errs.NotImplemented
 }
 
-func (m *kubeSvcMock) SyncConfigMaps(_ context.Context, _ []string) (*kubeSvc.SyncResult, error) {
+func (m *kubeSvcMock) SyncConfigMaps(_ context.Context, _ []string, _ bool) (*kubeSvc.SyncResult, error) {
 	return nil, errs.NotImplemented
 }
 
@@ -124,6 +124,7 @@ func TestSyncE2E(t *testing.T) {
 		nil,
 		txmStub{},
 		auditRecStub{},
+		nil,
 	)
 	itemUsecase := itemUsc.New(
 		&itemSvcMock{items: map[string]*itemModel.Main{
@@ -141,7 +142,7 @@ func TestSyncE2E(t *testing.T) {
 			Created:   []string{"prod/kusec-app1-db"},
 			Unchanged: 2,
 			// значение секрета в тексте ошибки должно быть вычищено
-			Errors: []string{"secret item DB_PASSWORD: value " + secretValue + " rejected"},
+			Errors: []string{"prod/kusec-app1-db: update: invalid object: rejected by k8s validation, fields: data[DB_PASSWORD]"},
 		},
 		configMaps: &kubeSvc.SyncResult{},
 	}
@@ -165,7 +166,7 @@ func TestSyncE2E(t *testing.T) {
 	require.NoError(t, err)
 	require.True(t, res.IsError)
 
-	// get_item — значение попадает в реестр сессии для скраба
+	// get_item — значение помечено увиденным сессией
 	res, err = clSession.CallTool(t.Context(), &mcpsdk.CallToolParams{Name: "get_item", Arguments: map[string]any{"id": "item1"}})
 	require.NoError(t, err)
 	require.False(t, res.IsError)
@@ -183,7 +184,8 @@ func TestSyncE2E(t *testing.T) {
 
 	assert.Contains(t, string(raw), "prod/kusec-app1-db")
 	assert.NotContains(t, string(raw), secretValue, "значение секрета утекло в ответ sync")
-	// текст ошибки со значением скрыт целиком: частичная вычистка показала бы место совпадения
-	assert.Contains(t, string(raw), secretInErrText)
+	// текст ошибки уходит как есть: подмена при совпадении с увиденным
+	// значением сама была бы ответом «угадал / не угадал» (см. errors.go)
+	assert.Contains(t, string(raw), "fields: data[DB_PASSWORD]")
 	assert.NotContains(t, string(raw), "[REDACTED]")
 }

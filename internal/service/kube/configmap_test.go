@@ -131,7 +131,7 @@ func TestSync_ReconcilesSecretsAndConfigMaps(t *testing.T) {
 		},
 	}
 
-	secrets, configMaps, err := svc.Sync(context.Background(), []string{"app-1"})
+	secrets, configMaps, err := svc.Sync(context.Background(), []string{"app-1"}, true)
 	if err != nil {
 		t.Fatalf("Sync() error = %v", err)
 	}

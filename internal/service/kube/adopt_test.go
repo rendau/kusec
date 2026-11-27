@@ -26,17 +26,17 @@ func TestAdoptionRefusal(t *testing.T) {
 	helm := map[string]string{managedByLabelKey: "Helm"}
 
 	// данные совпадают — усыновление без потерь
-	assert.Empty(t, adoptionRefusal(nil, map[string][]byte{"A": b("v")}, map[string][]byte{"A": b("v")}))
+	assert.Empty(t, adoptionRefusal(nil, map[string][]byte{"A": b("v")}, map[string][]byte{"A": b("v")}, true))
 
 	// изменённое непустое значение, пустое с обеих сторон и новый пустой ключ — не потеря
 	assert.Empty(t, adoptionRefusal(helm,
 		map[string][]byte{"A": b("old"), "E": b("")},
-		map[string][]byte{"A": b("new"), "E": b(""), "NEW": b("")}))
+		map[string][]byte{"A": b("new"), "E": b(""), "NEW": b("")}, true))
 
 	// ключа нет в kusec и непустое значение затёрлось бы пустым — отказ с именами ключей
 	reason := adoptionRefusal(helm,
 		map[string][]byte{"A": b("live-a"), "B": b("live-b"), "Z": b("live-z"), "OK": b("same")},
-		map[string][]byte{"A": b(""), "OK": b("same")})
+		map[string][]byte{"A": b(""), "OK": b("same")}, true)
 	assert.Contains(t, reason, "keys missing in kusec: B, Z")
 	assert.Contains(t, reason, "keys with empty value in kusec: A")
 	for _, value := range []string{"live-a", "live-b", "live-z", "same"} {
@@ -44,7 +44,16 @@ func TestAdoptionRefusal(t *testing.T) {
 	}
 
 	// объект уже наш — проверка не применяется
-	assert.Empty(t, adoptionRefusal(managed, map[string][]byte{"GONE": b("v")}, map[string][]byte{}))
+	assert.Empty(t, adoptionRefusal(managed, map[string][]byte{"GONE": b("v")}, map[string][]byte{}, true))
+
+	// sync не-админа: чужой объект не усыновляется даже без потерь, и имена
+	// его ключей не называются — иначе, заведя их, он перезаписал бы объект
+	reason = adoptionRefusal(helm,
+		map[string][]byte{"A": b("live-a"), "B": b("live-b")},
+		map[string][]byte{"A": b("x"), "B": b("y")}, false)
+	assert.Contains(t, reason, "only an admin can take it over")
+	assert.NotContains(t, reason, "keys")
+	assert.Empty(t, adoptionRefusal(managed, map[string][]byte{"A": b("v")}, map[string][]byte{}, false))
 }
 
 // adoptSecretSvc — сервис с одним приложением web (namespace team-a) и одним
@@ -94,7 +103,7 @@ func TestSyncSecrets_AdoptRefusedWhenLiveDataWouldBeLost(t *testing.T) {
 		{Key: "C", Value: "new-c"},
 	})
 
-	result, err := svc.SyncSecrets(context.Background(), nil)
+	result, err := svc.SyncSecrets(context.Background(), nil, true)
 	require.NoError(t, err)
 
 	require.Len(t, result.Errors, 1)
@@ -115,6 +124,35 @@ func TestSyncSecrets_AdoptRefusedWhenLiveDataWouldBeLost(t *testing.T) {
 	assert.Empty(t, live.Annotations[secretIdAnnotation])
 }
 
+// Sync не-админа чужой объект не усыновляет даже без потерь данных: иначе
+// он узнал бы ключи из отказа, завёл бы их и перезаписал объект.
+func TestSyncSecrets_AdoptRefusedForNonAdmin(t *testing.T) {
+	t.Parallel()
+
+	liveData := map[string][]byte{"A": []byte("old")}
+	client := k8sfake.NewSimpleClientset(
+		&corev1.Secret{
+			ObjectMeta: metav1.ObjectMeta{Name: "billing-db", Namespace: "team-a"},
+			Type:       corev1.SecretTypeOpaque,
+			Data:       liveData,
+		},
+	)
+	svc := adoptSecretSvc(client, []*itemModel.Main{{Key: "A", Value: "new"}})
+
+	result, err := svc.SyncSecrets(context.Background(), nil, false)
+	require.NoError(t, err)
+
+	require.Len(t, result.Errors, 1)
+	assert.Contains(t, result.Errors[0], "team-a/billing-db: adopt: refused")
+	assert.Contains(t, result.Errors[0], "only an admin can take it over")
+	assert.Empty(t, result.Updated)
+
+	live, err := client.CoreV1().Secrets("team-a").Get(context.Background(), "billing-db", metav1.GetOptions{})
+	require.NoError(t, err)
+	assert.Equal(t, liveData, live.Data)
+	assert.Empty(t, live.Labels[managedByLabelKey])
+}
+
 func TestSyncSecrets_AdoptAllowedWhenNoLiveDataIsLost(t *testing.T) {
 	t.Parallel()
 
@@ -132,7 +170,7 @@ func TestSyncSecrets_AdoptAllowedWhenNoLiveDataIsLost(t *testing.T) {
 		{Key: "NEW", Value: "added"},
 	})
 
-	result, err := svc.SyncSecrets(context.Background(), nil)
+	result, err := svc.SyncSecrets(context.Background(), nil, true)
 	require.NoError(t, err)
 
 	assert.Empty(t, result.Errors)
@@ -164,7 +202,7 @@ func TestSyncSecrets_AdoptOwnObjectFromAnotherAppIsNotGuarded(t *testing.T) {
 	)
 	svc := adoptSecretSvc(client, []*itemModel.Main{{Key: "A", Value: "x"}})
 
-	result, err := svc.SyncSecrets(context.Background(), []string{"app-1"})
+	result, err := svc.SyncSecrets(context.Background(), []string{"app-1"}, true)
 	require.NoError(t, err)
 
 	assert.Empty(t, result.Errors)
@@ -213,7 +251,7 @@ func TestSyncSecrets_RefusesObjectOfAnotherExistingApp(t *testing.T) {
 	svc := withOwnerApp(adoptSecretSvc(client, []*itemModel.Main{{Key: "A", Value: "attacker"}}), "app-0")
 
 	for _, appIds := range [][]string{{"app-1"}, nil} {
-		result, err := svc.SyncSecrets(context.Background(), appIds)
+		result, err := svc.SyncSecrets(context.Background(), appIds, true)
 		require.NoError(t, err)
 		require.Len(t, result.Errors, 1)
 		assert.Contains(t, result.Errors[0], "another app (app-0)")
@@ -248,7 +286,7 @@ func TestSyncSecrets_SameRecordMovedToAnotherAppIsAllowed(t *testing.T) {
 	)
 	svc := withOwnerApp(adoptSecretSvc(client, []*itemModel.Main{{Key: "A", Value: "new"}}), "app-0")
 
-	result, err := svc.SyncSecrets(context.Background(), []string{"app-1"})
+	result, err := svc.SyncSecrets(context.Background(), []string{"app-1"}, true)
 	require.NoError(t, err)
 	assert.Empty(t, result.Errors)
 	assert.Equal(t, []string{"team-a/billing-db"}, result.Updated)
@@ -296,7 +334,7 @@ func TestSyncConfigMaps_AdoptRefusedWhenLiveDataWouldBeLost(t *testing.T) {
 		{Key: "PG_PORT", Value: "5432"},
 	})
 
-	result, err := svc.SyncConfigMaps(context.Background(), nil)
+	result, err := svc.SyncConfigMaps(context.Background(), nil, true)
 	require.NoError(t, err)
 
 	require.Len(t, result.Errors, 1)
@@ -329,7 +367,7 @@ func TestSyncConfigMaps_AdoptAllowedWhenNoLiveDataIsLost(t *testing.T) {
 		{Key: "TZ", Value: "Asia/Almaty"},
 	})
 
-	result, err := svc.SyncConfigMaps(context.Background(), nil)
+	result, err := svc.SyncConfigMaps(context.Background(), nil, true)
 	require.NoError(t, err)
 
 	assert.Empty(t, result.Errors)

@@ -321,7 +321,7 @@ func (u *Usecase) SyncSecrets(ctx context.Context, appId *string) (*kubeService.
 		return nil, err
 	}
 
-	result, err := u.svc.SyncSecrets(ctx, scope)
+	result, err := u.svc.SyncSecrets(ctx, scope, u.sessionSvc.CtxIsAdmin(ctx))
 	if err != nil {
 		// Сентинельные коды (not_in_cluster, sync_in_progress) пробрасываем
 		// как есть — интерцептор превратит их в осмысленный ответ клиенту.
@@ -344,7 +344,7 @@ func (u *Usecase) SyncConfigMaps(ctx context.Context, appId *string) (*kubeServi
 		return nil, err
 	}
 
-	result, err := u.svc.SyncConfigMaps(ctx, scope)
+	result, err := u.svc.SyncConfigMaps(ctx, scope, u.sessionSvc.CtxIsAdmin(ctx))
 	if err != nil {
 		// Сентинельные коды (not_in_cluster, sync_in_progress) пробрасываем
 		// как есть — интерцептор превратит их в осмысленный ответ клиенту.
@@ -368,7 +368,7 @@ func (u *Usecase) Sync(ctx context.Context, appId *string) (*kubeService.SyncRes
 		return nil, nil, err
 	}
 
-	secrets, configMaps, err := u.svc.Sync(ctx, scope)
+	secrets, configMaps, err := u.svc.Sync(ctx, scope, u.sessionSvc.CtxIsAdmin(ctx))
 	if err != nil {
 		// Сентинельные коды (not_in_cluster, sync_in_progress) пробрасываем
 		// как есть — интерцептор превратит их в осмысленный ответ клиенту.

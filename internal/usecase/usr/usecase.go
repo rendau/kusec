@@ -355,6 +355,19 @@ func (u *Usecase) EnrollTotp(ctx context.Context, currentPassword string) (strin
 	return secret, url, nil
 }
 
+// ConfirmPassword подтверждает текущим паролем действие, выдающее долгий
+// доступ в обход сессии: выпуск API-ключа, согласие на OAuth-подключение MCP.
+// Ключ и подключение переживают выход и смену пароля, поэтому чужой с живой
+// сессией (украденный токен, открытый экран) не должен выпускать их сам.
+// Счётчик неудач общий с текущим паролем в профиле.
+func (u *Usecase) ConfirmPassword(ctx context.Context, currentPassword string) error {
+	item, err := u.requireActiveSelf(ctx)
+	if err != nil {
+		return err
+	}
+	return u.checkCurrentPassword(item, &currentPassword)
+}
+
 // totpAttempt выполняет проверку кода 2FA вошедшего пользователя под
 // ограничителем перебора: неверный код засчитывается как неудача, верный
 // сбрасывает счётчик, прочие ошибки счётчик не трогают.

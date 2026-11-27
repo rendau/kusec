@@ -191,12 +191,18 @@ GET /api/app/resolve?namespace=caravan&kube_name=kusec-caravan-main
     "missing_in_cluster": ["NEW_KEY"],
     "extra_in_cluster": [],
     "value_differs": ["PG_PASSWORD"],
-    "not_synced_since": "2026-09-17T09:12:30Z"
+    "not_synced_since": "2026-09-17T09:12:30Z",
+    "foreign": false
   }]
 }
 ```
 
 - сравнение по байтам значений, наружу отдаются **только имена ключей**;
+- `foreign: true` — объект с этим именем есть в кластере, но kusec записал
+  его не для этой записи (другое приложение того же namespace или объект
+  вне kusec). Не-админу такой объект не сравнивается: `missing_in_cluster`,
+  `extra_in_cluster` и `value_differs` пусты — иначе были бы видны чужие
+  ключи и совпадение значения с догадкой. Админ видит и признак, и сравнение;
 - `not_synced_since` — время последнего изменения объекта/его ключей в
   kusec, ещё не применённого в кластер (`null` — расхождений по времени нет);
 - `in_cluster: false` — kusec запущен вне кластера, сравнение недоступно.

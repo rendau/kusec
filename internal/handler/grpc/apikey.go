@@ -49,7 +49,7 @@ func (h *ApiKey) Create(ctx context.Context, req *proto.ApiKeyCreateReq) (*proto
 		scope = constant.ApiKeyScopeMcpOnly
 	}
 
-	newId, key, err := h.usecase.Create(ctx, req.Name, req.UsrId, scope)
+	newId, key, err := h.usecase.Create(ctx, req.Name, req.UsrId, scope, req.CurrentPassword)
 	if err != nil {
 		return nil, err
 	}

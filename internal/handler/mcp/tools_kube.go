@@ -99,8 +99,8 @@ func (s *sessionServer) sync(ctx context.Context, req *mcpsdk.CallToolRequest, i
 	}, nil
 }
 
-// syncResultOut конвертирует итог синхронизации; текст ошибки объекта, в
-// котором оказалось значение секрета, скрывается целиком (см. errors.go).
+// syncResultOut конвертирует итог синхронизации. Тексты ошибок объектов
+// значений не содержат по построению (см. errors.go, kube.kubeErrText).
 func (s *sessionServer) syncResultOut(v *kubeService.SyncResult) SyncResultOut {
 	if v == nil {
 		return SyncResultOut{Created: []string{}, Updated: []string{}, Deleted: []string{}}
@@ -111,7 +111,7 @@ func (s *sessionServer) syncResultOut(v *kubeService.SyncResult) SyncResultOut {
 		Updated:   v.Updated,
 		Deleted:   v.Deleted,
 		Unchanged: v.Unchanged,
-		Errors:    lo.Map(v.Errors, func(e string, _ int) string { return s.safeText(e) }),
+		Errors:    append([]string{}, v.Errors...),
 	}
 }
 

@@ -11,9 +11,9 @@ import (
 )
 
 type KubeServiceI interface {
-	SyncSecrets(ctx context.Context, appIds []string) (*kubeService.SyncResult, error)
-	SyncConfigMaps(ctx context.Context, appIds []string) (*kubeService.SyncResult, error)
-	Sync(ctx context.Context, appIds []string) (*kubeService.SyncResult, *kubeService.SyncResult, error)
+	SyncSecrets(ctx context.Context, appIds []string, adoptForeign bool) (*kubeService.SyncResult, error)
+	SyncConfigMaps(ctx context.Context, appIds []string, adoptForeign bool) (*kubeService.SyncResult, error)
+	Sync(ctx context.Context, appIds []string, adoptForeign bool) (*kubeService.SyncResult, *kubeService.SyncResult, error)
 	ListNamespaces(ctx context.Context) ([]string, bool, error)
 	ListClusterSecrets(ctx context.Context, namespace string) ([]*kubeService.ClusterSecret, bool, error)
 	ImportSecret(ctx context.Context, appId string, ref kubeService.ImportRef, secretSlug string, opts kubeService.ImportOptions) (*kubeService.ImportResult, error)

@@ -253,6 +253,7 @@ func (u *Usecase) Drift(ctx context.Context, appId string) ([]*DriftObject, bool
 		return nil, false, err
 	}
 
+	isAdmin := u.sessionSvc.FromContext(ctx).IsAdmin()
 	objects := make([]*DriftObject, 0, len(secrets)+len(configMaps))
 
 	for _, secret := range secrets {
@@ -267,10 +268,10 @@ func (u *Usecase) Drift(ctx context.Context, appId string) ([]*DriftObject, bool
 		}
 
 		objects = append(objects, driftObject(
-			"Secret", kubeName, app.Namespace, secret.Id, secret.Active, secret.LastSyncedAt,
+			"Secret", kubeName, app.Namespace, app.Id, secret.Id, secret.Active, secret.LastSyncedAt,
 			desiredSecretValues(secret, itemsBySecret[secret.Id]),
 			latestChange(secret.UpdatedAt, itemUpdatedAts(itemsBySecret[secret.Id])),
-			cluster, found,
+			cluster, found, isAdmin,
 		))
 	}
 
@@ -286,10 +287,10 @@ func (u *Usecase) Drift(ctx context.Context, appId string) ([]*DriftObject, bool
 		}
 
 		objects = append(objects, driftObject(
-			"ConfigMap", kubeName, app.Namespace, configMap.Id, configMap.Active, configMap.LastSyncedAt,
+			"ConfigMap", kubeName, app.Namespace, app.Id, configMap.Id, configMap.Active, configMap.LastSyncedAt,
 			desiredConfigValues(configMap, configItemsByMap[configMap.Id]),
 			latestChange(configMap.UpdatedAt, configItemUpdatedAts(configItemsByMap[configMap.Id])),
-			cluster, found,
+			cluster, found, isAdmin,
 		))
 	}
 
@@ -351,14 +352,23 @@ func clusterValues(cluster *kubeService.ClusterResource) map[string][]byte {
 	return values
 }
 
+// driftObject сравнивает запись kusec с живым объектом кластера.
+//
+// Объект с тем же именем мог записать не kusec для этой записи: секрет
+// "dags-main" app "airflow" и секрет "main" app "airflow-dags" в одном
+// namespace оба kusec-airflow-dags-main, а объект вне kusec бывает под любым
+// именем. Его ключи и совпадение значений с догадкой — данные чужого
+// приложения: не-админ получает только foreign=true, без сравнения (как и
+// kube.requireClusterOwnership при просмотре живого объекта).
 func driftObject(
-	kubeKind, kubeName, namespace, objectId string,
+	kubeKind, kubeName, namespace, appId, objectId string,
 	active bool,
 	lastSyncedAt *time.Time,
 	desired map[string][]byte,
 	lastChangedAt time.Time,
 	cluster *kubeService.ClusterResource,
 	found bool,
+	isAdmin bool,
 ) *DriftObject {
 	obj := &DriftObject{
 		KubeKind:         kubeKind,
@@ -372,10 +382,14 @@ func driftObject(
 	}
 	if found {
 		obj.Managed = cluster.Managed
+		obj.Foreign = !cluster.OwnedBy(appId, objectId)
+	}
+	if obj.Foreign && !isAdmin {
+		desired = map[string][]byte{}
 	}
 
 	live := clusterValues(cluster)
-	if !found {
+	if !found || (obj.Foreign && !isAdmin) {
 		live = map[string][]byte{}
 	}
 

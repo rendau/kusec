@@ -20,25 +20,27 @@ type kubeSvcMock struct {
 
 	calls     int
 	gotAppIds []string
+	gotAdopt  bool
 }
 
-func (m *kubeSvcMock) record(appIds []string) {
+func (m *kubeSvcMock) record(appIds []string, adoptForeign bool) {
 	m.calls++
 	m.gotAppIds = appIds
+	m.gotAdopt = adoptForeign
 }
 
-func (m *kubeSvcMock) SyncSecrets(_ context.Context, appIds []string) (*kubeService.SyncResult, error) {
-	m.record(appIds)
+func (m *kubeSvcMock) SyncSecrets(_ context.Context, appIds []string, adoptForeign bool) (*kubeService.SyncResult, error) {
+	m.record(appIds, adoptForeign)
 	return &kubeService.SyncResult{}, nil
 }
 
-func (m *kubeSvcMock) SyncConfigMaps(_ context.Context, appIds []string) (*kubeService.SyncResult, error) {
-	m.record(appIds)
+func (m *kubeSvcMock) SyncConfigMaps(_ context.Context, appIds []string, adoptForeign bool) (*kubeService.SyncResult, error) {
+	m.record(appIds, adoptForeign)
 	return &kubeService.SyncResult{}, nil
 }
 
-func (m *kubeSvcMock) Sync(_ context.Context, appIds []string) (*kubeService.SyncResult, *kubeService.SyncResult, error) {
-	m.record(appIds)
+func (m *kubeSvcMock) Sync(_ context.Context, appIds []string, adoptForeign bool) (*kubeService.SyncResult, *kubeService.SyncResult, error) {
+	m.record(appIds, adoptForeign)
 	return &kubeService.SyncResult{}, &kubeService.SyncResult{}, nil
 }
 
@@ -152,6 +154,8 @@ func TestSyncScope(t *testing.T) {
 				require.NoError(t, err, method)
 				require.Equal(t, 1, svc.calls, method)
 				assert.Equal(t, tc.wantAppIds, svc.gotAppIds, method)
+				// чужой объект кластера усыновляет только sync админа
+				assert.Equal(t, tc.session.IsAdmin(), svc.gotAdopt, method)
 			}
 		})
 	}

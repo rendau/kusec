@@ -220,9 +220,14 @@ func TestToolErr_NoGuessingThroughErrorText(t *testing.T) {
 	// семантический код проходит как есть
 	assert.Equal(t, "copy_item: object_not_found", s.toolErr(agentWrap("copy_item", fmt.Errorf("svc.Get: %w", errs.ObjectNotFound))).Error())
 
-	// описание ErrFull с повтором ввода и совпадением — скрывается целиком
-	full := errs.ErrFull{Err: errs.ItemKeyExists, Desc: `item key "` + candidates + `" already exists in the secret`}
-	assert.Equal(t, secretInErrText, s.toolErr(full).Error())
+	// описание ErrFull с повтором ввода (ключ «уже есть») уходит как есть,
+	// есть в нём увиденное значение или нет: подмена текста при совпадении
+	// сама была бы ответом «угадал / не угадал» — агент клал бы в ключ тысячи
+	// вариантов и делил их пополам
+	hit := errs.ErrFull{Err: errs.ItemKeyExists, Desc: `item key "` + candidates + `" already exists in the secret`}
+	miss := errs.ErrFull{Err: errs.ItemKeyExists, Desc: `item key "100001 100002" already exists in the secret`}
+	assert.Equal(t, "item_key_exists: "+hit.Desc, s.toolErr(hit).Error())
+	assert.Equal(t, "item_key_exists: "+miss.Desc, s.toolErr(miss).Error())
 }
 
 func TestVault_Scrub(t *testing.T) {

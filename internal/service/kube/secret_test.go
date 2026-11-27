@@ -179,6 +179,10 @@ func TestBuildSecretData_Errors(t *testing.T) {
 		if err == nil || !strings.Contains(err.Error(), "invalid base64 value") {
 			t.Fatalf("expected invalid base64 error, got: %v", err)
 		}
+		// позиция «плохого» символа выдала бы кусок значения
+		if strings.Contains(err.Error(), "input byte") {
+			t.Fatalf("base64 error leaks the position: %v", err)
+		}
 	})
 }
 
@@ -322,7 +326,7 @@ func TestSyncSecrets_ScopedSyncUpdatesAndDeletesOnlyScopedApp(t *testing.T) {
 		},
 	}
 
-	result, err := svc.SyncSecrets(context.Background(), []string{"app-1"})
+	result, err := svc.SyncSecrets(context.Background(), []string{"app-1"}, true)
 	if err != nil {
 		t.Fatalf("SyncSecrets() error = %v", err)
 	}
@@ -416,7 +420,7 @@ func TestSyncSecrets_GlobalSyncAdoptsExistingWithoutErrors(t *testing.T) {
 	}
 
 	// Глобальный sync: appIds == nil.
-	result, err := svc.SyncSecrets(context.Background(), nil)
+	result, err := svc.SyncSecrets(context.Background(), nil, true)
 	if err != nil {
 		t.Fatalf("SyncSecrets() error = %v", err)
 	}

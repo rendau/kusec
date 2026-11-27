@@ -120,6 +120,7 @@ func TestMaskingE2E(t *testing.T) {
 		nil,
 		txmStub{},
 		auditRecStub{},
+		nil,
 	)
 	itemUsecase := itemUsc.New(
 		&itemSvcMock{items: map[string]*itemModel.Main{

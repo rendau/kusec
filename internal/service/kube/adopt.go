@@ -23,9 +23,20 @@ import (
 // истины — kusec. Объект, уже помеченный managed-by=kusec, проверке не
 // подлежит — он и так наш (попадает сюда при sync по одному приложению, если
 // аннотирован другим app). В причине — только имена ключей, без значений.
-func adoptionRefusal(labels map[string]string, live, want map[string][]byte) string {
+//
+// allowForeign=false (sync не-админа) — объект без лейбла не усыновляется
+// вовсе и без имён его ключей. Иначе проверка выше обходится: отказ называл
+// бы недостающие ключи, а заведя их с любыми значениями, пользователь
+// перезаписал бы чужой объект namespace (helm-секрет, объект другой команды
+// с совпавшим именем; при пустом KUBE_SECRET_NAME_PREFIX имя
+// <app-slug>-<slug> совпадает с типичными helm-именами).
+func adoptionRefusal(labels map[string]string, live, want map[string][]byte, allowForeign bool) string {
 	if labels[managedByLabelKey] == managedByLabelValue {
 		return ""
+	}
+	if !allowForeign {
+		return "refused: the live object is not managed by kusec; only an admin can take it over " +
+			"(sync it as an admin, or have an admin import it first)"
 	}
 
 	var missing, emptied []string

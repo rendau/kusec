@@ -184,6 +184,11 @@ message AppDriftObjectSt {
   // время последнего изменения в kusec, ещё не применённого в кластер
   // (null — изменений после последнего sync нет)
   optional google.protobuf.Timestamp not_synced_since = 10;
+  // объект с этим именем есть в кластере, но kusec записал его не для этой
+  // записи (другое приложение того же namespace или объект вне kusec).
+  // Не-админу ключи такого объекта не сравниваются и не показываются:
+  // missing_in_cluster, extra_in_cluster и value_differs пусты
+  bool foreign = 11;
 }
 
 message AppDriftRep {

@@ -320,9 +320,12 @@ type ApiKeyCreateReq struct {
 	McpOnly bool `protobuf:"varint,3,opt,name=mcp_only,json=mcpOnly,proto3" json:"mcp_only,omitempty"`
 	// full | read_only | mcp_only; пусто = full. full и read_only выпускают
 	// только админы; mcp_only может выпустить себе любой пользователь.
-	Scope         *string `protobuf:"bytes,4,opt,name=scope,proto3,oneof" json:"scope,omitempty"`
-	unknownFields protoimpl.UnknownFields
-	sizeCache     protoimpl.SizeCache
+	Scope *string `protobuf:"bytes,4,opt,name=scope,proto3,oneof" json:"scope,omitempty"`
+	// Текущий пароль выпускающего — обязателен: ключ живёт до удаления и
+	// переживает выход и смену пароля.
+	CurrentPassword string `protobuf:"bytes,5,opt,name=current_password,json=currentPassword,proto3" json:"current_password,omitempty"`
+	unknownFields   protoimpl.UnknownFields
+	sizeCache       protoimpl.SizeCache
 }
 
 func (x *ApiKeyCreateReq) Reset() {
@@ -380,6 +383,13 @@ func (x *ApiKeyCreateReq) GetMcpOnly() bool {
 func (x *ApiKeyCreateReq) GetScope() string {
 	if x != nil && x.Scope != nil {
 		return *x.Scope
+	}
+	return ""
+}
+
+func (x *ApiKeyCreateReq) GetCurrentPassword() string {
+	if x != nil {
+		return x.CurrentPassword
 	}
 	return ""
 }
@@ -552,12 +562,13 @@ const file_kusec_v1_apikey_proto_rawDesc = "" +
 	"\x0fpagination_info\x18\x01 \x01(\v2\x1a.kusec_v1.PaginationInfoStR\x0epaginationInfo\x12.\n" +
 	"\aresults\x18\x02 \x03(\v2\x14.kusec_v1.ApiKeyMainR\aresults\"\x1e\n" +
 	"\fApiKeyGetReq\x12\x0e\n" +
-	"\x02id\x18\x01 \x01(\tR\x02id\"\x90\x01\n" +
+	"\x02id\x18\x01 \x01(\tR\x02id\"\xbb\x01\n" +
 	"\x0fApiKeyCreateReq\x12\x12\n" +
 	"\x04name\x18\x01 \x01(\tR\x04name\x12\x1a\n" +
 	"\x06usr_id\x18\x02 \x01(\x03H\x00R\x05usrId\x88\x01\x01\x12\x1d\n" +
 	"\bmcp_only\x18\x03 \x01(\bB\x02\x18\x01R\amcpOnly\x12\x19\n" +
-	"\x05scope\x18\x04 \x01(\tH\x01R\x05scope\x88\x01\x01B\t\n" +
+	"\x05scope\x18\x04 \x01(\tH\x01R\x05scope\x88\x01\x01\x12)\n" +
+	"\x10current_password\x18\x05 \x01(\tR\x0fcurrentPasswordB\t\n" +
 	"\a_usr_idB\b\n" +
 	"\x06_scope\"3\n" +
 	"\x0fApiKeyCreateRep\x12\x0e\n" +

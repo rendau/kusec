@@ -61,6 +61,7 @@ func TestAuthMiddleware_FixedFailTime(t *testing.T) {
 		nil,
 		txmStub{},
 		auditRecStub{},
+		nil,
 	)
 
 	h := New(nil, apikeyUsecase, nil, nil, nil, nil, nil, nil, nil, nil, nil)

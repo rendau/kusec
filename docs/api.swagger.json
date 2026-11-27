@@ -2851,6 +2851,10 @@
         "scope": {
           "type": "string",
           "description": "full | read_only | mcp_only; пусто = full. full и read_only выпускают\nтолько админы; mcp_only может выпустить себе любой пользователь."
+        },
+        "current_password": {
+          "type": "string",
+          "description": "Текущий пароль выпускающего — обязателен: ключ живёт до удаления и\nпереживает выход и смену пароля."
         }
       }
     },
@@ -3005,6 +3009,10 @@
           "type": "string",
           "format": "date-time",
           "title": "время последнего изменения в kusec, ещё не применённого в кластер\n(null — изменений после последнего sync нет)"
+        },
+        "foreign": {
+          "type": "boolean",
+          "title": "объект с этим именем есть в кластере, но kusec записал его не для этой\nзаписи (другое приложение того же namespace или объект вне kusec).\nНе-админу ключи такого объекта не сравниваются и не показываются:\nmissing_in_cluster, extra_in_cluster и value_differs пусты"
         }
       }
     },
@@ -4251,6 +4259,10 @@
         "approve": {
           "type": "boolean",
           "title": "только Authorize"
+        },
+        "current_password": {
+          "type": "string",
+          "description": "Текущий пароль — обязателен при approve=true (только Authorize):\nподключение живёт до удаления и переживает выход и смену пароля."
         }
       },
       "description": "OAuthAuthorizeReq — query запроса авторизации как есть."

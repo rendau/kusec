@@ -104,6 +104,19 @@ func (txmStub) TxFn(ctx context.Context, f func(context.Context) error) error {
 }
 
 // auditRecStub — no-op регистратор аудита.
+// passwordStub принимает только testPassword (как usr usecase — текущий
+// пароль вошедшего пользователя).
+type passwordStub struct{}
+
+const testPassword = "current-pw"
+
+func (passwordStub) ConfirmPassword(_ context.Context, currentPassword string) error {
+	if currentPassword != testPassword {
+		return errs.CurrentPasswordInvalid
+	}
+	return nil
+}
+
 type auditRecStub struct{}
 
 func (auditRecStub) RecordApiKey(context.Context, *model.Main, *model.Main, *string) error {
@@ -134,7 +147,7 @@ func TestSessionFromKey(t *testing.T) {
 		10: {Id: 10, Active: true, IsAdmin: false, AppIds: []string{"app1"}},
 	}}
 
-	u := New(svc, usrSvc, &sessionSvcMock{}, txmStub{}, auditRecStub{})
+	u := New(svc, usrSvc, &sessionSvcMock{}, txmStub{}, auditRecStub{}, passwordStub{})
 
 	// валидный ключ активного пользователя
 	session, err := u.SessionFromKey(context.Background(), activeKey)
@@ -190,9 +203,9 @@ func TestCreate_Permissions(t *testing.T) {
 
 	// не-админ создаёт ключ себе
 	svc := &svcMock{}
-	u := New(svc, usrSvc, &sessionSvcMock{session: &sessionModel.Session{Id: 10}}, txmStub{}, auditRecStub{})
+	u := New(svc, usrSvc, &sessionSvcMock{session: &sessionModel.Session{Id: 10}}, txmStub{}, auditRecStub{}, passwordStub{})
 
-	id, key, err := u.Create(context.Background(), "мой ключ", nil, constant.ApiKeyScopeMcpOnly)
+	id, key, err := u.Create(context.Background(), "мой ключ", nil, constant.ApiKeyScopeMcpOnly, testPassword)
 	require.NoError(t, err)
 	assert.Equal(t, "new-id", id)
 	assert.NotEmpty(t, key)
@@ -203,23 +216,34 @@ func TestCreate_Permissions(t *testing.T) {
 	assert.Equal(t, apikeyService.HashKey(key), *svc.created[0].KeyHash)
 
 	// не-админ не может выпустить ключ другому пользователю
-	_, _, err = u.Create(context.Background(), "чужой", new(int64(20)), constant.ApiKeyScopeMcpOnly)
+	_, _, err = u.Create(context.Background(), "чужой", new(int64(20)), constant.ApiKeyScopeMcpOnly, testPassword)
 	assert.ErrorIs(t, err, errs.NoPermission)
 
 	// не-админ не может выпустить ключ с полным доступом к API
-	_, _, err = u.Create(context.Background(), "полный", nil, constant.ApiKeyScopeFull)
+	_, _, err = u.Create(context.Background(), "полный", nil, constant.ApiKeyScopeFull, testPassword)
 	assert.ErrorIs(t, err, errs.NoPermission)
 
 	// админ — может
-	uAdmin := New(svc, usrSvc, &sessionSvcMock{session: &sessionModel.Session{Id: 1, Admin: true}}, txmStub{}, auditRecStub{})
-	_, _, err = uAdmin.Create(context.Background(), "для сервисного", new(int64(20)), constant.ApiKeyScopeFull)
+	uAdmin := New(svc, usrSvc, &sessionSvcMock{session: &sessionModel.Session{Id: 1, Admin: true}}, txmStub{}, auditRecStub{}, passwordStub{})
+	_, _, err = uAdmin.Create(context.Background(), "для сервисного", new(int64(20)), constant.ApiKeyScopeFull, testPassword)
 	require.NoError(t, err)
 	assert.Equal(t, int64(20), *svc.created[len(svc.created)-1].UsrId)
 	assert.Equal(t, constant.ApiKeyScopeFull, *svc.created[len(svc.created)-1].Scope)
 
+	// без верного текущего пароля ключ не выпускается: иначе украденная
+	// сессия превращалась бы в бессрочный доступ
+	before := len(svc.created)
+	for _, pw := range []string{"", "wrong"} {
+		_, _, err = u.Create(context.Background(), "без пароля", nil, constant.ApiKeyScopeMcpOnly, pw)
+		assert.ErrorIs(t, err, errs.CurrentPasswordInvalid)
+		_, _, err = uAdmin.Create(context.Background(), "без пароля", new(int64(20)), constant.ApiKeyScopeFull, pw)
+		assert.ErrorIs(t, err, errs.CurrentPasswordInvalid)
+	}
+	assert.Len(t, svc.created, before)
+
 	// неавторизованный
-	uAnon := New(svc, usrSvc, &sessionSvcMock{}, txmStub{}, auditRecStub{})
-	_, _, err = uAnon.Create(context.Background(), "x", nil, constant.ApiKeyScopeFull)
+	uAnon := New(svc, usrSvc, &sessionSvcMock{}, txmStub{}, auditRecStub{}, passwordStub{})
+	_, _, err = uAnon.Create(context.Background(), "x", nil, constant.ApiKeyScopeFull, testPassword)
 	assert.ErrorIs(t, err, errs.NotAuthorized)
 }
 
@@ -240,7 +264,7 @@ func TestUpdate_ScopePermissions(t *testing.T) {
 
 	// не-админ не может расширить свой mcp_only-ключ до full
 	svc := newSvc()
-	u := New(svc, usrSvc, &sessionSvcMock{session: &sessionModel.Session{Id: 10}}, txmStub{}, auditRecStub{})
+	u := New(svc, usrSvc, &sessionSvcMock{session: &sessionModel.Session{Id: 10}}, txmStub{}, auditRecStub{}, passwordStub{})
 	err := u.Update(context.Background(), "k-mcp", nil, nil, new(constant.ApiKeyScopeFull))
 	assert.ErrorIs(t, err, errs.NoPermission)
 	assert.Empty(t, svc.updated)
@@ -266,7 +290,7 @@ func TestUpdate_ScopePermissions(t *testing.T) {
 
 	// админ меняет scope свободно
 	svcAdmin := newSvc()
-	uAdmin := New(svcAdmin, usrSvc, &sessionSvcMock{session: &sessionModel.Session{Id: 1, Admin: true}}, txmStub{}, auditRecStub{})
+	uAdmin := New(svcAdmin, usrSvc, &sessionSvcMock{session: &sessionModel.Session{Id: 1, Admin: true}}, txmStub{}, auditRecStub{}, passwordStub{})
 	err = uAdmin.Update(context.Background(), "k-mcp", nil, nil, new(constant.ApiKeyScopeFull))
 	require.NoError(t, err)
 	require.Len(t, svcAdmin.updated, 1)
@@ -289,10 +313,10 @@ func TestKeySession_CannotManageKeys(t *testing.T) {
 	keySession := &sessionModel.Session{
 		Id: 1, Admin: true, Source: constant.SourceApi, ApiKeyId: "k-own", ApiKeyName: "ci",
 	}
-	u := New(svc, usrSvc, &sessionSvcMock{session: keySession}, txmStub{}, auditRecStub{})
+	u := New(svc, usrSvc, &sessionSvcMock{session: keySession}, txmStub{}, auditRecStub{}, passwordStub{})
 
 	for _, scope := range []string{constant.ApiKeyScopeFull, constant.ApiKeyScopeReadOnly, constant.ApiKeyScopeMcpOnly} {
-		_, _, err := u.Create(context.Background(), "new", nil, scope)
+		_, _, err := u.Create(context.Background(), "new", nil, scope, testPassword)
 		assert.ErrorIs(t, err, errs.NoPermission, scope)
 	}
 	assert.Empty(t, svc.created)
@@ -311,8 +335,8 @@ func TestKeySession_CannotManageKeys(t *testing.T) {
 	require.NoError(t, err)
 
 	// тот же пользователь из входа в админку ключами управляет
-	uHuman := New(svc, usrSvc, &sessionSvcMock{session: &sessionModel.Session{Id: 1, Admin: true}}, txmStub{}, auditRecStub{})
-	_, _, err = uHuman.Create(context.Background(), "new", nil, constant.ApiKeyScopeFull)
+	uHuman := New(svc, usrSvc, &sessionSvcMock{session: &sessionModel.Session{Id: 1, Admin: true}}, txmStub{}, auditRecStub{}, passwordStub{})
+	_, _, err = uHuman.Create(context.Background(), "new", nil, constant.ApiKeyScopeFull, testPassword)
 	require.NoError(t, err)
 	require.NoError(t, uHuman.Update(context.Background(), "k-own", new(false), nil, nil))
 	require.NoError(t, uHuman.Delete(context.Background(), "k-own"))
@@ -336,7 +360,7 @@ func TestSessionFromKey_AppAccess(t *testing.T) {
 		10: {Id: 10, Active: true, AllApps: true},
 		11: {Id: 11, Active: true, AppIds: []string{}},
 	}}
-	u := New(svc, usrSvc, &sessionSvcMock{}, txmStub{}, auditRecStub{})
+	u := New(svc, usrSvc, &sessionSvcMock{}, txmStub{}, auditRecStub{}, passwordStub{})
 
 	session, err := u.SessionFromKey(context.Background(), allKey)
 	require.NoError(t, err)

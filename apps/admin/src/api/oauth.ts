@@ -33,13 +33,24 @@ export function describeAuthorization(
   })
 }
 
+/**
+ * Record the decision. Allowing needs the current password (the connection
+ * outlives sign-out and a password change): a wrong one is rejected with
+ * `current_password_invalid`, repeated failures — `too_many_attempts`.
+ * Denying needs none.
+ */
 export function authorize(
   req: OAuthAuthorizeReq,
   approve: boolean,
+  currentPassword = '',
 ): Promise<OAuthAuthorizeRep> {
   return apiFetch<OAuthAuthorizeRep>('/oauth/authorize', {
     method: 'POST',
-    body: JSON.stringify({ ...req, approve }),
+    body: JSON.stringify({
+      ...req,
+      approve,
+      ...(approve ? { current_password: currentPassword } : {}),
+    }),
   })
 }
 

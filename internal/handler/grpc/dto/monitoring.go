@@ -44,6 +44,7 @@ func EncodeAppDriftObject(v *monitoringUsc.DriftObject, _ int) *proto.AppDriftOb
 		ExtraInCluster:   v.ExtraInCluster,
 		ValueDiffers:     v.ValueDiffers,
 		NotSyncedSince:   EncodeTimestamp(v.NotSyncedSince),
+		Foreign:          v.Foreign,
 	}
 }
 

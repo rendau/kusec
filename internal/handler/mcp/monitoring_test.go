@@ -116,6 +116,7 @@ func TestMonitoringNoContentFingerprints(t *testing.T) {
 		nil,
 		txmStub{},
 		auditRecStub{},
+		nil,
 	)
 	syncrunUsecase := syncrunUsc.New(
 		&syncRunSvcMock{runs: []*syncrunModel.Main{{
@@ -258,6 +259,7 @@ func TestToolSchemasHaveNoContentFingerprints(t *testing.T) {
 		nil,
 		txmStub{},
 		auditRecStub{},
+		nil,
 	)
 	h := New(sessionSvc, apikeyUsecase, nil, nil, nil, nil, nil, nil, nil, nil, nil)
 
